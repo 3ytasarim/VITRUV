@@ -6,6 +6,7 @@ import { requestId } from 'hono/request-id';
 import { secureHeaders } from 'hono/secure-headers';
 import { authenticate, type PrincipalResolver } from './auth/authenticate';
 import type { ClientIpResolver } from './lib/client-ip';
+import { StorageUnavailableError } from './infra/storage/index';
 import { AppError, errorBody } from './lib/errors';
 import type { Logger } from './lib/logger';
 import { authRoutes } from './modules/auth/auth.routes';
@@ -23,7 +24,7 @@ import { publicLeadRoutes } from './modules/leads/leads.routes';
 import type { LeadServiceDeps } from './modules/leads/leads.service';
 import {
   adminMediaRoutes,
-  localMediaDeliveryRoutes,
+  mediaDeliveryRoutes,
   trainingMediaRoutes,
 } from './modules/media/media.routes';
 import type { TrainingDeps } from './modules/training/exercises.service';
@@ -58,6 +59,8 @@ export interface AppDeps {
   media: Omit<MediaServiceDeps, 'logger'>;
   /** Nutrition PDFs reuse the media db + storage; the size limit is overridable for tests. */
   nutritionMaxBytes?: number;
+  /** Lifetime of signed URLs for private files (S3). */
+  privateUrlTtlSeconds?: number;
   leads: Omit<LeadServiceDeps, 'logger'>;
 }
 
@@ -132,9 +135,8 @@ export function createApp(deps: AppDeps) {
   );
 
   app.route('/health', healthRoutes({ ...deps.health, logger: deps.logger }));
-  if (deps.media.storage.driver === 'local') {
-    app.route('/media', localMediaDeliveryRoutes(deps.media.storage));
-  }
+  // Public media delivery for every driver (older /media/public/… URLs keep working on S3).
+  app.route('/media', mediaDeliveryRoutes(deps.media.storage));
 
   app.use('/v1/admin/*', authenticate(deps.auth));
   app.use('/v1/auth/*', authenticate(deps.auth));
@@ -173,6 +175,7 @@ export function createApp(deps: AppDeps) {
     storage: deps.media.storage,
     logger: deps.logger,
     maxBytes: deps.nutritionMaxBytes,
+    privateUrlTtlSeconds: deps.privateUrlTtlSeconds,
   };
   app.route('/v1/admin/nutrition', adminNutritionRoutes(nutritionDeps));
   app.route('/v1/client/nutrition', clientNutritionRoutes(nutritionDeps));
@@ -185,6 +188,13 @@ export function createApp(deps: AppDeps) {
     const id = c.get('requestId');
     if (error instanceof AppError) {
       return c.json(errorBody(error.code, error.message, id, error.details), error.status);
+    }
+    if (error instanceof StorageUnavailableError) {
+      deps.logger.error({ requestId: id, err: error }, 'object storage unavailable');
+      return c.json(
+        errorBody('SERVICE_UNAVAILABLE', 'Der Medienspeicher ist gerade nicht erreichbar.', id),
+        503,
+      );
     }
     if (error instanceof HTTPException && error.status < 500) {
       return c.json(errorBody('BAD_REQUEST', 'Bad request.', id), error.status);

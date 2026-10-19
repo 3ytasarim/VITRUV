@@ -31,6 +31,9 @@ export async function proxyPrivateFile(apiPath: string) {
     res = await fetch(adminApiUrl(apiPath), {
       headers: auth,
       cache: 'no-store',
+      // S3: the API answers with a short-lived signed URL — hand it to the browser as is (the
+      // Bearer token must never follow a redirect to the storage provider).
+      redirect: 'manual',
       signal: AbortSignal.timeout(30_000),
     });
   } catch {
@@ -38,6 +41,13 @@ export async function proxyPrivateFile(apiPath: string) {
       { error: { code: 'SERVICE_UNAVAILABLE', message: 'Die API ist nicht erreichbar.' } },
       { status: 503, headers: { 'Cache-Control': 'no-store' } },
     );
+  }
+  const location = res.headers.get('location');
+  if (res.status >= 300 && res.status < 400 && location?.startsWith('https://')) {
+    return NextResponse.redirect(location, {
+      status: 302,
+      headers: { 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' },
+    });
   }
   if (!res.ok || !res.body) {
     return NextResponse.json(

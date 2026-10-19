@@ -118,11 +118,7 @@ function mediaLibraryRoutes(
   return routes;
 }
 
-/** Copies into a standalone ArrayBuffer (a Node Buffer view may share a larger pool). */
-const toArrayBuffer = (bytes: Uint8Array): ArrayBuffer =>
-  bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-
-function parseRange(
+export function parseRange(
   header: string | undefined,
   size: number,
 ): { start: number; end: number } | null {
@@ -144,11 +140,14 @@ function parseRange(
 }
 
 /**
- * DEVELOPMENT delivery of PUBLIC objects from the local storage driver — mounted at /media.
- * Production serves public media from the CDN/public bucket instead (PUBLIC_MEDIA_BASE_URL).
+ * Delivery of PUBLIC objects at /media/<key> — for BOTH drivers, so existing
+ * `${API_PUBLIC_URL}/media/public/…` URLs keep working after the move to S3.
+ * Streams the object (no full buffering) and supports HTTP Range (206) for video seeking.
  * Only keys under `public/` are served; private objects are never reachable here.
+ * With PUBLIC_MEDIA_BASE_URL set, new URLs point at the CDN/bucket directly and this route
+ * only serves older links.
  */
-export function localMediaDeliveryRoutes(storage: ObjectStorage) {
+export function mediaDeliveryRoutes(storage: ObjectStorage) {
   const routes = new Hono<AppEnv>();
 
   routes.get('/*', async (c) => {
@@ -158,32 +157,42 @@ export function localMediaDeliveryRoutes(storage: ObjectStorage) {
     } catch {
       throw AppError.notFound();
     }
-    if (storage.driver !== 'local' || !key.startsWith('public/')) throw AppError.notFound();
-    const object = await storage.get(key, 'PUBLIC');
-    if (!object) throw AppError.notFound();
+    if (!key.startsWith('public/')) throw AppError.notFound();
+    const head = await storage.head(key, 'PUBLIC');
+    if (!head) throw AppError.notFound();
 
-    const size = object.sizeBytes;
-    c.header('Content-Type', object.contentType ?? 'application/octet-stream');
+    const size = head.sizeBytes;
+    c.header('Content-Type', head.contentType ?? 'application/octet-stream');
     c.header('Content-Disposition', 'inline');
     c.header('Cache-Control', 'public, max-age=31536000, immutable');
     c.header('Accept-Ranges', 'bytes');
-    // Media is embedded by the website (another origin in development); never executed.
+    // Media is embedded by the website (another origin); never executed.
     c.header('Cross-Origin-Resource-Policy', 'cross-origin');
     c.header('Content-Security-Policy', "default-src 'none'; sandbox");
 
-    const range = parseRange(c.req.header('Range'), size);
-    if (c.req.header('Range') && !range) {
+    const rangeHeader = c.req.header('Range');
+    const range = parseRange(rangeHeader, size);
+    if (rangeHeader && !range) {
       c.header('Content-Range', `bytes */${size}`);
       return c.body(null, 416);
     }
+    if (c.req.method === 'HEAD') {
+      c.header('Content-Length', String(size));
+      return c.body(null, 200);
+    }
+    const object = await storage.getStream(key, 'PUBLIC', range ?? undefined);
+    if (!object) throw AppError.notFound();
     if (range) {
       c.header('Content-Range', `bytes ${range.start}-${range.end}/${size}`);
       c.header('Content-Length', String(range.end - range.start + 1));
-      return c.body(toArrayBuffer(object.body.subarray(range.start, range.end + 1)), 206);
+      return c.body(object.body, 206);
     }
     c.header('Content-Length', String(size));
-    return c.body(toArrayBuffer(object.body), 200);
+    return c.body(object.body, 200);
   });
 
   return routes;
 }
+
+/** @deprecated name kept for older imports — the route now serves every driver. */
+export const localMediaDeliveryRoutes = mediaDeliveryRoutes;

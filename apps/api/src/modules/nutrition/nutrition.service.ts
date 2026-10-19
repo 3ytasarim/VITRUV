@@ -14,7 +14,7 @@ import { AppError } from '../../lib/errors';
 import type { Logger } from '../../lib/logger';
 import { recordEvent } from '../auth/auth.service';
 import { clientAccessible } from '../management/management.service';
-import { validatePdfUpload } from './pdf-validation';
+import { pdfContentDisposition, validatePdfUpload } from './pdf-validation';
 
 /**
  * Nutrition V1 — client-specific PDF documents (Sprint 8, docs/NUTRITION-ARCHITECTURE.md).
@@ -34,6 +34,8 @@ export interface NutritionDeps {
   now?: () => Date;
   /** Overrides NUTRITION_PDF_MAX_BYTES (tests). */
   maxBytes?: number;
+  /** Lifetime of signed download URLs (S3 driver), seconds. Default 60. */
+  privateUrlTtlSeconds?: number;
 }
 
 type DocRow = typeof N.$inferSelect;
@@ -288,10 +290,13 @@ export async function archiveDocument(
   return adminDto(deps.db, actor, documentId);
 }
 
-export interface PrivateFile {
-  body: Uint8Array;
-  fileName: string;
-}
+/**
+ * A private file after the authorisation check: on S3 a short-lived signed URL (the client is
+ * redirected, the bytes never pass through the API); on the local development driver the bytes.
+ */
+export type PrivateFile =
+  | { kind: 'redirect'; url: string; fileName: string }
+  | { kind: 'body'; body: Uint8Array; fileName: string };
 
 async function readPrivate(
   deps: NutritionDeps,
@@ -299,12 +304,18 @@ async function readPrivate(
 ) {
   // Defence in depth: only PRIVATE nutrition assets are ever streamed by these routes.
   if (asset.visibility !== 'PRIVATE' || asset.purpose !== 'NUTRITION') throw notFound();
+  const url = await deps.storage.signedUrl(asset.storageKey, 'PRIVATE', {
+    expiresInSeconds: deps.privateUrlTtlSeconds ?? 60,
+    contentDisposition: pdfContentDisposition(asset.fileName),
+    contentType: 'application/pdf',
+  });
+  if (url) return { kind: 'redirect', url, fileName: asset.fileName } satisfies PrivateFile;
   const object = await deps.storage.get(asset.storageKey, 'PRIVATE');
   if (!object) {
     deps.logger.error({}, 'nutrition document object missing in storage');
     throw notFound();
   }
-  return { body: object.body, fileName: asset.fileName };
+  return { kind: 'body', body: object.body, fileName: asset.fileName } satisfies PrivateFile;
 }
 
 /** Coach/Admin download (any status, scoped). */

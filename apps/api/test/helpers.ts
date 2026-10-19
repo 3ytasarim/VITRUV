@@ -4,6 +4,7 @@ import type { DbExecutor } from '@vitruv/db';
 import { WEBSITE_MEDIA_MAX_BYTES, type UserRole } from '@vitruv/shared';
 import { createApp, type AppDeps } from '../src/app';
 import { anonymousResolver, type PrincipalResolver } from '../src/auth/authenticate';
+import type { ObjectStorage } from '../src/infra/storage/object-storage';
 import { createLocalStorage } from '../src/infra/storage/local-storage';
 import { createLogger } from '../src/lib/logger';
 import { createRateLimiter } from '@vitruv/shared';
@@ -47,15 +48,17 @@ export function buildTestApp(
     pingDatabase?: () => Promise<void>;
     db?: DbExecutor;
     storageDir?: string;
+    storage?: ObjectStorage;
   } = {},
 ) {
   const {
     pingDatabase = async () => undefined,
     db = unusedDb,
     storageDir = join(tmpdir(), 'vitruv-api-unit-storage'),
+    storage: injectedStorage,
     ...rest
   } = overrides;
-  const storage = createLocalStorage(storageDir);
+  const storage = injectedStorage ?? createLocalStorage(storageDir);
   return createApp({
     logger: silentLogger,
     corsOrigins: ['http://localhost:3000'],

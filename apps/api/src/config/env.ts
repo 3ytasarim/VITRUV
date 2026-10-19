@@ -50,6 +50,18 @@ export const apiEnvSchema = z
     S3_BUCKET_PRIVATE: z.string().optional(),
     S3_ACCESS_KEY_ID: z.string().optional(),
     S3_SECRET_ACCESS_KEY: z.string().optional(),
+    /** Path-style addressing (endpoint/bucket/key). Hetzner supports both; default off. */
+    S3_FORCE_PATH_STYLE: z.enum(['true', 'false']).default('false'),
+    /** Optional ACL for PUBLIC uploads when the public bucket has no public-read policy. */
+    S3_PUBLIC_OBJECT_ACL: z.enum(['public-read']).optional(),
+    /** Lifetime of signed URLs for PRIVATE files (seconds, 10–600). */
+    PRIVATE_URL_TTL_SECONDS: z.coerce.number().int().min(10).max(600).default(60),
+    /**
+     * Public base URL for NEW public media URLs (CDN or the public bucket, e.g.
+     * https://vitruv.fsn1.your-objectstorage.com). Unset: media is delivered through this API
+     * at ${API_PUBLIC_URL}/media/<key> (works with both drivers, incl. HTTP Range). Existing
+     * /media/public/… URLs keep working either way.
+     */
     PUBLIC_MEDIA_BASE_URL: z.url().optional(),
     MEDIA_MAX_IMAGE_BYTES: z.coerce
       .number()
@@ -90,6 +102,14 @@ export const apiEnvSchema = z
       ] as const) {
         if (!env[key])
           ctx.addIssue({ code: 'custom', path: [key], message: 'required when STORAGE_DRIVER=s3' });
+      }
+      // PRIVATE files must never land in the (publicly readable) public bucket.
+      if (env.S3_BUCKET_PUBLIC && env.S3_BUCKET_PUBLIC === env.S3_BUCKET_PRIVATE) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['S3_BUCKET_PRIVATE'],
+          message: 'must differ from S3_BUCKET_PUBLIC',
+        });
       }
     }
     if (env.WEB_REVALIDATE_URL && !env.REVALIDATE_SECRET) {

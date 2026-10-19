@@ -35,6 +35,33 @@ describe('loadApiEnv', () => {
     expect(() => loadApiEnv({ DATABASE_URL, STORAGE_DRIVER: 's3' })).toThrow(/S3_BUCKET_PRIVATE/);
   });
 
+  it('accepts the Hetzner production setup and keeps the buckets apart', () => {
+    // Fictional keys — never real credentials in tests.
+    const s3 = {
+      DATABASE_URL,
+      NODE_ENV: 'production',
+      STORAGE_DRIVER: 's3',
+      S3_ENDPOINT: 'https://fsn1.your-objectstorage.com',
+      S3_REGION: 'fsn1',
+      S3_BUCKET_PUBLIC: 'vitruv',
+      S3_BUCKET_PRIVATE: 'vitruv-private',
+      S3_ACCESS_KEY_ID: 'fake-access-key',
+      S3_SECRET_ACCESS_KEY: 'fake-secret-key',
+    };
+    expect(loadApiEnv(s3)).toMatchObject({
+      STORAGE_DRIVER: 's3',
+      S3_FORCE_PATH_STYLE: 'false',
+      PRIVATE_URL_TTL_SECONDS: 60,
+    });
+    expect(() => loadApiEnv({ ...s3, S3_BUCKET_PRIVATE: 'vitruv' })).toThrow(/S3_BUCKET_PRIVATE/);
+    expect(() => loadApiEnv({ ...s3, PRIVATE_URL_TTL_SECONDS: '86400' })).toThrow(
+      /PRIVATE_URL_TTL_SECONDS/,
+    );
+    expect(() => loadApiEnv({ ...s3, S3_PUBLIC_OBJECT_ACL: 'public-read-write' })).toThrow(
+      /S3_PUBLIC_OBJECT_ACL/,
+    );
+  });
+
   it('forbids the local storage driver in production', () => {
     expect(() => loadApiEnv({ DATABASE_URL, NODE_ENV: 'production' })).toThrow(/STORAGE_DRIVER/);
   });

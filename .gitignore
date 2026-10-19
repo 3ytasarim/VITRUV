@@ -58,3 +58,6 @@ test-results/
 # in the shared project drive. Only the README is tracked. Opt specific files in deliberately.
 assets-source/*
 !assets-source/README.md
+
+# storage:migrate per-file reports (object keys, sizes)
+storage-migration-report*.json

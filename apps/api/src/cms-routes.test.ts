@@ -1,11 +1,13 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { HeadObjectCommand } from '@aws-sdk/client-s3';
 import { apiErrorSchema } from '@vitruv/contracts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildTestApp, principalResolver } from '../test/helpers';
 import { png } from '../test/media-fixtures';
 import { createLocalStorage } from './infra/storage/local-storage';
+import { createS3Storage } from './infra/storage/s3-storage';
 
 const ID = '0b7f3c1e-8a2d-4f6b-9c3e-2d1a5b7c9e0f';
 
@@ -111,6 +113,95 @@ describe('local media delivery (/media)', () => {
     expect(res.status).toBe(206);
     expect(res.headers.get('content-range')).toBe(`bytes 0-3/${body.length}`);
     expect((await res.arrayBuffer()).byteLength).toBe(4);
+  });
+
+  it('answers 416 for unsatisfiable ranges and HEAD without a body', async () => {
+    const app = buildTestApp({ storageDir: dir });
+    const bad = await app.request(`/media/${key}`, { headers: { Range: 'bytes=9999-' } });
+    expect(bad.status).toBe(416);
+    expect(bad.headers.get('content-range')).toBe(`bytes */${body.length}`);
+
+    const head = await app.request(`/media/${key}`, { method: 'HEAD' });
+    expect(head.status).toBe(200);
+    expect(head.headers.get('content-length')).toBe(String(body.length));
+    expect(head.headers.get('accept-ranges')).toBe('bytes');
+    expect((await head.arrayBuffer()).byteLength).toBe(0);
+  });
+
+  it('serves the same /media/public/… URLs from the S3 driver (old links keep working)', async () => {
+    const bytes = new Uint8Array([10, 11, 12, 13, 14]);
+    const requests: Record<string, unknown>[] = [];
+    const storage = createS3Storage(
+      {
+        endpoint: 'https://fsn1.example-objectstorage.test',
+        region: 'fsn1',
+        publicBucket: 'pub-bucket',
+        privateBucket: 'priv-bucket',
+        accessKeyId: 'test-key',
+        secretAccessKey: 'test-secret',
+      },
+      {
+        send: async (command) => {
+          const input = (command as { input: Record<string, unknown> }).input;
+          requests.push(input);
+          if (input.Key !== key) {
+            throw Object.assign(new Error('NotFound'), {
+              name: 'NotFound',
+              $metadata: { httpStatusCode: 404 },
+            });
+          }
+          if (command instanceof HeadObjectCommand) {
+            return { ContentLength: bytes.length, ContentType: 'image/png' };
+          }
+          const range = /bytes=(\d+)-(\d+)/.exec(String(input.Range ?? ''));
+          const part = range ? bytes.slice(Number(range[1]), Number(range[2]) + 1) : bytes;
+          return {
+            ContentType: 'image/png',
+            ContentLength: part.length,
+            ContentRange: range ? `bytes ${range[1]}-${range[2]}/${bytes.length}` : undefined,
+            Body: { transformToWebStream: () => new Response(part).body },
+          };
+        },
+      },
+    );
+    const app = buildTestApp({ storage });
+
+    const full = await app.request(`/media/${key}`);
+    expect(full.status).toBe(200);
+    expect(new Uint8Array(await full.arrayBuffer())).toEqual(bytes);
+    expect(requests[0]).toMatchObject({ Bucket: 'pub-bucket', Key: key });
+
+    const part = await app.request(`/media/${key}`, { headers: { Range: 'bytes=1-2' } });
+    expect(part.status).toBe(206);
+    expect(part.headers.get('content-range')).toBe('bytes 1-2/5');
+    expect([...new Uint8Array(await part.arrayBuffer())]).toEqual([11, 12]);
+
+    expect((await app.request('/media/public/website/missing.png')).status).toBe(404);
+    expect((await app.request('/media/private/nutrition/2026/10/a.pdf')).status).toBe(404);
+    expect(requests.some((r) => r.Bucket === 'priv-bucket')).toBe(false);
+  });
+
+  it('answers 503 (no provider details) when the bucket is unreachable', async () => {
+    const storage = createS3Storage(
+      {
+        endpoint: 'https://fsn1.example-objectstorage.test',
+        region: 'fsn1',
+        publicBucket: 'pub-bucket',
+        privateBucket: 'priv-bucket',
+        accessKeyId: 'test-key',
+        secretAccessKey: 'test-secret',
+      },
+      {
+        send: async () => {
+          throw new Error(
+            'connect ECONNREFUSED https://pub-bucket.fsn1.example-objectstorage.test',
+          );
+        },
+      },
+    );
+    const res = await buildTestApp({ storage }).request(`/media/${key}`);
+    expect(res.status).toBe(503);
+    expect(await res.text()).not.toMatch(/ECONNREFUSED|example-objectstorage/);
   });
 
   it('never serves private objects, traversal or unknown keys', async () => {

@@ -93,7 +93,7 @@ Dependency direction: `apps/* → contracts → shared`, `api → db → shared`
     coach/admin summaries (docs/WORKOUT-ARCHITECTURE.md).
   - `/v1/admin/website/…` — CMS pages/sections, draft, preview, publish (behind `authenticate`).
   - `/v1/admin/media/…` — website media library: list, detail + usage, upload, alt text, protected delete.
-  - `/media/<key>` — development-only delivery of PUBLIC objects from the local storage driver.
+  - `/media/<key>` — streamed delivery of PUBLIC objects (Range/206), every storage driver.
 - The global body limit (1 MB) is skipped only for the media upload routes (`POST /v1/admin/media`,
   `POST /v1/admin/training/media`), which have their own limit.
 
@@ -185,7 +185,7 @@ docs/WORKOUT-ARCHITECTURE.md.
 
 ## 6. Object storage
 
-- Interface: `apps/api/src/infra/storage/object-storage.ts` — `put / get / exists / delete`, keyed by
+- Interface: `apps/api/src/infra/storage/object-storage.ts` — `put / get / head / getStream / exists / delete / signedUrl`, keyed by
   `storageKey` + `visibility`. Drivers implement it; domain code never sees provider SDKs.
 - Keys are generated server-side: `<visibility>/<purpose>/<yyyy>/<mm>/<uuid>.<ext>`
   (`purpose`: `website`, `training-video`, `nutrition`, `client-upload`, `feedback-video`). The user's
@@ -193,21 +193,31 @@ docs/WORKOUT-ARCHITECTURE.md.
 - **Development:** `STORAGE_DRIVER=local` writes to `STORAGE_LOCAL_DIR` (`.storage/`, git-ignored),
   split into `public/` and `private/` like production. The local driver is rejected when
   `NODE_ENV=production`.
-- **Production (to plug in):** `STORAGE_DRIVER=s3` with any S3-compatible provider (Cloudflare R2,
-  AWS S3, Hetzner Object Storage, …). Env validation already requires `S3_ENDPOINT`, `S3_REGION`,
-  `S3_BUCKET_PUBLIC`, `S3_BUCKET_PRIVATE`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`; optional
-  `PUBLIC_MEDIA_BASE_URL` (CDN in front of the public bucket). Steps:
-  1. implement `createS3Storage(env)` with `@aws-sdk/client-s3` in `infra/storage/s3-storage.ts`;
-  2. add presigned **upload** URLs (browser/app uploads directly to the bucket, API records metadata
-     after verifying size/MIME) and presigned **read** URLs (5–15 min) for `PRIVATE` objects;
-  3. serve `PUBLIC` objects via `PUBLIC_MEDIA_BASE_URL`.
+- **Production:** `STORAGE_DRIVER=s3` — `infra/storage/s3-storage.ts` (`@aws-sdk/client-s3` +
+  presigner), set up for Hetzner Object Storage (`S3_ENDPOINT=https://fsn1.your-objectstorage.com`,
+  `S3_REGION=fsn1`, public bucket `vitruv`, private bucket `vitruv-private`; the two must differ).
+  PUBLIC → public bucket, PRIVATE → private bucket; the object key is the unchanged `storage_key`
+  (no DB migration). Optional: `S3_FORCE_PATH_STYLE`, `S3_PUBLIC_OBJECT_ACL=public-read`,
+  `PRIVATE_URL_TTL_SECONDS` (default 60), `PUBLIC_MEDIA_BASE_URL` (bucket/CDN; add its origin to
+  the web `CMS_MEDIA_ORIGINS`). Provider errors → `StorageUnavailableError` → 503, no details.
+- Delivery: `/media/<key>` is mounted for every driver and serves only `public/` keys, streamed
+  (no buffering) with HTTP Range/206, 416 and HEAD — older `/media/public/…` URLs keep working
+  after the move. PRIVATE files (meal-plan PDFs) are answered, after the permission + scope check,
+  with a 302 to a presigned GET URL (attachment, `no-store`); the web proxy passes the https
+  Location to the browser without following it (the Bearer token never reaches the bucket). The
+  local driver has no signed URLs and streams the bytes through the API instead.
+- Moving existing files: `pnpm --filter @vitruv/api storage:migrate` (dry-run by default,
+  `--apply` to copy). Reads `media_assets` only, uploads `<STORAGE_LOCAL_DIR>/<visibility>/<key>`
+  to the key with the DB MIME type (multipart, streamed), verifies size + type by HEAD, skips
+  identical objects (idempotent), reports conflicts/missing/size mismatches/orphans, never deletes
+  local files. Exit code 1 on any problem; JSON report (`storage-migration-report.json`, git-ignored).
+- Still open: presigned direct **uploads** (uploads go through the API today).
 - Upload safety (implemented for website media in Sprint 2): browser-ready allow-list
   (`WEBSITE_MEDIA_MIME_TYPES`, no SVG/HTML/QuickTime), magic-byte sniffing must match the declared
   type, size limits per kind, HEVC rejected, server-generated keys, sanitised display names. The dev
   delivery route sends `nosniff` and `CSP: sandbox`. Documents (later) get
   `Content-Disposition: attachment`; uploads are never executed.
-- Status: local driver complete for development (upload, delivery with byte ranges, delete);
-  the S3 driver is still deferred.
+- Status: local driver (development) and S3 driver (production) complete.
 
 ## 7. Web
 

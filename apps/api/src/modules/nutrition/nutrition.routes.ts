@@ -29,6 +29,12 @@ function actorOf(c: Context<AppEnv>) {
  * `nosniff` + sandbox CSP: the bytes can never be interpreted as anything but a PDF download.
  */
 function pdfResponse(c: Context<AppEnv>, file: nutrition.PrivateFile) {
+  if (file.kind === 'redirect') {
+    // S3: short-lived signed URL (issued only after the permission + scope check above)
+    c.header('Cache-Control', 'private, no-store');
+    c.header('Referrer-Policy', 'no-referrer');
+    return c.redirect(file.url, 302);
+  }
   c.header('Content-Type', 'application/pdf');
   c.header('Content-Disposition', pdfContentDisposition(file.fileName));
   c.header('Content-Length', String(file.body.byteLength));

@@ -32,6 +32,7 @@ function main() {
     logger,
     corsOrigins: env.CORS_ORIGINS,
     bodyLimitBytes: env.API_BODY_LIMIT_BYTES,
+    privateUrlTtlSeconds: env.PRIVATE_URL_TTL_SECONDS,
     health: { version: VERSION, startedAt: Date.now(), pingDatabase: database.ping },
     auth: createAuthResolver(env, database.db, logger),
     clientIp: createClientIpResolver(env.TRUSTED_PROXY_IPS),

@@ -15,9 +15,13 @@
     "seed:website": "tsx --env-file-if-exists=../../.env scripts/seed-website.ts",
     "auth:bootstrap-admin": "tsx --env-file-if-exists=../../.env scripts/auth-bootstrap-admin.ts",
     "auth:set-password": "tsx --env-file-if-exists=../../.env scripts/auth-set-password.ts",
-    "auth:cleanup": "tsx --env-file-if-exists=../../.env scripts/auth-cleanup.ts"
+    "auth:cleanup": "tsx --env-file-if-exists=../../.env scripts/auth-cleanup.ts",
+    "storage:migrate": "tsx --env-file-if-exists=../../.env scripts/storage-migrate.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1152.0",
+    "@aws-sdk/lib-storage": "^3.1152.0",
+    "@aws-sdk/s3-request-presigner": "^3.1152.0",
     "@hono/node-server": "^2.1.5",
     "@hono/zod-validator": "^0.9.1",
     "@node-rs/argon2": "^2.2.2",

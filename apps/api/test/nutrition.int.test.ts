@@ -15,6 +15,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createSessionResolver } from '../src/auth/authenticate';
 import { resolveAccessToken } from '../src/modules/auth/auth.service';
 import { hashPassword } from '../src/modules/auth/password';
+import { createLocalStorage } from '../src/infra/storage/local-storage';
+import type { ObjectStorage, SignedUrlOptions } from '../src/infra/storage/object-storage';
 import { buildTestApp, testAuthLimits } from './helpers';
 import { databaseUrl, inRollback, must, openTestDatabase } from './rollback';
 
@@ -32,10 +34,11 @@ const pdfBytes = (label: string) =>
     `%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n2 0 obj << /Type /Pages /Kids [] /Count 0 >> endobj\n% ${label}\ntrailer << /Root 1 0 R >>\n%%EOF\n`,
   );
 
-function setup(tx: DbExecutor) {
+function setup(tx: DbExecutor, storage?: ObjectStorage) {
   const app = buildTestApp({
     db: tx,
     storageDir,
+    storage,
     bodyLimitBytes: 1_048_576,
     auth: createSessionResolver((token) => resolveAccessToken({ db: tx }, token)),
     sessions: { db: tx, limits: testAuthLimits() },
@@ -214,6 +217,47 @@ describe.skipIf(!databaseUrl)(
             await t.json(await t.call('GET', '/v1/client/nutrition/active', clientA.token)),
           ).document,
         ).toBeNull();
+      });
+    });
+
+    it('S3: authorised downloads redirect to a short-lived signed URL; out of scope stays 404', async () => {
+      const signed: { key: string; options: SignedUrlOptions }[] = [];
+      // local bytes + an S3-like signer (fictional URL) — exercises the production code path
+      const storage: ObjectStorage = {
+        ...createLocalStorage(storageDir),
+        signedUrl: async (key, visibility, options) => {
+          expect(visibility).toBe('PRIVATE');
+          signed.push({ key, options });
+          return `https://priv-bucket.example-objectstorage.test/${key}?X-Amz-Expires=60`;
+        },
+      };
+      await inRollback(handle, async (tx) => {
+        const t = setup(tx, storage);
+        const coachA = await t.coach();
+        const coachB = await t.coach();
+        const client = await t.client(coachA.id);
+        const doc = adminNutritionDocumentSchema.parse(
+          await (await t.upload(coachA.token, client.id, 'Plan Signed')).json(),
+        );
+        await t.call('POST', `${N}/documents/${doc.id}/activate`, coachA.token);
+
+        const res = await t.call('GET', `/v1/client/nutrition/${doc.id}/file`, client.token);
+        expect(res.status).toBe(302);
+        expect(res.headers.get('location')).toMatch(
+          /^https:\/\/priv-bucket\.example-objectstorage\.test\/private\/nutrition\//,
+        );
+        expect(res.headers.get('cache-control')).toContain('no-store');
+        expect(res.headers.get('referrer-policy')).toBe('no-referrer');
+        expect(signed[0]?.options).toMatchObject({
+          expiresInSeconds: 60,
+          contentType: 'application/pdf',
+        });
+        expect(signed[0]?.options.contentDisposition).toMatch(/^attachment/);
+
+        expect((await t.call('GET', `${N}/documents/${doc.id}/file`, coachB.token)).status).toBe(
+          404,
+        );
+        expect(signed).toHaveLength(1);
       });
     });
   },

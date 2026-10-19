@@ -178,4 +178,31 @@ describe('private PDF proxy', () => {
         .status,
     ).toBe(401);
   });
+
+  it('S3: hands the signed https URL to the browser without following it (no Bearer to the bucket)', async () => {
+    const { GET } = await import('./api/nutrition/file/[documentId]/route');
+    const signed =
+      'https://priv-bucket.example-objectstorage.test/private/nutrition/a.pdf?X-Amz-Expires=60';
+    fetchMock.mockResolvedValueOnce(
+      new Response(null, { status: 302, headers: { location: signed } }),
+    );
+    const res = await GET(new Request('http://x'), {
+      params: Promise.resolve({ documentId: uuid(701) }),
+    });
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe(signed);
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
+    expect(res.headers.get('referrer-policy')).toBe('no-referrer');
+    const [, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(init.redirect).toBe('manual');
+
+    // a non-https redirect is never passed on
+    fetchMock.mockResolvedValueOnce(
+      new Response(null, { status: 302, headers: { location: 'http://evil.example/x' } }),
+    );
+    expect(
+      (await GET(new Request('http://x'), { params: Promise.resolve({ documentId: uuid(701) }) }))
+        .status,
+    ).toBe(502);
+  });
 });

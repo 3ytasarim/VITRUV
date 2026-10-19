@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createLocalStorage } from './local-storage';
+import { createLocalStorage, localPathFor } from './local-storage';
 import { assertSafeStorageKey, buildStorageKey } from './storage-keys';
 
 describe('buildStorageKey', () => {
@@ -68,6 +68,32 @@ describe('local storage driver', () => {
       visibility: 'PRIVATE',
     });
     expect(await storage.exists('x/y.jpg', 'PUBLIC')).toBe(false);
+  });
+
+  it('heads and streams byte ranges without a signed URL', async () => {
+    const storage = createLocalStorage(dir);
+    const key = 'public/website/2026/10/v.mp4';
+    await storage.put({
+      key,
+      body: new Uint8Array([0, 1, 2, 3, 4, 5]),
+      contentType: 'video/mp4',
+      visibility: 'PUBLIC',
+    });
+    // layout <dir>/<visibility>/<key> — the key itself already starts with public/
+    expect(localPathFor(dir, key, 'PUBLIC')).toBe(
+      join(dir, 'public', 'public', 'website', '2026', '10', 'v.mp4'),
+    );
+    expect(await storage.head(key, 'PUBLIC')).toEqual({ sizeBytes: 6, contentType: 'video/mp4' });
+    expect(await storage.head(key, 'PRIVATE')).toBeNull();
+
+    const part = await storage.getStream(key, 'PUBLIC', { start: 2, end: 4 });
+    expect(part).toMatchObject({ sizeBytes: 6, range: { start: 2, end: 4 } });
+    expect([...new Uint8Array(await new Response(part?.body).arrayBuffer())]).toEqual([2, 3, 4]);
+    const whole = await storage.getStream(key, 'PUBLIC');
+    expect((await new Response(whole?.body).arrayBuffer()).byteLength).toBe(6);
+    expect(await storage.getStream('public/none.mp4', 'PUBLIC')).toBeNull();
+
+    expect(await storage.signedUrl(key, 'PUBLIC', { expiresInSeconds: 60 })).toBeNull();
   });
 
   it('refuses path traversal', async () => {
