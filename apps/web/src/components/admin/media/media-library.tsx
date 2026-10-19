@@ -1,11 +1,12 @@
 'use client';
 
 import type { AdminMediaAsset, AdminMediaDetail } from '@vitruv/contracts';
-import { Trash2 } from 'lucide-react';
+import { Check, CheckSquare, Trash2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useState } from 'react';
 import {
   deleteMediaAction,
+  deleteMediaBulkAction,
   mediaDetailAction,
   updateMediaAltAction,
 } from '@/app/admin/website-actions';
@@ -225,7 +226,112 @@ function MediaDetails({
   );
 }
 
-/** Media library: upload, filter, grid, details with alt text, usage and safe delete. */
+type Notice = { tone: 'error' | 'success'; text: string; items?: string[] } | null;
+
+/**
+ * Selection toolbar for bulk delete. Media in use cannot be selected (the API would refuse the
+ * delete anyway); every id still goes through the API's protected delete.
+ */
+function BulkBar({
+  selectedCount,
+  unusedVisible,
+  onSelect,
+  onClear,
+  onDelete,
+  onClose,
+  busy,
+  result,
+}: {
+  selectedCount: number;
+  unusedVisible: string[];
+  onSelect: (ids: string[]) => void;
+  onClear: () => void;
+  onDelete: () => Promise<void>;
+  onClose: () => void;
+  busy: boolean;
+  result: Notice;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  return (
+    <Card tone="sunken" padding="md" className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="type-body-sm mr-2 font-semibold" aria-live="polite">
+          {selectedCount} ausgewählt
+        </p>
+        <Button
+          variant="secondary"
+          disabled={busy || unusedVisible.length === 0}
+          onClick={() => onSelect(unusedVisible)}
+        >
+          Alle unbenutzten auswählen ({unusedVisible.length})
+        </Button>
+        <Button variant="ghost" disabled={busy || selectedCount === 0} onClick={onClear}>
+          Auswahl aufheben
+        </Button>
+        <span className="flex-1" />
+        {confirming ? (
+          <>
+            <p className="type-body-sm">{selectedCount} Medien endgültig löschen?</p>
+            <Button
+              variant="secondary"
+              icon={<Trash2 />}
+              loading={busy}
+              onClick={async () => {
+                await onDelete();
+                setConfirming(false);
+              }}
+            >
+              Ja, löschen
+            </Button>
+            <Button variant="ghost" disabled={busy} onClick={() => setConfirming(false)}>
+              Abbrechen
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              variant="primary"
+              icon={<Trash2 />}
+              disabled={busy || selectedCount === 0}
+              onClick={() => setConfirming(true)}
+            >
+              Ausgewählte löschen
+            </Button>
+            <Button variant="ghost" icon={<X />} disabled={busy} onClick={onClose}>
+              Fertig
+            </Button>
+          </>
+        )}
+      </div>
+      <p className="type-caption text-fg-subtle">
+        Medien, die auf der Website oder in Übungen verwendet werden, können nicht ausgewählt werden
+        — zuerst in den Inhalten ersetzen.
+      </p>
+      <div role={result?.tone === 'error' ? 'alert' : 'status'} aria-live="polite">
+        {result && (
+          <>
+            <p
+              className={
+                result.tone === 'error' ? 'type-body-sm text-error' : 'type-body-sm text-success'
+              }
+            >
+              {result.text}
+            </p>
+            {result.items && result.items.length > 0 && (
+              <ul className="type-caption mt-1 list-disc pl-5 text-fg-muted">
+                {result.items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+/** Media library: upload, filter, grid, details with alt text, usage and safe (bulk) delete. */
 export function MediaLibrary({ initialItems }: { initialItems: AdminMediaAsset[] }) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
@@ -234,6 +340,44 @@ export function MediaLibrary({ initialItems }: { initialItems: AdminMediaAsset[]
   const visible = items.filter((item) => filter === 'ALL' || item.kind === filter);
   const selected = items.find((item) => item.id === selectedId) ?? null;
   const { limit, sentinel, more, hasMore } = useProgressive(visible.length, filter);
+  const [selecting, setSelecting] = useState(false);
+  const [checked, setChecked] = useState<Set<string>>(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkResult, setBulkResult] = useState<Notice>(null);
+  const unusedVisible = visible.filter((item) => item.usageCount === 0).map((item) => item.id);
+
+  const toggle = (id: string) =>
+    setChecked((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  async function deleteChecked() {
+    setBulkBusy(true);
+    const result = await deleteMediaBulkAction([...checked]);
+    setBulkBusy(false);
+    if (!result.ok) {
+      setBulkResult({ tone: 'error', text: result.message });
+      return;
+    }
+    const { deleted, failed } = result.data;
+    const gone = new Set(deleted);
+    const names = new Map(items.map((item) => [item.id, item.fileName]));
+    setItems((current) => current.filter((item) => !gone.has(item.id)));
+    setChecked(new Set(failed.map((entry) => entry.id)));
+    if (selectedId && gone.has(selectedId)) setSelectedId(null);
+    setBulkResult({
+      tone: failed.length > 0 ? 'error' : 'success',
+      text:
+        failed.length > 0
+          ? `${deleted.length} gelöscht, ${failed.length} nicht gelöscht.`
+          : `${deleted.length} Medien gelöscht.`,
+      items: failed.map((entry) => `${names.get(entry.id) ?? entry.id}: ${entry.message}`),
+    });
+    if (deleted.length > 0) router.refresh();
+  }
 
   const replace = (asset: AdminMediaAsset) =>
     setItems((current) =>
@@ -271,7 +415,37 @@ export function MediaLibrary({ initialItems }: { initialItems: AdminMediaAsset[]
             )
           </Button>
         ))}
+        {!selecting && items.length > 0 && (
+          <Button
+            variant="ghost"
+            icon={<CheckSquare />}
+            className="ml-auto"
+            onClick={() => {
+              setSelecting(true);
+              setBulkResult(null);
+            }}
+          >
+            Mehrere auswählen
+          </Button>
+        )}
       </div>
+
+      {selecting && (
+        <BulkBar
+          selectedCount={checked.size}
+          unusedVisible={unusedVisible}
+          onSelect={(ids) => setChecked((current) => new Set([...current, ...ids]))}
+          onClear={() => setChecked(new Set())}
+          onDelete={deleteChecked}
+          onClose={() => {
+            setSelecting(false);
+            setChecked(new Set());
+            setBulkResult(null);
+          }}
+          busy={bulkBusy}
+          result={bulkResult}
+        />
+      )}
 
       {items.length === 0 ? (
         <EmptyState title="Noch keine Medien">
@@ -285,34 +459,56 @@ export function MediaLibrary({ initialItems }: { initialItems: AdminMediaAsset[]
           ) : (
             <div className="flex flex-col gap-4">
               <ul className="grid grid-cols-2 content-start gap-3 sm:grid-cols-3 xl:grid-cols-4">
-                {visible.slice(0, limit).map((asset) => (
-                  <li key={asset.id}>
-                    <button
-                      type="button"
-                      aria-current={asset.id === selectedId ? 'true' : undefined}
-                      onClick={() => setSelectedId(asset.id)}
-                      className={cx(
-                        'vt-chamfer vt-cut-xs vt-card vt-card--interactive vt-option flex w-full flex-col gap-2 p-2 text-left',
-                      )}
-                    >
-                      <MediaThumb asset={asset} />
-                      <span className="type-caption block truncate text-fg">{asset.fileName}</span>
-                      <span className="type-caption block text-fg-subtle">
-                        {describeMedia(asset)}
-                      </span>
-                      <span className="flex flex-wrap gap-1">
-                        {asset.usageCount > 0 ? (
-                          <Badge tone="success">In Verwendung</Badge>
-                        ) : (
-                          <Badge>Unbenutzt</Badge>
+                {visible.slice(0, limit).map((asset) => {
+                  const inUse = asset.usageCount > 0;
+                  const isChecked = checked.has(asset.id);
+                  return (
+                    <li key={asset.id} className="relative">
+                      <button
+                        type="button"
+                        aria-current={!selecting && asset.id === selectedId ? 'true' : undefined}
+                        aria-pressed={selecting ? isChecked : undefined}
+                        disabled={selecting && inUse}
+                        title={
+                          selecting && inUse
+                            ? 'In Verwendung – kann nicht gelöscht werden'
+                            : undefined
+                        }
+                        onClick={() => (selecting ? toggle(asset.id) : setSelectedId(asset.id))}
+                        className={cx(
+                          'vt-chamfer vt-cut-xs vt-card vt-card--interactive vt-option flex w-full flex-col gap-2 p-2 text-left',
+                          selecting && inUse && 'cursor-not-allowed opacity-40',
                         )}
-                        {asset.kind === 'IMAGE' && !asset.altText && (
-                          <Badge tone="warning">Alt-Text fehlt</Badge>
+                      >
+                        {selecting && (
+                          <span
+                            aria-hidden
+                            className={cx('vt-media-check', isChecked && 'vt-media-check--on')}
+                          >
+                            {isChecked && <Check />}
+                          </span>
                         )}
-                      </span>
-                    </button>
-                  </li>
-                ))}
+                        <MediaThumb asset={asset} />
+                        <span className="type-caption block truncate text-fg">
+                          {asset.fileName}
+                        </span>
+                        <span className="type-caption block text-fg-subtle">
+                          {describeMedia(asset)}
+                        </span>
+                        <span className="flex flex-wrap gap-1">
+                          {asset.usageCount > 0 ? (
+                            <Badge tone="success">In Verwendung</Badge>
+                          ) : (
+                            <Badge>Unbenutzt</Badge>
+                          )}
+                          {asset.kind === 'IMAGE' && !asset.altText && (
+                            <Badge tone="warning">Alt-Text fehlt</Badge>
+                          )}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
               <div ref={sentinel} aria-hidden />
               {hasMore && (

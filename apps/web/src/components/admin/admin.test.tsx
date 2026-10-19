@@ -20,6 +20,7 @@ vi.mock('@/app/admin/website-actions', () => ({
   mediaDetailAction: vi.fn(),
   updateMediaAltAction: vi.fn(),
   deleteMediaAction: vi.fn(),
+  deleteMediaBulkAction: vi.fn(),
 }));
 vi.mock('@/app/admin/training-actions', () => ({
   listTrainingMediaAction: vi.fn(async () => ({ ok: true, data: { items: [] } })),
@@ -281,6 +282,8 @@ describe('media picker and library', () => {
     expect(markup).toContain('Unbenutzt');
     expect(markup.match(/Alt-Text fehlt/g)).toHaveLength(1);
     expect(markup).toContain('Hochladen');
+    expect(markup).toContain('Mehrere auswählen');
+    expect(html(<MediaLibrary initialItems={[]} />)).not.toContain('Mehrere auswählen');
   });
 
   it('formats metadata and prechecks uploads', () => {

@@ -878,6 +878,30 @@
     --vt-border: var(--color-accent);
     --vt-bw: var(--border-strong);
   }
+  /* Bulk selection checkbox on library cards (decorative; the card button carries aria-pressed). */
+  .vt-media-check {
+    position: absolute;
+    top: calc(var(--spacing) * 3);
+    left: calc(var(--spacing) * 3);
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: calc(var(--spacing) * 6);
+    height: calc(var(--spacing) * 6);
+    border: 2px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-on-accent);
+    pointer-events: none;
+  }
+  .vt-media-check--on {
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+  }
+  .vt-media-check > svg {
+    width: 70%;
+    height: 70%;
+  }
 }
 
 /* --------------------------------------------------------------------------------------------

@@ -95,3 +95,33 @@ export async function deleteMediaAction(id: string): Promise<ActionResult<null>>
   if (result.ok) revalidatePath('/admin/website/medien');
   return result.ok ? { ok: true, data: null } : result;
 }
+
+export interface BulkDeleteResult {
+  deleted: string[];
+  failed: { id: string; message: string }[];
+}
+
+/**
+ * Deletes several media assets. Every id goes through the API's normal protected delete
+ * (permission check, in-use protection, storage cleanup); ids that cannot be deleted are
+ * reported individually and never abort the rest.
+ */
+export async function deleteMediaBulkAction(
+  ids: string[],
+): Promise<ActionResult<BulkDeleteResult>> {
+  const parsed = z.array(idSchema).min(1).max(1000).safeParse(ids);
+  if (!parsed.success) return invalid('Ungültige Anfrage.');
+  const queue = [...new Set(parsed.data)];
+  const deleted: string[] = [];
+  const failed: BulkDeleteResult['failed'] = [];
+  const worker = async () => {
+    for (let id = queue.shift(); id; id = queue.shift()) {
+      const result = await adminApi.deleteMedia(id);
+      if (result.ok) deleted.push(id);
+      else failed.push({ id, message: result.error.message });
+    }
+  };
+  await Promise.all(Array.from({ length: 4 }, worker));
+  if (deleted.length > 0) revalidatePath('/admin/website/medien');
+  return { ok: true, data: { deleted, failed } };
+}
