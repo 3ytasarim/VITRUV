@@ -2,7 +2,7 @@
 
 import type { SectionContent } from '@vitruv/contracts';
 import { tokens } from '@vitruv/design-tokens';
-import { AlertTriangle, RotateCcw } from 'lucide-react';
+import { AlertTriangle, Palette, RotateCcw } from 'lucide-react';
 import { useId } from 'react';
 import { Button } from '@/components/ui';
 import { FieldGroup } from './fields';
@@ -112,13 +112,22 @@ export function ThemeEditor({ value, onChange, errors }: EditorProps<'theme'>) {
           Farben der öffentlichen Website. Änderungen werden erst nach „Veröffentlichen“ live; mit
           „Vorschau“ siehst du den Entwurf vorher.
         </p>
-        <Button
-          variant="secondary"
-          icon={<RotateCcw aria-hidden />}
-          onClick={() => onChange({ ...DEFAULT_THEME })}
-        >
-          Originalfarben
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            icon={<Palette aria-hidden />}
+            onClick={() => onChange({ ...value, ...tokens.themePresets.blue })}
+          >
+            VITRUV Blau
+          </Button>
+          <Button
+            variant="secondary"
+            icon={<RotateCcw aria-hidden />}
+            onClick={() => onChange({ ...DEFAULT_THEME })}
+          >
+            Originalfarben
+          </Button>
+        </div>
       </div>
 
       {/* Live mini preview of the chosen palette. */}

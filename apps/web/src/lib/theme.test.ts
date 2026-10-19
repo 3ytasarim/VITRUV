@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { tokens } from '@vitruv/design-tokens';
 import { themeCss } from './theme';
 
 const base = {
@@ -48,5 +49,23 @@ describe('themeCss (admin website colours)', () => {
 
   it('renders nothing without a theme', () => {
     expect(themeCss(null)).toBeNull();
+  });
+});
+
+describe('VITRUV Blau preset', () => {
+  it('keeps black/white and turns buttons, route, accents, eyebrows and FAQ + blue', () => {
+    const live = { ...base, background: '#0a0a0a', text: '#f5f5f5', heading: '#ffffff' };
+    const css = themeCss({ ...live, ...tokens.themePresets.blue }) ?? '';
+    expect(css).toContain('--color-bg:#0a0a0a');
+    expect(css).toContain('--color-heading:#ffffff');
+    expect(css).toContain('--color-accent:#4d8dff');
+    expect(css).toContain('--color-on-accent:#050505');
+    expect(css).toContain('--color-route:#4d8dff');
+    expect(css).toContain('--color-brand-gold:#4d8dff');
+    expect(css).toContain('--color-accent-text:#5b9dff');
+    // over the hero video the dark theme keeps the blue button (light themes swap to paper)
+    expect(css).toContain('--vt-media-accent:#4d8dff');
+    expect(css).toContain('--vt-media-on-accent:#050505');
+    expect(themeCss(base)).not.toContain('--vt-media-accent');
   });
 });

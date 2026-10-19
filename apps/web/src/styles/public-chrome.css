@@ -142,9 +142,13 @@
   [data-surface='public'] .vt-site-header[data-hero-dark='stage']:not([data-scrolled='true']) {
     --color-fg: var(--vt-paper);
     --color-fg-muted: color-mix(in srgb, var(--vt-paper) 86%, transparent);
-    --color-accent: var(--vt-paper);
-    --color-accent-hover: color-mix(in srgb, var(--vt-paper) 86%, var(--vt-ink));
-    --color-on-accent: var(--vt-ink);
+    /* dark themes keep their button colour over media (--vt-media-*: lib/theme.ts) */
+    --color-accent: var(--vt-media-accent, var(--vt-paper));
+    --color-accent-hover: var(
+      --vt-media-accent-hover,
+      color-mix(in srgb, var(--vt-paper) 86%, var(--vt-ink))
+    );
+    --color-on-accent: var(--vt-media-on-accent, var(--vt-ink));
     --color-border-strong: color-mix(in srgb, var(--vt-paper) 55%, transparent);
     --color-border-subtle: color-mix(in srgb, var(--vt-paper) 18%, transparent);
     --color-focus-ring: var(--vt-paper);

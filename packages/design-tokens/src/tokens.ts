@@ -55,6 +55,9 @@ export const palette = {
   gold: '#a3906f', // prototype accent — LARGE/decorative only (2.9:1)
   goldDeep: '#7a6747', // text-safe gold for eyebrows/links (4.7:1 on paper)
   terracotta: '#cf5a3c', // Journey route (reference screenshot red route)
+  // 'Website Funktional' reference design (owner decision 2026-10-19): electric blue accent on black
+  blue: '#4d8dff', // fills — buttons, Journey route, accent words
+  blueText: '#5b9dff', // text accents — eyebrows, links, FAQ +
   // Admin panel — warm-neutral light (Cross-Project Addendum 2026-10-16): calmer than the cream site
   adminCanvas: '#f4f2ee',
   adminSunken: '#ebe7e0',
@@ -243,6 +246,21 @@ export const colorsGlass: Record<ColorRole, ColorValue> = {
 };
 
 /** Decorative public colours (no text use below 24 px): gold accents, Journey route. */
+/**
+ * Ready-made website palettes for the CMS theme editor ("Farben & Design"). Only the roles that
+ * differ from the current theme are set; background/text stay whatever the owner chose.
+ */
+export const themePresets = {
+  /** Black/white site with the electric blue of the 'Website Funktional' reference design. */
+  blue: {
+    button: palette.blue,
+    buttonText: palette.ink950,
+    accent: palette.blue,
+    accentSecondary: palette.blue,
+    eyebrow: palette.blueText,
+  },
+} as const;
+
 export const decorativeColors = {
   brandGold: c(palette.gold),
   route: c(palette.terracotta),
@@ -630,6 +648,7 @@ export const tokens = {
   adminTypeWeights,
   adminTypeTracking,
   decorativeColors,
+  themePresets,
   publicFontFamilies,
   publicFontFaces,
   publicTypeScale,

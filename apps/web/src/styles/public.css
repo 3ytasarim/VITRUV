@@ -232,9 +232,13 @@
     --color-fg: var(--vt-paper);
     --color-fg-muted: color-mix(in srgb, var(--vt-paper) 84%, transparent);
     --color-fg-subtle: color-mix(in srgb, var(--vt-paper) 72%, transparent);
-    --color-accent: var(--vt-paper);
-    --color-accent-hover: color-mix(in srgb, var(--vt-paper) 86%, var(--vt-ink));
-    --color-on-accent: var(--vt-ink);
+    /* dark themes keep their button colour over media (--vt-media-*: lib/theme.ts) */
+    --color-accent: var(--vt-media-accent, var(--vt-paper));
+    --color-accent-hover: var(
+      --vt-media-accent-hover,
+      color-mix(in srgb, var(--vt-paper) 86%, var(--vt-ink))
+    );
+    --color-on-accent: var(--vt-media-on-accent, var(--vt-ink));
     --color-accent-text: var(--color-brand-gold);
     --color-border: color-mix(in srgb, var(--vt-paper) 30%, transparent);
     --color-border-subtle: color-mix(in srgb, var(--vt-paper) 18%, transparent);

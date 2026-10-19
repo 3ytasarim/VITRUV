@@ -121,3 +121,17 @@ describe('value conversion', () => {
     expect(fluidAt(40, 80, 900)).toBeCloseTo(60, 5);
   });
 });
+
+describe('theme presets', () => {
+  it('blue preset stays readable on the black/white site (WCAG AA)', () => {
+    const black = { hex: '#0a0a0a' } as const;
+    const p = tokens.themePresets.blue;
+    // eyebrows/links are small text: 4.5:1 on the page background
+    expect(contrastRatio({ hex: p.eyebrow }, black, black)).toBeGreaterThanOrEqual(4.5);
+    // button label on the blue fill
+    const fill = { hex: p.button } as const;
+    expect(contrastRatio({ hex: p.buttonText }, fill, fill)).toBeGreaterThanOrEqual(4.5);
+    // route + accent fills as UI boundaries: 3:1
+    expect(contrastRatio({ hex: p.accentSecondary }, black, black)).toBeGreaterThanOrEqual(3);
+  });
+});

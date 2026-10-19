@@ -47,6 +47,13 @@ export function themeCss(theme: ThemeContent | null | undefined): string | null 
     ['--vt-logo-filter', dark ? 'invert(1) brightness(1.15)' : undefined],
     ['--vt-art-filter', dark ? 'invert(1)' : undefined],
     ['--vt-art-blend', dark ? 'screen' : undefined],
+    // Over photos/video light themes swap buttons to paper/ink; dark themes keep their button.
+    ['--vt-media-accent', dark ? c.button : undefined],
+    [
+      '--vt-media-accent-hover',
+      dark && c.button ? `color-mix(in srgb, ${c.button} 85%, white)` : undefined,
+    ],
+    ['--vt-media-on-accent', dark ? c.buttonText : undefined],
     ['color-scheme', dark ? 'dark' : undefined],
     ['--color-border', c.text && `color-mix(in srgb, ${c.text} 12%, transparent)`],
     ['--color-border-subtle', c.text && `color-mix(in srgb, ${c.text} 7%, transparent)`],
