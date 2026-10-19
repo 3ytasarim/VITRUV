@@ -1,0 +1,498 @@
+/*
+ * Glass panels — admin shell and client area (owner decision 2026-10-19, template "glassy CRM
+ * dashboard", monochrome). Colours come from the generated `:root [data-glass]` tokens; this file
+ * only turns the shared primitives into frosted glass over the faceted backdrop
+ * (components/shared/glass-backdrop.tsx). Tokens and color-mix() of tokens only.
+ */
+@layer components {
+  [data-glass] {
+    --glass-fill: linear-gradient(
+      150deg,
+      color-mix(in srgb, white 11%, transparent),
+      color-mix(in srgb, white 3%, transparent) 60%
+    );
+    --glass-blur: blur(22px) saturate(135%);
+    --glass-edge: inset 0 1px 0 color-mix(in srgb, white 16%, transparent);
+    --glass-shadow: var(--glass-edge), 0 24px 60px -32px color-mix(in srgb, black 90%, transparent);
+    --shadow-soft: var(--glass-shadow);
+    --shadow-lift: var(--glass-edge), 0 30px 70px -30px color-mix(in srgb, black 95%, transparent);
+    position: relative;
+    isolation: isolate;
+    min-height: 100dvh;
+    background: var(--color-bg);
+    color: var(--color-fg);
+    color-scheme: dark;
+  }
+
+  /* ---- Backdrop -------------------------------------------------------------------------------- */
+  .vt-glass-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        70% 60% at 18% 8%,
+        color-mix(in srgb, white 7%, transparent),
+        transparent 70%
+      ),
+      radial-gradient(
+        60% 50% at 92% 100%,
+        color-mix(in srgb, white 4%, transparent),
+        transparent 70%
+      ),
+      var(--color-bg);
+  }
+  .vt-glass-backdrop svg {
+    width: 100%;
+    height: 100%;
+  }
+  .vt-glass-backdrop__facets path {
+    fill: white;
+    stroke: color-mix(in srgb, white 2.5%, transparent);
+    stroke-width: 1;
+  }
+  .vt-glass-backdrop__edges path {
+    fill: none;
+    stroke: color-mix(in srgb, white 55%, transparent);
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 6px color-mix(in srgb, white 40%, transparent));
+    stroke-dasharray: 60 900;
+    animation: vt-glass-glint 9s linear infinite;
+  }
+  .vt-glass-backdrop__edges path:nth-child(2n) {
+    animation-delay: -3s;
+  }
+  .vt-glass-backdrop__edges path:nth-child(3n) {
+    animation-delay: -6s;
+  }
+  @keyframes vt-glass-glint {
+    from {
+      stroke-dashoffset: 960;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  /* ---- Glass primitives ------------------------------------------------------------------------ */
+  [data-glass] .vt-card,
+  [data-glass] .vt-glass {
+    --vt-fill: transparent;
+    --vt-border: color-mix(in srgb, white 13%, transparent);
+    background: var(--glass-fill);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    box-shadow: var(--glass-shadow);
+  }
+  [data-glass] .vt-glass {
+    border: var(--border-hairline) solid color-mix(in srgb, white 13%, transparent);
+    border-radius: var(--radius-xl);
+  }
+  [data-glass] .vt-card--sunken {
+    background: color-mix(in srgb, white 3%, transparent);
+  }
+  [data-glass] .vt-card--accent {
+    --vt-border: color-mix(in srgb, white 45%, transparent);
+  }
+  [data-glass] .vt-input {
+    border-color: color-mix(in srgb, white 14%, transparent);
+    background: color-mix(in srgb, white 5%, transparent);
+    color: var(--color-fg);
+  }
+  [data-glass] .vt-input::placeholder {
+    color: var(--color-fg-subtle);
+  }
+  [data-glass] select.vt-input option {
+    background: var(--color-bg);
+  }
+  [data-glass] .vt-btn--primary {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, white 30%, transparent),
+      0 10px 30px -12px color-mix(in srgb, white 35%, transparent);
+  }
+  [data-glass] .vt-btn--secondary {
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+  [data-glass] .vt-badge {
+    --vt-fill: color-mix(in srgb, white 6%, transparent);
+  }
+  [data-glass] dialog {
+    color: var(--color-fg);
+  }
+  [data-glass] ::selection {
+    background: color-mix(in srgb, white 85%, transparent);
+    color: var(--color-bg);
+  }
+
+  /* ---- Admin frame ----------------------------------------------------------------------------- */
+  [data-glass] .vt-admin__sidebar {
+    margin: calc(var(--spacing) * 3);
+    height: calc(100dvh - var(--spacing) * 6);
+    top: calc(var(--spacing) * 3);
+    border: var(--border-hairline) solid color-mix(in srgb, white 12%, transparent);
+    border-radius: var(--radius-xl);
+    background: var(--glass-fill);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    box-shadow: var(--glass-shadow);
+  }
+  [data-glass] .vt-admin__header {
+    border-bottom-color: transparent;
+    background: color-mix(in srgb, var(--color-bg) 35%, transparent);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+  }
+  [data-glass] .vt-admin__drawer {
+    background: color-mix(in srgb, var(--color-bg) 82%, transparent);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+  }
+
+  /* ---- Client area (portal) -------------------------------------------------------------------- */
+  [data-glass] .vt-pshell {
+    --p-card: transparent;
+    --p-line: color-mix(in srgb, white 12%, transparent);
+    --p-tint: color-mix(in srgb, white 10%, transparent);
+    background: transparent;
+  }
+  [data-glass] :is(.vt-pcard, .vt-pkpi, .vt-pgreet, .vt-pmeal, .vt-pshell__side) {
+    background: var(--glass-fill);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    box-shadow: var(--glass-shadow);
+  }
+  [data-glass] .vt-pshell__side {
+    margin: calc(var(--spacing) * 3);
+    height: calc(100dvh - var(--spacing) * 6);
+    top: calc(var(--spacing) * 3);
+    border: var(--border-hairline) solid var(--p-line);
+    border-radius: var(--radius-xl);
+  }
+  [data-glass] .vt-pshell__top {
+    border-bottom-color: transparent;
+    background: color-mix(in srgb, var(--color-bg) 35%, transparent);
+  }
+  [data-glass] .vt-pkpi:first-child {
+    /* the lead KPI is "lit" like the template's highlighted card */
+    background: linear-gradient(
+      150deg,
+      color-mix(in srgb, white 24%, transparent),
+      color-mix(in srgb, white 6%, transparent) 70%
+    );
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .vt-glass-backdrop__edges path {
+      animation: none;
+      stroke-dasharray: none;
+      stroke: color-mix(in srgb, white 18%, transparent);
+    }
+  }
+}
+@layer components {
+  .vt-admin__avatar {
+    display: inline-grid;
+    width: calc(var(--spacing) * 10);
+    height: calc(var(--spacing) * 10);
+    place-items: center;
+    border: var(--border-hairline) solid var(--color-border-strong);
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, white 10%, transparent);
+    color: var(--color-fg);
+    font-size: var(--text-body-sm);
+    font-weight: 600;
+  }
+  .vt-admin__avatar:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+}
+
+/* ---- Admin dashboard (app/admin/(shell)/page.tsx) ------------------------------------------- */
+@layer components {
+  .vt-dash {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 5);
+  }
+  .vt-dash__head {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 2);
+    padding-bottom: calc(var(--spacing) * 2);
+  }
+  .vt-dash__head .vt-greet__name {
+    color: var(--color-fg);
+  }
+  .vt-dash__kpis {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: calc(var(--spacing) * 3);
+  }
+  @media (min-width: 1200px) {
+    .vt-dash__kpis {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: calc(var(--spacing) * 4);
+    }
+  }
+  .vt-dkpi {
+    display: flex;
+    min-height: calc(var(--spacing) * 40);
+    flex-direction: column;
+    padding: calc(var(--spacing) * 5);
+    color: var(--color-fg);
+    transition:
+      transform var(--duration-micro) var(--ease-out),
+      border-color var(--duration-micro) var(--ease-out);
+    animation: vt-rise var(--duration-base) var(--ease-out) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+  .vt-dkpi:first-child {
+    background: linear-gradient(
+      150deg,
+      color-mix(in srgb, white 26%, transparent),
+      color-mix(in srgb, white 7%, transparent) 70%
+    );
+  }
+  .vt-dkpi:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, white 30%, transparent);
+  }
+  .vt-dkpi:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 3px;
+  }
+  .vt-dkpi__go {
+    display: inline-grid;
+    width: calc(var(--spacing) * 9);
+    height: calc(var(--spacing) * 9);
+    flex-shrink: 0;
+    place-items: center;
+    border: var(--border-hairline) solid color-mix(in srgb, white 22%, transparent);
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, white 8%, transparent);
+  }
+  .vt-dkpi:first-child .vt-dkpi__go {
+    background: var(--color-fg);
+    color: var(--color-bg);
+  }
+  .vt-dkpi__value {
+    font-size: clamp(1.75rem, 1.4rem + 1.2vw, 2.5rem);
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .vt-dtrend {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px calc(var(--spacing) * 2);
+    border: var(--border-hairline) solid color-mix(in srgb, white 22%, transparent);
+    border-radius: var(--radius-pill);
+    color: var(--color-fg-muted);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .vt-dtrend[data-up] {
+    color: var(--color-fg);
+    background: color-mix(in srgb, white 10%, transparent);
+  }
+
+  .vt-dash__charts,
+  .vt-dash__lists {
+    display: grid;
+    gap: calc(var(--spacing) * 4);
+  }
+  @media (min-width: 1024px) {
+    .vt-dash__charts {
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    }
+    .vt-dash__lists {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  .vt-dpanel {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 5);
+    padding: calc(var(--spacing) * 6);
+  }
+  .vt-dpanel__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+  }
+  .vt-dpanel__title {
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  /* bar chart */
+  .vt-dbars {
+    display: grid;
+    height: calc(var(--spacing) * 60);
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    align-items: end;
+    gap: calc(var(--spacing) * 3);
+    padding-top: calc(var(--spacing) * 6);
+    background: repeating-linear-gradient(
+      to top,
+      color-mix(in srgb, white 6%, transparent) 0 1px,
+      transparent 1px 25%
+    );
+  }
+  .vt-dbars > li {
+    position: relative;
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: calc(var(--spacing) * 2);
+  }
+  .vt-dbars__bar {
+    width: min(100%, calc(var(--spacing) * 10));
+    height: max(4px, calc(var(--h, 0) * 82%));
+    border-radius: var(--radius-pill);
+    background: linear-gradient(
+      to top,
+      color-mix(in srgb, white 14%, transparent),
+      color-mix(in srgb, white 46%, transparent)
+    );
+    box-shadow: inset 0 1px 0 color-mix(in srgb, white 50%, transparent);
+    transform-origin: bottom;
+    animation: vt-bar-in var(--duration-long) var(--ease-out) both;
+    animation-delay: calc(var(--i, 0) * 60ms + 150ms);
+  }
+  .vt-dbars > li[data-now] .vt-dbars__bar {
+    background: linear-gradient(
+      to top,
+      color-mix(in srgb, white 55%, transparent),
+      var(--color-fg)
+    );
+    box-shadow: 0 0 24px color-mix(in srgb, white 30%, transparent);
+  }
+  .vt-dbars__value {
+    color: var(--color-fg-muted);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .vt-dbars__label {
+    color: var(--color-fg-subtle);
+    font-size: 0.6875rem;
+    white-space: nowrap;
+  }
+
+  /* donut */
+  .vt-ddonut {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: calc(var(--spacing) * 8);
+  }
+  .vt-ddonut__ring {
+    position: relative;
+    display: grid;
+    width: calc(var(--spacing) * 44);
+    height: calc(var(--spacing) * 44);
+    place-items: center;
+    border-radius: 50%;
+    background: color-mix(in srgb, white 8%, transparent);
+    -webkit-mask: radial-gradient(circle, transparent 58%, black 59%);
+    mask: radial-gradient(circle, transparent 58%, black 59%);
+  }
+  .vt-ddonut {
+    position: relative;
+  }
+  .vt-ddonut__total {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 1.75rem;
+    font-weight: 500;
+    line-height: 1.1;
+  }
+  .vt-ddonut__ring + .vt-ddonut__legend {
+    min-width: calc(var(--spacing) * 40);
+  }
+  .vt-ddonut__legend {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 3);
+    font-size: var(--text-body-sm);
+  }
+  .vt-ddonut__legend li {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--spacing) * 3);
+  }
+  .vt-ddonut__dot {
+    width: calc(var(--spacing) * 2.5);
+    height: calc(var(--spacing) * 2.5);
+    border-radius: 50%;
+  }
+
+  /* lists */
+  .vt-dlist {
+    display: flex;
+    flex-direction: column;
+  }
+  .vt-dlist > li + li {
+    border-top: var(--border-hairline) solid color-mix(in srgb, white 8%, transparent);
+  }
+  .vt-dlist__row {
+    display: flex;
+    min-height: calc(var(--spacing) * 14);
+    align-items: center;
+    gap: calc(var(--spacing) * 3);
+    padding-block: calc(var(--spacing) * 3);
+    border-radius: var(--radius-md);
+    transition: background-color var(--duration-micro) var(--ease-out);
+  }
+  .vt-dlist__row:hover {
+    background: color-mix(in srgb, white 5%, transparent);
+  }
+  .vt-dlist__row:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+  .vt-dlist__avatar {
+    display: inline-grid;
+    width: calc(var(--spacing) * 9);
+    height: calc(var(--spacing) * 9);
+    flex-shrink: 0;
+    place-items: center;
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, white 12%, transparent);
+    font-size: var(--text-body-sm);
+    font-weight: 600;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .vt-dkpi,
+    .vt-dbars__bar {
+      animation: none;
+    }
+  }
+}
+@layer components {
+  @media (max-width: 639px) {
+    .vt-dbars {
+      gap: calc(var(--spacing) * 1.5);
+    }
+    .vt-dbars > li:nth-child(odd):not([data-now]) .vt-dbars__label {
+      visibility: hidden;
+    }
+    .vt-dpanel {
+      padding: calc(var(--spacing) * 5);
+    }
+  }
+}

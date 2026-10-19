@@ -1,0 +1,60 @@
+@import 'tailwindcss';
+/*
+ * All design values come from the generated token file (source: packages/design-tokens).
+ * This file only applies them to base elements — no raw colours, sizes or fonts here.
+ */
+@import './tokens.generated.css';
+@import './components.css';
+@import './public.css';
+@import './public-sections.css';
+@import './public-chrome.css';
+@import './public-motion.css';
+@import './portal.css';
+@import './admin.css';
+@import './glass.css';
+
+@layer base {
+  html {
+    color-scheme: dark;
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  html[data-theme='light'] {
+    color-scheme: light;
+  }
+  body {
+    min-height: 100dvh;
+    font-family: var(--font-body);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: var(--border-focus) solid var(--color-focus-ring);
+    outline-offset: var(--focus-offset);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+  }
+}
+
+/* Reduced motion: token durations already collapse to 0 (tokens.generated.css); this also stops
+   any remaining animation, transition and smooth scrolling (ambient/glitch effects included). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

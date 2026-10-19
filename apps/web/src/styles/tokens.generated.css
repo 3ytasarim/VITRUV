@@ -1,0 +1,512 @@
+/*
+ * GENERATED FILE — do not edit.
+ * Source: packages/design-tokens/src/tokens.ts
+ * Regenerate: pnpm --filter @vitruv/design-tokens generate
+ */
+
+@theme {
+  /* Tailwind defaults are reset so only VITRUV tokens exist as utilities. */
+  --color-*: initial;
+  --font-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --ease-*: initial;
+  --breakpoint-*: initial;
+  --container-*: initial;
+
+  /* Colour — dark (production master) */
+  --color-bg: #050505;
+  --color-surface: #0e0e0e;
+  --color-surface-sunken: #0a0a0a;
+  --color-surface-hover: rgb(255 255 255 / 0.03);
+  --color-overlay: rgb(5 5 5 / 0.72);
+  --color-fg: #f2f2ee;
+  --color-fg-muted: rgb(242 242 238 / 0.66);
+  --color-fg-subtle: rgb(242 242 238 / 0.5);
+  --color-fg-disabled: rgb(242 242 238 / 0.35);
+  --color-accent: #4d8dff;
+  --color-accent-hover: #5b9dff;
+  --color-accent-text: #5b9dff;
+  --color-on-accent: #050505;
+  --color-border: rgb(255 255 255 / 0.1);
+  --color-border-subtle: rgb(255 255 255 / 0.07);
+  --color-border-strong: rgb(255 255 255 / 0.22);
+  --color-focus-ring: #5b9dff;
+  --color-success: #3ddc97;
+  --color-warning: #ffc24b;
+  --color-error: #ff6b6b;
+
+  /* Font families (next/font variables + metric-compatible fallbacks) */
+  --font-heading: var(--font-chakra-petch), system-ui, sans-serif;
+  --font-label: var(--font-barlow-condensed), 'Arial Narrow', system-ui, sans-serif;
+  --font-body: var(--font-barlow), system-ui, sans-serif;
+
+  /* Public-surface font families (web only) */
+  --font-public-sans: var(--font-jost), Futura, 'Century Gothic', system-ui, sans-serif;
+  --font-public-serif: var(--font-bodoni-moda), Didot, 'Bodoni 72', Georgia, serif;
+
+  /* Decorative colours (public surface; never small text) */
+  --color-brand-gold: #a3906f;
+  --color-route: #cf5a3c;
+
+  /* Type scale (fluid 360 → 1440 px) */
+  --text-display: clamp(2.5rem, 1.6667rem + 3.7037vw, 5rem);
+  --text-display--line-height: 1;
+  --text-display--letter-spacing: -0.01em;
+  --text-display--font-weight: 700;
+  --text-h1: clamp(2rem, 1.5417rem + 2.037vw, 3.375rem);
+  --text-h1--line-height: 1.04;
+  --text-h1--letter-spacing: -0.005em;
+  --text-h1--font-weight: 700;
+  --text-h2: clamp(1.75rem, 1.3333rem + 1.8519vw, 3rem);
+  --text-h2--line-height: 1.05;
+  --text-h2--letter-spacing: -0.005em;
+  --text-h2--font-weight: 700;
+  --text-h3: clamp(1.375rem, 1.2083rem + 0.7407vw, 1.875rem);
+  --text-h3--line-height: 1.1;
+  --text-h3--letter-spacing: 0em;
+  --text-h3--font-weight: 700;
+  --text-title: clamp(1.1875rem, 1.125rem + 0.2778vw, 1.375rem);
+  --text-title--line-height: 1.35;
+  --text-title--letter-spacing: 0em;
+  --text-title--font-weight: 500;
+  --text-eyebrow: 0.75rem;
+  --text-eyebrow--line-height: 1.3;
+  --text-eyebrow--letter-spacing: 0.22em;
+  --text-eyebrow--font-weight: 600;
+  --text-body-lg: clamp(1.0625rem, 1.0208rem + 0.1852vw, 1.1875rem);
+  --text-body-lg--line-height: 1.7;
+  --text-body-lg--letter-spacing: 0em;
+  --text-body-lg--font-weight: 400;
+  --text-body: 1rem;
+  --text-body--line-height: 1.7;
+  --text-body--letter-spacing: 0em;
+  --text-body--font-weight: 400;
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.6;
+  --text-body-sm--letter-spacing: 0em;
+  --text-body-sm--font-weight: 400;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.3;
+  --text-caption--letter-spacing: 0.16em;
+  --text-caption--font-weight: 600;
+  --text-button: 0.75rem;
+  --text-button--line-height: 1;
+  --text-button--letter-spacing: 0.2em;
+  --text-button--font-weight: 600;
+
+  /* Spacing — Tailwind multiplies this base (p-4 = 16px) */
+  --spacing: 0.25rem;
+
+  /* Layout */
+  --breakpoint-sm: 30rem;
+  --breakpoint-md: 51.25rem;
+  --breakpoint-lg: 77.5rem;
+  --breakpoint-xl: 90rem;
+  --breakpoint-xxl: 120rem;
+  --container-content: 77.5rem;
+  --container-measure-narrow: 33.75rem;
+  --container-measure: 42.5rem;
+  --container-measure-display: 51.25rem;
+
+  /* Shape */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 12px;
+  --radius-lg: 22px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+
+  /* Effects */
+  --shadow-glow: 0px 0px 24px 0px rgb(70 140 255 / 0.35), 0px 0px 2px 0px rgb(160 205 255 / 0.8);
+  --shadow-glow-strong: 0px 0px 72px 0px rgb(91 157 255 / 0.32);
+  --shadow-glow-soft: 0px 0px 38px 0px rgb(91 157 255 / 0.14);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.45, 0, 0.2, 1);
+}
+
+:root {
+  --gutter: clamp(1.25rem, 0.75rem + 2.2222vw, 2.75rem);
+  --section-space: clamp(4.5rem, 3.7083rem + 3.5185vw, 6.875rem);
+  --tap-target: 48px;
+  --chamfer-xs: 7px;
+  --chamfer-sm: 12px;
+  --chamfer-md: 14px;
+  --chamfer-lg: 16px;
+  --border-hairline: 1px;
+  --border-strong: 1.5px;
+  --border-focus: 2px;
+  --focus-offset: 3px;
+  --type-display-family: var(--font-heading);
+  --type-display-style: italic;
+  --type-display-case: uppercase;
+  --type-h1-family: var(--font-heading);
+  --type-h1-style: normal;
+  --type-h1-case: uppercase;
+  --type-h2-family: var(--font-heading);
+  --type-h2-style: normal;
+  --type-h2-case: uppercase;
+  --type-h3-family: var(--font-heading);
+  --type-h3-style: normal;
+  --type-h3-case: uppercase;
+  --type-title-family: var(--font-body);
+  --type-title-style: normal;
+  --type-title-case: none;
+  --type-eyebrow-family: var(--font-label);
+  --type-eyebrow-style: normal;
+  --type-eyebrow-case: uppercase;
+  --type-body-lg-family: var(--font-body);
+  --type-body-lg-style: normal;
+  --type-body-lg-case: none;
+  --type-body-family: var(--font-body);
+  --type-body-style: normal;
+  --type-body-case: none;
+  --type-body-sm-family: var(--font-body);
+  --type-body-sm-style: normal;
+  --type-body-sm-case: none;
+  --type-caption-family: var(--font-label);
+  --type-caption-style: normal;
+  --type-caption-case: uppercase;
+  --type-button-family: var(--font-label);
+  --type-button-style: normal;
+  --type-button-case: uppercase;
+  --backdrop-blur: 14px;
+  --filter-glow: drop-shadow(0px 0px 24px rgb(70 140 255 / 0.35)) drop-shadow(0px 0px 2px rgb(160 205 255 / 0.8));
+  --filter-glow-strong: drop-shadow(0px 0px 72px rgb(91 157 255 / 0.32));
+  --filter-glow-soft: drop-shadow(0px 0px 38px rgb(91 157 255 / 0.14));
+  --duration-micro: 200ms;
+  --duration-short: 400ms;
+  --duration-base: 600ms;
+  --duration-long: 900ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-micro: 0ms;
+    --duration-short: 0ms;
+    --duration-base: 0ms;
+    --duration-long: 0ms;
+  }
+}
+
+/* Colour — light variant (compatibility; opt-in via <html data-theme='light'>) */
+[data-theme='light'] {
+  --color-bg: #f6f6f3;
+  --color-surface: #ffffff;
+  --color-surface-sunken: #ecece8;
+  --color-surface-hover: rgb(0 0 0 / 0.03);
+  --color-overlay: rgb(246 246 243 / 0.8);
+  --color-fg: #0e1014;
+  --color-fg-muted: rgb(14 16 20 / 0.7);
+  --color-fg-subtle: rgb(14 16 20 / 0.62);
+  --color-fg-disabled: rgb(14 16 20 / 0.38);
+  --color-accent: #1f5fe0;
+  --color-accent-hover: #184bb8;
+  --color-accent-text: #1f5fe0;
+  --color-on-accent: #ffffff;
+  --color-border: rgb(0 0 0 / 0.1);
+  --color-border-subtle: rgb(0 0 0 / 0.07);
+  --color-border-strong: rgb(0 0 0 / 0.22);
+  --color-focus-ring: #1f5fe0;
+  --color-success: #0f7a4d;
+  --color-warning: #9a5b00;
+  --color-error: #c62828;
+}
+
+/* Public surface ('Greek Harmony'): <div data-surface='public'> — public site and login */
+[data-surface='public'] {
+  --font-public-sans: var(--font-jost), Futura, 'Century Gothic', system-ui, sans-serif;
+  --font-public-serif: var(--font-bodoni-moda), Didot, 'Bodoni 72', Georgia, serif;
+  --color-bg: #f2efe9;
+  --color-surface: #faf8f4;
+  --color-surface-sunken: #e9e4db;
+  --color-surface-hover: rgb(43 40 37 / 0.03);
+  --color-overlay: rgb(242 239 233 / 0.86);
+  --color-fg: #2b2825;
+  --color-fg-muted: #57524c;
+  --color-fg-subtle: #6f6a64;
+  --color-fg-disabled: rgb(43 40 37 / 0.38);
+  --color-accent: #2b2825;
+  --color-accent-hover: #45403a;
+  --color-accent-text: #7a6747;
+  --color-on-accent: #f2efe9;
+  --color-border: rgb(43 40 37 / 0.12);
+  --color-border-subtle: rgb(43 40 37 / 0.07);
+  --color-border-strong: rgb(43 40 37 / 0.24);
+  --color-focus-ring: #7a6747;
+  --color-success: #0f7a4d;
+  --color-warning: #9a5b00;
+  --color-error: #c62828;
+  --text-display: clamp(2.75rem, 1.6667rem + 4.8148vw, 6rem);
+  --text-display--line-height: 1.04;
+  --text-display--letter-spacing: -0.015em;
+  --text-display--font-weight: 300;
+  --type-display-family: var(--font-public-sans);
+  --type-display-style: normal;
+  --type-display-case: none;
+  --text-h1: clamp(2.25rem, 1.6667rem + 2.5926vw, 4rem);
+  --text-h1--line-height: 1.08;
+  --text-h1--letter-spacing: -0.012em;
+  --text-h1--font-weight: 300;
+  --type-h1-family: var(--font-public-sans);
+  --type-h1-style: normal;
+  --type-h1-case: none;
+  --text-h2: clamp(2rem, 1.5417rem + 2.037vw, 3.375rem);
+  --text-h2--line-height: 1.1;
+  --text-h2--letter-spacing: -0.01em;
+  --text-h2--font-weight: 300;
+  --type-h2-family: var(--font-public-sans);
+  --type-h2-style: normal;
+  --type-h2-case: none;
+  --text-h3: clamp(1.4375rem, 1.25rem + 0.8333vw, 2rem);
+  --text-h3--line-height: 1.18;
+  --text-h3--letter-spacing: -0.005em;
+  --text-h3--font-weight: 400;
+  --type-h3-family: var(--font-public-sans);
+  --type-h3-style: normal;
+  --type-h3-case: none;
+  --text-title: clamp(1.1875rem, 1.125rem + 0.2778vw, 1.375rem);
+  --text-title--line-height: 1.35;
+  --text-title--letter-spacing: 0em;
+  --text-title--font-weight: 400;
+  --type-title-family: var(--font-public-sans);
+  --type-title-style: normal;
+  --type-title-case: none;
+  --text-eyebrow: 0.75rem;
+  --text-eyebrow--line-height: 1.4;
+  --text-eyebrow--letter-spacing: 0.26em;
+  --text-eyebrow--font-weight: 500;
+  --type-eyebrow-family: var(--font-public-sans);
+  --type-eyebrow-style: normal;
+  --type-eyebrow-case: uppercase;
+  --text-body-lg: clamp(1.0625rem, 1.0208rem + 0.1852vw, 1.1875rem);
+  --text-body-lg--line-height: 1.75;
+  --text-body-lg--letter-spacing: 0em;
+  --text-body-lg--font-weight: 400;
+  --type-body-lg-family: var(--font-public-sans);
+  --type-body-lg-style: normal;
+  --type-body-lg-case: none;
+  --text-body: clamp(1rem, 0.9792rem + 0.0926vw, 1.0625rem);
+  --text-body--line-height: 1.78;
+  --text-body--letter-spacing: 0em;
+  --text-body--font-weight: 400;
+  --type-body-family: var(--font-public-sans);
+  --type-body-style: normal;
+  --type-body-case: none;
+  --text-body-sm: clamp(0.875rem, 0.8542rem + 0.0926vw, 0.9375rem);
+  --text-body-sm--line-height: 1.65;
+  --text-body-sm--letter-spacing: 0em;
+  --text-body-sm--font-weight: 400;
+  --type-body-sm-family: var(--font-public-sans);
+  --type-body-sm-style: normal;
+  --type-body-sm-case: none;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.4;
+  --text-caption--letter-spacing: 0.18em;
+  --text-caption--font-weight: 500;
+  --type-caption-family: var(--font-public-sans);
+  --type-caption-style: normal;
+  --type-caption-case: uppercase;
+  --text-button: 0.75rem;
+  --text-button--line-height: 1;
+  --text-button--letter-spacing: 0.22em;
+  --text-button--font-weight: 500;
+  --type-button-family: var(--font-public-sans);
+  --type-button-style: normal;
+  --type-button-case: uppercase;
+}
+
+/* Admin surface: <div data-surface='admin'> — functional warm-neutral light panel */
+[data-surface='admin'] {
+  --font-public-sans: var(--font-jost), Futura, 'Century Gothic', system-ui, sans-serif;
+  --font-public-serif: var(--font-bodoni-moda), Didot, 'Bodoni 72', Georgia, serif;
+  --color-bg: #f4f2ee;
+  --color-surface: #ffffff;
+  --color-surface-sunken: #ebe7e0;
+  --color-surface-hover: rgb(43 40 37 / 0.04);
+  --color-overlay: rgb(244 242 238 / 0.86);
+  --color-fg: #2b2825;
+  --color-fg-muted: #57524c;
+  --color-fg-subtle: #6f6a64;
+  --color-fg-disabled: rgb(43 40 37 / 0.38);
+  --color-accent: #2b2825;
+  --color-accent-hover: #45403a;
+  --color-accent-text: #7a6747;
+  --color-on-accent: #ffffff;
+  --color-border: rgb(43 40 37 / 0.12);
+  --color-border-subtle: rgb(43 40 37 / 0.07);
+  --color-border-strong: rgb(43 40 37 / 0.24);
+  --color-focus-ring: #7a6747;
+  --color-success: #0f7a4d;
+  --color-warning: #9a5b00;
+  --color-error: #c62828;
+  --text-display--font-weight: 400;
+  --type-display-family: var(--font-public-sans);
+  --type-display-style: normal;
+  --type-display-case: none;
+  --text-h1--font-weight: 400;
+  --type-h1-family: var(--font-public-sans);
+  --type-h1-style: normal;
+  --type-h1-case: none;
+  --text-h2--font-weight: 400;
+  --type-h2-family: var(--font-public-sans);
+  --type-h2-style: normal;
+  --type-h2-case: none;
+  --text-h3--font-weight: 500;
+  --type-h3-family: var(--font-public-sans);
+  --type-h3-style: normal;
+  --type-h3-case: none;
+  --text-title--font-weight: 500;
+  --type-title-family: var(--font-public-sans);
+  --type-title-style: normal;
+  --text-eyebrow--font-weight: 500;
+  --type-eyebrow-family: var(--font-public-sans);
+  --type-eyebrow-style: normal;
+  --text-eyebrow--letter-spacing: 0.16em;
+  --text-body-lg--font-weight: 400;
+  --type-body-lg-family: var(--font-public-sans);
+  --type-body-lg-style: normal;
+  --text-body--font-weight: 400;
+  --type-body-family: var(--font-public-sans);
+  --type-body-style: normal;
+  --text-body-sm--font-weight: 400;
+  --type-body-sm-family: var(--font-public-sans);
+  --type-body-sm-style: normal;
+  --text-caption--font-weight: 500;
+  --type-caption-family: var(--font-public-sans);
+  --type-caption-style: normal;
+  --text-caption--letter-spacing: 0.08em;
+  --text-button--font-weight: 500;
+  --type-button-family: var(--font-public-sans);
+  --type-button-style: normal;
+  --text-button--letter-spacing: 0.12em;
+}
+
+/* Glass surface: data-glass on the admin shell / client area — monochrome frosted panels */
+:root [data-glass] {
+  --color-bg: #070708;
+  --color-surface: rgb(255 255 255 / 0.06);
+  --color-surface-sunken: rgb(255 255 255 / 0.03);
+  --color-surface-hover: rgb(255 255 255 / 0.08);
+  --color-overlay: rgb(7 7 8 / 0.8);
+  --color-fg: #f4f4f5;
+  --color-fg-muted: rgb(255 255 255 / 0.72);
+  --color-fg-subtle: rgb(255 255 255 / 0.58);
+  --color-fg-disabled: rgb(255 255 255 / 0.34);
+  --color-accent: #f4f4f5;
+  --color-accent-hover: #e4e4e7;
+  --color-accent-text: #d4d4d8;
+  --color-on-accent: #070708;
+  --color-border: rgb(255 255 255 / 0.14);
+  --color-border-subtle: rgb(255 255 255 / 0.08);
+  --color-border-strong: rgb(255 255 255 / 0.26);
+  --color-focus-ring: #ffffff;
+  --color-success: #3ddc97;
+  --color-warning: #ffc24b;
+  --color-error: #ff6b6b;
+}
+
+/* Semantic typography roles: class="type-display", "type-eyebrow", … */
+@utility type-display {
+  font-family: var(--type-display-family);
+  font-size: var(--text-display);
+  font-weight: var(--text-display--font-weight);
+  line-height: var(--text-display--line-height);
+  letter-spacing: var(--text-display--letter-spacing);
+  font-style: var(--type-display-style);
+  text-transform: var(--type-display-case);
+}
+@utility type-h1 {
+  font-family: var(--type-h1-family);
+  font-size: var(--text-h1);
+  font-weight: var(--text-h1--font-weight);
+  line-height: var(--text-h1--line-height);
+  letter-spacing: var(--text-h1--letter-spacing);
+  font-style: var(--type-h1-style);
+  text-transform: var(--type-h1-case);
+}
+@utility type-h2 {
+  font-family: var(--type-h2-family);
+  font-size: var(--text-h2);
+  font-weight: var(--text-h2--font-weight);
+  line-height: var(--text-h2--line-height);
+  letter-spacing: var(--text-h2--letter-spacing);
+  font-style: var(--type-h2-style);
+  text-transform: var(--type-h2-case);
+}
+@utility type-h3 {
+  font-family: var(--type-h3-family);
+  font-size: var(--text-h3);
+  font-weight: var(--text-h3--font-weight);
+  line-height: var(--text-h3--line-height);
+  letter-spacing: var(--text-h3--letter-spacing);
+  font-style: var(--type-h3-style);
+  text-transform: var(--type-h3-case);
+}
+@utility type-title {
+  font-family: var(--type-title-family);
+  font-size: var(--text-title);
+  font-weight: var(--text-title--font-weight);
+  line-height: var(--text-title--line-height);
+  letter-spacing: var(--text-title--letter-spacing);
+  font-style: var(--type-title-style);
+  text-transform: var(--type-title-case);
+}
+@utility type-eyebrow {
+  font-family: var(--type-eyebrow-family);
+  font-size: var(--text-eyebrow);
+  font-weight: var(--text-eyebrow--font-weight);
+  line-height: var(--text-eyebrow--line-height);
+  letter-spacing: var(--text-eyebrow--letter-spacing);
+  font-style: var(--type-eyebrow-style);
+  text-transform: var(--type-eyebrow-case);
+}
+@utility type-body-lg {
+  font-family: var(--type-body-lg-family);
+  font-size: var(--text-body-lg);
+  font-weight: var(--text-body-lg--font-weight);
+  line-height: var(--text-body-lg--line-height);
+  letter-spacing: var(--text-body-lg--letter-spacing);
+  font-style: var(--type-body-lg-style);
+  text-transform: var(--type-body-lg-case);
+}
+@utility type-body {
+  font-family: var(--type-body-family);
+  font-size: var(--text-body);
+  font-weight: var(--text-body--font-weight);
+  line-height: var(--text-body--line-height);
+  letter-spacing: var(--text-body--letter-spacing);
+  font-style: var(--type-body-style);
+  text-transform: var(--type-body-case);
+}
+@utility type-body-sm {
+  font-family: var(--type-body-sm-family);
+  font-size: var(--text-body-sm);
+  font-weight: var(--text-body-sm--font-weight);
+  line-height: var(--text-body-sm--line-height);
+  letter-spacing: var(--text-body-sm--letter-spacing);
+  font-style: var(--type-body-sm-style);
+  text-transform: var(--type-body-sm-case);
+}
+@utility type-caption {
+  font-family: var(--type-caption-family);
+  font-size: var(--text-caption);
+  font-weight: var(--text-caption--font-weight);
+  line-height: var(--text-caption--line-height);
+  letter-spacing: var(--text-caption--letter-spacing);
+  font-style: var(--type-caption-style);
+  text-transform: var(--type-caption-case);
+}
+@utility type-button {
+  font-family: var(--type-button-family);
+  font-size: var(--text-button);
+  font-weight: var(--text-button--font-weight);
+  line-height: var(--text-button--line-height);
+  letter-spacing: var(--text-button--letter-spacing);
+  font-style: var(--type-button-style);
+  text-transform: var(--type-button-case);
+}
+

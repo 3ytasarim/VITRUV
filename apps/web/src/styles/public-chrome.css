@@ -1,0 +1,519 @@
+/*
+ * Public surface — page chrome: floating pill header, full-screen mobile menu, footer finale.
+ * Patterns adapted from earlier studio work (Meridius.ch header over the hero + hover wordmark
+ * footer) and re-built on VITRUV tokens. Tokens and color-mix() of tokens only; every motion is
+ * CSS and stops under prefers-reduced-motion.
+ */
+@layer components {
+  /* ---- Header: sticky lane + floating glass pill ----------------------------------------- */
+  .vt-site-header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    padding: calc(var(--spacing) * 3) var(--gutter) 0;
+    pointer-events: none; /* only the pill is interactive; content shows through the lane */
+    transition: translate var(--duration-base) var(--ease-out);
+  }
+  .vt-site-header[data-over-hero] {
+    position: fixed;
+    inset-inline: 0;
+  }
+  .vt-site-header[data-hidden='true'] {
+    translate: 0 calc(-100% - var(--spacing) * 4);
+  }
+  .vt-header-pill {
+    display: flex;
+    width: 100%;
+    max-width: 78rem;
+    height: calc(var(--spacing) * 16);
+    align-items: center;
+    justify-content: space-between;
+    gap: calc(var(--spacing) * 4);
+    margin-inline: auto;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-pill);
+    padding-inline: calc(var(--spacing) * 3) calc(var(--spacing) * 2);
+    background: color-mix(in srgb, var(--color-surface) 74%, transparent);
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    pointer-events: auto;
+    transition:
+      background-color var(--duration-base) var(--ease-out),
+      box-shadow var(--duration-base) var(--ease-out),
+      border-color var(--duration-base) var(--ease-out),
+      max-width var(--duration-base) var(--ease-out);
+  }
+  @media (min-width: 768px) {
+    .vt-header-pill {
+      padding-inline: calc(var(--spacing) * 5) calc(var(--spacing) * 2);
+    }
+  }
+  .vt-site-header[data-scrolled='true'] .vt-header-pill {
+    max-width: 72rem;
+    background: color-mix(in srgb, var(--color-surface) 90%, transparent);
+    box-shadow: var(--shadow-lift);
+  }
+  .vt-header-brand {
+    display: inline-flex;
+    min-height: var(--tap-target);
+    align-items: center;
+    gap: calc(var(--spacing) * 3);
+    border-radius: var(--radius-pill);
+    padding-inline: calc(var(--spacing) * 2);
+    color: var(--color-fg);
+  }
+  .vt-wordmark {
+    font-family: var(--font-public-sans);
+    font-size: var(--text-body-sm);
+    font-weight: 400;
+    letter-spacing: 0.42em;
+    text-transform: uppercase;
+  }
+  .vt-logo {
+    filter: var(--vt-logo-filter, none);
+    transition: filter var(--duration-base) var(--ease-out);
+  }
+  /* One switch point for navigation and menu button (no gap where neither is shown). */
+  .vt-header-nav {
+    display: none;
+  }
+  @media (min-width: 1200px) {
+    .vt-header-nav {
+      display: block;
+    }
+    .vt-menu-trigger {
+      display: none;
+    }
+  }
+  .vt-navlink {
+    position: relative;
+    white-space: nowrap;
+    display: inline-flex;
+    min-height: var(--tap-target);
+    align-items: center;
+    border-radius: var(--radius-pill);
+    padding-inline: calc(var(--spacing) * 3.5);
+    color: var(--color-fg-muted);
+    font-size: var(--text-caption);
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    transition:
+      color var(--duration-micro) var(--ease-out),
+      background-color var(--duration-micro) var(--ease-out);
+  }
+  .vt-navlink:hover {
+    background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+    color: var(--color-fg);
+  }
+  /* Scrollspy: gold dot under the section in view. */
+  .vt-navlink::after {
+    position: absolute;
+    bottom: 7px;
+    left: 50%;
+    width: 4px;
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: var(--color-brand-gold);
+    content: '';
+    opacity: 0;
+    translate: -50% 4px;
+    transition:
+      opacity var(--duration-short) var(--ease-out),
+      translate var(--duration-short) var(--ease-out);
+  }
+  .vt-navlink[data-active] {
+    color: var(--color-fg);
+  }
+  .vt-navlink[data-active]::after {
+    opacity: 1;
+    translate: -50% 0;
+  }
+  .vt-header-cta {
+    display: none;
+  }
+  @media (min-width: 768px) {
+    .vt-header-cta {
+      display: inline-flex;
+    }
+  }
+  /* Over the hero stage: dark glass pill with light copy until the hero copy scrolled away. */
+  [data-surface='public'] .vt-site-header[data-hero-dark='stage']:not([data-scrolled='true']) {
+    --color-fg: var(--vt-paper);
+    --color-fg-muted: color-mix(in srgb, var(--vt-paper) 86%, transparent);
+    --color-accent: var(--vt-paper);
+    --color-accent-hover: color-mix(in srgb, var(--vt-paper) 86%, var(--vt-ink));
+    --color-on-accent: var(--vt-ink);
+    --color-border-strong: color-mix(in srgb, var(--vt-paper) 55%, transparent);
+    --color-border-subtle: color-mix(in srgb, var(--vt-paper) 18%, transparent);
+    --color-focus-ring: var(--vt-paper);
+  }
+  .vt-site-header[data-hero-dark='stage']:not([data-scrolled='true']) .vt-header-pill {
+    background: color-mix(in srgb, var(--vt-ink) 28%, transparent);
+    box-shadow: none;
+  }
+  /* The logo is used as uploaded (dark mark); over the video it is shown light via a filter. */
+  .vt-site-header[data-hero-dark='stage']:not([data-scrolled='true']) .vt-logo {
+    filter: invert(1) brightness(1.15);
+  }
+
+  /* ---- Mobile menu: full-screen sheet, large numbered links -------------------------------- */
+  .vt-menu__inner {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    overflow: hidden;
+    padding-inline: var(--gutter);
+    background:
+      radial-gradient(120% 70% at 100% 0%, var(--color-surface) 0%, transparent 60%),
+      var(--color-bg);
+  }
+  .vt-menu__motif {
+    right: -30%;
+    bottom: -12%;
+    width: 110vw;
+    opacity: 0.1;
+  }
+  .vt-menu__list {
+    display: flex;
+    flex-direction: column;
+  }
+  .vt-menu__list > li {
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+  .vt-menu__link {
+    display: flex;
+    min-height: calc(var(--spacing) * 18);
+    align-items: baseline;
+    gap: calc(var(--spacing) * 4);
+    padding-block: calc(var(--spacing) * 4);
+    color: var(--color-fg);
+    font-size: clamp(1.75rem, 1.2rem + 3vw, 2.5rem);
+    font-weight: 300;
+    line-height: 1.1;
+  }
+  .vt-menu__num {
+    color: var(--color-accent-text);
+    font-size: var(--text-caption);
+    font-weight: 500;
+    letter-spacing: 0.16em;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .vt-menu[open] .vt-menu__list > li {
+      animation: vt-menu-rise var(--duration-base) var(--ease-out) both;
+      animation-delay: calc(var(--i, 0) * 60ms + 80ms);
+    }
+  }
+  @keyframes vt-menu-rise {
+    from {
+      opacity: 0;
+      translate: 0 18px;
+    }
+  }
+
+  /* ---- Wide frame shared by the next-step CTA card and the footer (Bleibsichtbar sizing) ---- */
+  .vt-wide {
+    width: 100%;
+    max-width: 1760px;
+    margin-inline: auto;
+    padding-inline: clamp(var(--gutter), 5vw, 80px);
+  }
+
+  /* ---- Footer (Bleibsichtbar redesign footer, VITRUV colours) ------------------------------- */
+  .vt-footer {
+    position: relative;
+    margin-top: calc(var(--spacing) * 6);
+    border-top: 1px solid var(--color-border);
+    border-radius: 2rem 2rem 0 0;
+    padding: clamp(calc(var(--spacing) * 12), 5vw, calc(var(--spacing) * 16))
+      clamp(calc(var(--spacing) * 6), 5vw, 80px);
+    background:
+      radial-gradient(
+        35% 128px at 50% 0%,
+        color-mix(in srgb, var(--color-brand-gold) 14%, transparent),
+        transparent
+      ),
+      var(--color-surface);
+    color: var(--color-fg);
+  }
+  .vt-footer__line {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 33%;
+    height: 1px;
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, var(--color-brand-gold) 60%, transparent);
+    filter: blur(2px);
+    translate: -50% -50%;
+  }
+  .vt-footer__grid {
+    display: grid;
+    gap: calc(var(--spacing) * 10);
+  }
+  @media (min-width: 1280px) {
+    .vt-footer__grid {
+      grid-template-columns: 1fr 2fr;
+      gap: calc(var(--spacing) * 8);
+    }
+  }
+  .vt-footer__brand {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: calc(var(--spacing) * 5);
+  }
+  .vt-footer__logo {
+    display: inline-flex;
+    min-height: var(--tap-target);
+    align-items: center;
+    gap: calc(var(--spacing) * 4);
+    border-radius: var(--radius-pill);
+  }
+  .vt-footer__statement {
+    max-width: 18ch;
+    font-size: clamp(1.4rem, 1.1rem + 1vw, 1.9rem);
+    font-weight: 300;
+    line-height: 1.15;
+  }
+  /* Bottom bar: copyright and back-to-top in one full-width row. */
+  .vt-footer__bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: calc(var(--spacing) * 4);
+    margin-top: calc(var(--spacing) * 12);
+    border-top: 1px solid var(--color-border-subtle);
+    padding-top: calc(var(--spacing) * 6);
+    color: var(--color-fg-subtle);
+    font-size: var(--text-caption);
+    letter-spacing: 0.04em;
+  }
+  .vt-footer__top {
+    display: inline-flex;
+    min-height: var(--tap-target);
+    align-items: center;
+    gap: calc(var(--spacing) * 1.5);
+    color: var(--color-fg-subtle);
+    transition: color var(--duration-micro) var(--ease-out);
+  }
+  .vt-footer__top:hover {
+    color: var(--color-fg);
+  }
+  .vt-footer__cols {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: calc(var(--spacing) * 8);
+  }
+  @media (min-width: 768px) {
+    .vt-footer__cols {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  .vt-footer__label {
+    color: var(--color-fg-subtle);
+    font-size: var(--text-caption);
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+  .vt-footer__col ul {
+    display: flex;
+    flex-direction: column;
+    margin-top: calc(var(--spacing) * 3);
+  }
+  .vt-footer__link {
+    display: inline-flex;
+    min-height: calc(var(--spacing) * 10);
+    align-items: center;
+    color: var(--color-fg-muted);
+    font-size: var(--text-body-sm);
+    font-weight: 500;
+    overflow-wrap: anywhere;
+    transition: color var(--duration-short) var(--ease-out);
+  }
+  a.vt-footer__link:hover {
+    color: var(--color-accent-text);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .vt-footer__grid[data-armed] > * {
+      opacity: 0;
+      filter: blur(4px);
+      translate: 0 -8px;
+      transition:
+        opacity 800ms var(--ease-out),
+        filter 800ms var(--ease-out),
+        translate 800ms var(--ease-out);
+    }
+    .vt-footer__grid[data-armed] > :nth-child(2) {
+      transition-delay: 150ms;
+    }
+    .vt-footer__grid[data-inview] > * {
+      opacity: 1;
+      filter: none;
+      translate: 0 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .vt-site-header,
+    .vt-header-pill {
+      transition: none;
+    }
+    .vt-site-header[data-hidden='true'] {
+      translate: none;
+    }
+  }
+}
+
+/* ---- Header "Anmelden": gold ring that travels around the pill, fill sweep on hover ---------- */
+@property --vt-login-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@layer components {
+  .vt-login {
+    position: relative;
+    isolation: isolate;
+    display: inline-flex;
+    height: calc(var(--spacing) * 12);
+    min-width: calc(var(--spacing) * 12);
+    align-items: center;
+    justify-content: center;
+    gap: calc(var(--spacing) * 2);
+    padding-inline: calc(var(--spacing) * 3);
+    overflow: hidden;
+    border-radius: var(--radius-pill);
+    color: var(--color-fg);
+    font-size: var(--text-body-sm);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    transition: color var(--duration-micro) var(--ease-out);
+  }
+  /* travelling ring: conic gradient masked to a 1.5px border */
+  .vt-login__ring {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    padding: 1.5px;
+    background: conic-gradient(
+      from var(--vt-login-angle),
+      color-mix(in srgb, var(--color-fg) 22%, transparent) 0deg,
+      var(--color-brand-gold) 70deg,
+      color-mix(in srgb, var(--color-brand-gold) 10%, transparent) 140deg,
+      color-mix(in srgb, var(--color-fg) 22%, transparent) 360deg
+    );
+    -webkit-mask:
+      linear-gradient(black 0 0) content-box,
+      linear-gradient(black 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: vt-login-spin 4.5s linear infinite;
+  }
+  /* fill sweep */
+  .vt-login::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    border-radius: inherit;
+    background: var(--color-fg);
+    transform: translateX(-101%);
+    transition: transform var(--duration-short) var(--ease-out);
+  }
+  .vt-login:hover,
+  .vt-login:focus-visible {
+    color: var(--color-bg);
+  }
+  .vt-site-header[data-hero-dark='stage']:not([data-scrolled='true']) .vt-login:hover,
+  .vt-site-header[data-hero-dark='stage']:not([data-scrolled='true']) .vt-login:focus-visible {
+    color: var(--vt-ink);
+  }
+  .vt-login:hover::before,
+  .vt-login:focus-visible::before {
+    transform: translateX(0);
+  }
+  .vt-login:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 3px;
+  }
+  .vt-login__icon {
+    display: inline-grid;
+    place-items: center;
+  }
+  .vt-login__icon svg,
+  .vt-login__arrow svg {
+    width: calc(var(--spacing) * 4);
+    height: calc(var(--spacing) * 4);
+  }
+  .vt-login__icon svg {
+    transition: transform var(--duration-short) var(--ease-out);
+  }
+  .vt-login:hover .vt-login__icon svg {
+    transform: translateY(-1px) scale(1.08);
+  }
+  .vt-login__label,
+  .vt-login__arrow {
+    display: none;
+  }
+  .vt-login__arrow {
+    margin-inline-start: calc(var(--spacing) * -2);
+    opacity: 0;
+    transform: translateX(-6px);
+    transition:
+      opacity var(--duration-short) var(--ease-out),
+      transform var(--duration-short) var(--ease-out),
+      margin var(--duration-short) var(--ease-out);
+  }
+  .vt-login:hover .vt-login__arrow,
+  .vt-login:focus-visible .vt-login__arrow {
+    margin-inline-start: 0;
+    opacity: 1;
+    transform: translateX(0);
+  }
+  /* small screens: icon-only circle, label stays the accessible name */
+  @media (max-width: 767px) {
+    .vt-login {
+      padding-inline: 0;
+    }
+    .vt-login__label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      display: inline;
+    }
+  }
+  @media (min-width: 768px) {
+    .vt-login {
+      padding-inline: calc(var(--spacing) * 4);
+    }
+    .vt-login__label,
+    .vt-login__arrow {
+      display: inline-flex;
+    }
+  }
+  @keyframes vt-login-spin {
+    to {
+      --vt-login-angle: 360deg;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .vt-login__ring {
+      animation: none;
+    }
+    .vt-login::before,
+    .vt-login__arrow,
+    .vt-login__icon svg {
+      transition: none;
+    }
+  }
+}

@@ -1,0 +1,462 @@
+/*
+ * Admin surface — functional, warm-neutral light (Cross-Project Addendum 2026-10-16).
+ * Applied by <div data-surface="admin"> in the admin shell. Colours and type come from the
+ * generated tokens ([data-surface='admin']); the primitive radius/shadow adaptations are shared
+ * with the public surface (public.css). This file only lays out the panel frame and tones the
+ * primitives down for dense, task-focused screens. Tokens and color-mix() of tokens only.
+ */
+@layer components {
+  [data-surface='admin'] {
+    --admin-sidebar: 16.5rem;
+    --admin-rail: 4.75rem;
+    --admin-header: calc(var(--spacing) * 16);
+    --shadow-soft:
+      0 1px 2px color-mix(in srgb, var(--color-fg) 5%, transparent),
+      0 8px 24px -16px color-mix(in srgb, var(--color-fg) 18%, transparent);
+    --shadow-lift:
+      0 2px 4px color-mix(in srgb, var(--color-fg) 6%, transparent),
+      0 16px 36px -20px color-mix(in srgb, var(--color-fg) 26%, transparent);
+  }
+
+  /* Calmer primitives for data screens: smaller pills, cards at radius-lg, no hover travel. */
+  [data-surface='admin'] .vt-btn {
+    padding-inline: calc(var(--spacing) * 5);
+  }
+  [data-surface='admin'] .vt-card {
+    --vt-radius: var(--radius-lg);
+    border-radius: var(--radius-lg);
+  }
+  /* Long status labels may wrap on narrow phones instead of widening the card. */
+  [data-surface='admin'] .vt-badge {
+    max-width: 100%;
+    white-space: normal;
+  }
+  @media (hover: hover) {
+    [data-surface='admin'] .vt-card--interactive:hover {
+      transform: none;
+    }
+  }
+
+  /* ---- Frame ---------------------------------------------------------------------------------- */
+  .vt-admin {
+    min-height: 100dvh;
+  }
+  @media (min-width: 768px) {
+    .vt-admin {
+      display: grid;
+      grid-template-columns: var(--admin-sidebar) minmax(0, 1fr);
+      transition: grid-template-columns var(--duration-short) var(--ease-out);
+    }
+    .vt-admin[data-collapsed='true'] {
+      grid-template-columns: var(--admin-rail) minmax(0, 1fr);
+    }
+  }
+
+  .vt-admin__sidebar {
+    display: none;
+  }
+  @media (min-width: 768px) {
+    .vt-admin__sidebar {
+      position: sticky;
+      top: 0;
+      display: flex;
+      height: 100dvh;
+      min-width: 0;
+      flex-direction: column;
+      border-right: 1px solid var(--color-border-subtle);
+      background: var(--color-surface);
+    }
+  }
+  .vt-admin__brand {
+    display: flex;
+    height: var(--admin-header);
+    flex-shrink: 0;
+    align-items: center;
+    padding-inline: calc(var(--spacing) * 6);
+  }
+  .vt-admin[data-collapsed='true'] .vt-admin__sidebar .vt-admin__brand {
+    justify-content: center;
+    padding-inline: 0;
+  }
+  .vt-admin__wordmark {
+    display: inline-flex;
+    align-items: baseline;
+    gap: calc(var(--spacing) * 2);
+    border-radius: var(--radius-xs);
+    font-size: var(--text-caption);
+    font-weight: 500;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+  }
+  .vt-admin__scroll {
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-top: calc(var(--spacing) * 2);
+  }
+  .vt-admin__account {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: calc(var(--spacing) * 3);
+    border-top: 1px solid var(--color-border-subtle);
+    padding: calc(var(--spacing) * 4) calc(var(--spacing) * 5);
+  }
+  .vt-admin__account .vt-btn {
+    justify-content: flex-start;
+    padding-inline: calc(var(--spacing) * 3);
+  }
+  .vt-admin__account--rail {
+    align-items: center;
+    justify-content: center;
+    padding-inline: calc(var(--spacing) * 2);
+  }
+  /* Rail: the logout button keeps its accessible name but shows only the icon. */
+  .vt-admin__account--rail .vt-btn {
+    padding-inline: calc(var(--spacing) * 3);
+  }
+  .vt-admin__account--rail .vt-admin__logout-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  /* ---- Navigation ----------------------------------------------------------------------------- */
+  .vt-admin-navlink {
+    position: relative;
+    display: flex;
+    min-height: calc(var(--spacing) * 12);
+    align-items: center;
+    gap: calc(var(--spacing) * 3);
+    border-radius: var(--radius-md);
+    padding-inline: calc(var(--spacing) * 3);
+    color: var(--color-fg-muted);
+    font-size: var(--text-body-sm);
+    white-space: nowrap;
+    transition:
+      background-color var(--duration-micro) var(--ease-out),
+      color var(--duration-micro) var(--ease-out);
+  }
+  a.vt-admin-navlink:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-fg);
+  }
+  .vt-admin-navlink[aria-current='page'] {
+    background: var(--color-surface-sunken);
+    color: var(--color-fg);
+    font-weight: 500;
+  }
+  .vt-admin-navlink[aria-current='page']::before {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 3px;
+    height: calc(var(--spacing) * 5);
+    border-radius: var(--radius-pill);
+    background: var(--color-brand-gold);
+    content: '';
+    translate: 0 -50%;
+  }
+  .vt-admin-navlink[aria-current='page'] svg {
+    color: var(--color-accent-text);
+  }
+  .vt-admin-navlink--rail {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  /* ---- Mobile drawer (<dialog>) ---------------------------------------------------------------- */
+  .vt-admin__drawer {
+    position: fixed;
+    inset: 0 auto 0 0;
+    display: none;
+    width: min(20rem, 86vw);
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    flex-direction: column;
+    border: 0;
+    border-right: 1px solid var(--color-border-subtle);
+    padding: 0;
+    background: var(--color-surface);
+    color: var(--color-fg);
+    box-shadow: var(--shadow-lift);
+  }
+  .vt-admin__drawer[open] {
+    display: flex;
+  }
+  .vt-admin__drawer::backdrop {
+    background: color-mix(in srgb, var(--color-fg) 32%, transparent);
+    backdrop-filter: blur(2px);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .vt-admin__drawer[open] {
+      animation: vt-drawer-in var(--duration-short) var(--ease-out);
+    }
+  }
+  @keyframes vt-drawer-in {
+    from {
+      translate: -24px 0;
+      opacity: 0;
+    }
+  }
+
+  /* ---- Header + content ----------------------------------------------------------------------- */
+  .vt-admin__main {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+  }
+  .vt-admin__header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    height: var(--admin-header);
+    align-items: center;
+    gap: calc(var(--spacing) * 3);
+    border-bottom: 1px solid var(--color-border-subtle);
+    padding-inline: var(--gutter);
+    background: color-mix(in srgb, var(--color-bg) 82%, transparent);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+  }
+  .vt-admin__content {
+    width: 100%;
+    max-width: 90rem;
+    padding: calc(var(--spacing) * 8) var(--gutter) calc(var(--spacing) * 16);
+  }
+  .vt-admin__content:focus {
+    outline: none;
+  }
+
+  /* Square icon button (menu, collapse, close) — 48px tap target. */
+  .vt-icon-btn {
+    display: inline-grid;
+    width: calc(var(--spacing) * 12);
+    height: calc(var(--spacing) * 12);
+    flex-shrink: 0;
+    place-items: center;
+    border-radius: var(--radius-md);
+    color: var(--color-fg-muted);
+    transition:
+      background-color var(--duration-micro) var(--ease-out),
+      color var(--duration-micro) var(--ease-out);
+  }
+  .vt-icon-btn:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-fg);
+  }
+
+  /* Page entrance (admin pages): short fade-up, nothing under reduced motion. */
+  @media (prefers-reduced-motion: no-preference) {
+    .vt-admin__content > * {
+      animation: vt-admin-enter var(--duration-short) var(--ease-out) both;
+    }
+  }
+  @keyframes vt-admin-enter {
+    from {
+      translate: 0 6px;
+      opacity: 0;
+    }
+  }
+  /* ---- States: empty / error icon chip, shimmer skeleton ------------------------------------- */
+  .vt-state-icon {
+    display: inline-grid;
+    width: calc(var(--spacing) * 10);
+    height: calc(var(--spacing) * 10);
+    place-items: center;
+    border-radius: var(--radius-pill);
+    background: var(--color-surface-sunken);
+    color: var(--color-fg-muted);
+  }
+  .vt-state-icon--error {
+    background: color-mix(in srgb, var(--color-error) 10%, transparent);
+    color: var(--color-error);
+  }
+  .vt-empty {
+    border-style: dashed;
+  }
+  .vt-skeleton {
+    border-radius: var(--radius-md);
+    background: var(--color-surface-sunken);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .vt-skeleton {
+      background: linear-gradient(
+          90deg,
+          transparent 0%,
+          color-mix(in srgb, var(--color-surface) 70%, transparent) 50%,
+          transparent 100%
+        )
+        var(--color-surface-sunken);
+      background-size: 200% 100%;
+      animation: vt-shimmer 1.4s linear infinite;
+    }
+  }
+  @keyframes vt-shimmer {
+    from {
+      background-position: 100% 0;
+    }
+    to {
+      background-position: -100% 0;
+    }
+  }
+  /* ---- Colour settings (Farben & Design) ------------------------------------------------- */
+  .vt-color-swatch {
+    width: var(--tap-target);
+    height: var(--tap-target);
+    flex-shrink: 0;
+    cursor: pointer;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 3px;
+    background: var(--color-surface);
+  }
+  .vt-color-swatch::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+  .vt-color-swatch::-webkit-color-swatch {
+    border: 0;
+    border-radius: calc(var(--radius-md) - 3px);
+  }
+  .vt-theme-preview {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 3);
+    border: 1px solid;
+    border-radius: var(--radius-lg);
+    padding: calc(var(--spacing) * 6);
+  }
+  .vt-theme-preview__eyebrow {
+    font-size: var(--text-caption);
+    font-weight: 500;
+    letter-spacing: 0.22em;
+  }
+  .vt-theme-preview__title {
+    font-size: 1.6rem;
+    font-weight: 300;
+    line-height: 1.15;
+  }
+  .vt-theme-preview__title em {
+    font-family: var(--font-public-serif);
+    font-style: italic;
+  }
+  .vt-theme-preview__btn,
+  .vt-theme-preview__card {
+    border-radius: var(--radius-pill);
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 5);
+    font-size: var(--text-body-sm);
+  }
+  .vt-theme-preview__card {
+    border-radius: var(--radius-md);
+  }
+  .vt-theme-preview__dot {
+    width: 18px;
+    height: 18px;
+    border-radius: var(--radius-pill);
+  }
+}
+
+/* ---- Program builder: exercise library + drag & drop ---------------------------------------- */
+@layer components {
+  .vt-builder-grid {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: calc(var(--spacing) * 6);
+  }
+  @media (min-width: 1280px) {
+    .vt-builder-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 20rem;
+      align-items: start;
+    }
+  }
+  .vt-exlib {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 4);
+    padding: calc(var(--spacing) * 5);
+    border: var(--border-hairline) solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+  }
+  @media (min-width: 1280px) {
+    .vt-exlib {
+      position: sticky;
+      top: calc(var(--spacing) * 4);
+      max-height: calc(100dvh - var(--spacing) * 8);
+    }
+  }
+  .vt-exlib__list {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 2);
+    overflow-y: auto;
+    max-height: 22rem;
+  }
+  @media (min-width: 1280px) {
+    .vt-exlib__list {
+      max-height: none;
+    }
+  }
+  .vt-exlib__item {
+    display: flex;
+    min-height: calc(var(--spacing) * 12);
+    align-items: center;
+    gap: calc(var(--spacing) * 2);
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+    border: var(--border-hairline) solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+    cursor: grab;
+    user-select: none;
+    transition:
+      border-color var(--duration-micro) var(--ease-out),
+      transform var(--duration-micro) var(--ease-out);
+  }
+  .vt-exlib__item:hover {
+    border-color: var(--color-border-strong);
+    transform: translateX(-2px);
+  }
+  .vt-exlib__item[data-dragging] {
+    opacity: 0.5;
+    cursor: grabbing;
+  }
+  .vt-dropzone {
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    transition:
+      background-color var(--duration-micro) var(--ease-out),
+      border-color var(--duration-micro) var(--ease-out),
+      outline-color var(--duration-micro) var(--ease-out);
+    outline: 2px dashed transparent;
+    outline-offset: 4px;
+  }
+  .vt-dropzone[data-drop] {
+    border-color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 7%, transparent);
+    outline-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  }
+  .vt-assign[draggable='true'] {
+    cursor: grab;
+  }
+  .vt-assign[data-drop] {
+    box-shadow: inset 0 3px 0 0 var(--color-accent);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .vt-exlib__item,
+    .vt-dropzone {
+      transition: none;
+    }
+  }
+}
+/* the program builder (structure + exercise library) gets the full content width — unlayered so
+   it wins over the max-w utility of the client workspace */
+.vt-client-ws:has(.vt-builder-grid) {
+  max-width: 86rem;
+}
