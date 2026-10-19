@@ -1,6 +1,7 @@
 'use client';
 
-import { useActionState, useEffect, useId, useRef } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
+import { useActionState, useEffect, useId, useRef, useState } from 'react';
 import { loginAction, type LoginState } from '@/app/login/actions';
 import { Button } from '@/components/ui';
 
@@ -14,6 +15,7 @@ const INITIAL: LoginState = { status: 'idle' };
 export function LoginForm({ next }: { next: string }) {
   const [state, formAction, pending] = useActionState(loginAction, INITIAL);
   const id = useId();
+  const [showPassword, setShowPassword] = useState(false);
   const alertRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -66,17 +68,33 @@ export function LoginForm({ next }: { next: string }) {
         <label htmlFor={`${id}-password`} className="type-body-sm font-semibold">
           Passwort
         </label>
-        <input
-          id={`${id}-password`}
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          maxLength={256}
-          aria-invalid={fieldError('password') ? true : undefined}
-          aria-describedby={fieldError('password') ? `${id}-password-error` : undefined}
-          className="vt-input type-body"
-        />
+        <div className="vt-pw">
+          <input
+            id={`${id}-password`}
+            name="password"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="current-password"
+            required
+            maxLength={256}
+            aria-invalid={fieldError('password') ? true : undefined}
+            aria-describedby={fieldError('password') ? `${id}-password-error` : undefined}
+            className="vt-input type-body"
+          />
+          <button
+            type="button"
+            className="vt-pw__toggle"
+            aria-label={showPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}
+            aria-pressed={showPassword}
+            aria-controls={`${id}-password`}
+            onClick={() => setShowPassword((v) => !v)}
+          >
+            {showPassword ? (
+              <EyeOff aria-hidden className="size-5" />
+            ) : (
+              <Eye aria-hidden className="size-5" />
+            )}
+          </button>
+        </div>
         {fieldError('password') && (
           <p id={`${id}-password-error`} className="type-body-sm text-error">
             {fieldError('password')}

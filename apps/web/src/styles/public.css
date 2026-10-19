@@ -473,3 +473,33 @@
     }
   }
 }
+
+/* ---- Password field with show/hide toggle (login) ------------------------------------------- */
+@layer components {
+  .vt-pw {
+    position: relative;
+  }
+  .vt-pw > .vt-input {
+    width: 100%;
+    padding-right: calc(var(--spacing) * 14);
+  }
+  .vt-pw__toggle {
+    position: absolute;
+    top: 50%;
+    right: calc(var(--spacing) * 1);
+    display: inline-grid;
+    width: calc(var(--spacing) * 12);
+    height: calc(var(--spacing) * 12);
+    place-items: center;
+    border-radius: var(--radius-pill);
+    color: var(--color-fg-muted);
+    translate: 0 -50%;
+  }
+  .vt-pw__toggle:hover {
+    color: var(--color-fg);
+  }
+  .vt-pw__toggle:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+}
