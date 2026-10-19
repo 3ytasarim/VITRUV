@@ -15,7 +15,7 @@ export const SECTION_LABELS: Readonly<Record<WebsiteSectionType, string>> = {
   pillars: 'Drei Säulen',
   situations: 'Lebenssituationen',
   steps: 'Neun Stufen',
-  gallery: 'Galerie (Polaroids)',
+  gallery: 'Galerie (Foto-Reel)',
   theme: 'Farben & Design',
   seo: 'SEO & Link-Vorschau',
 };

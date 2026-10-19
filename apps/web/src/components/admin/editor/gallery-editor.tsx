@@ -8,7 +8,7 @@ import { MethodHeadingFields } from './method-heading-fields';
 import { RepeatableList } from './repeatable-list';
 import type { EditorProps } from './section-editor';
 
-/** Gallery (hanging polaroids): heading, photos from the Media Library with an optional caption. */
+/** Gallery (kinetic photo reel): heading, photos from the Media Library with an optional caption. */
 export function GalleryEditor({ value, onChange, errors }: EditorProps<'gallery'>) {
   return (
     <div className="flex flex-col gap-6">
@@ -39,7 +39,7 @@ export function GalleryEditor({ value, onChange, errors }: EditorProps<'gallery'
                 onChange={(media) => update({ media })}
               />
               <TextField
-                label="Beschriftung auf dem Polaroid (optional)"
+                label="Titel auf dem Foto (optional)"
                 maxLength={60}
                 value={item.title}
                 error={e.title}

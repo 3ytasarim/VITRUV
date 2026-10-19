@@ -191,7 +191,7 @@ function defineSectionSchemas<Slot extends z.ZodType>(slot: Slot) {
     outro: optionalText(400),
   });
 
-  /** Photo gallery: hanging polaroid carousel (owner request 2026-10-19). */
+  /** Photo gallery: kinetic photo reel (owner request 2026-10-19, redesigned 2026-10-19). */
   const gallery = z.object({
     eyebrow: optionalText(60),
     title: plainText(160),
@@ -202,7 +202,7 @@ function defineSectionSchemas<Slot extends z.ZodType>(slot: Slot) {
         z.object({
           id: itemIdSchema,
           media,
-          /** Handwritten line on the polaroid (optional). */
+          /** Short title on the photo (optional). */
           title: optionalText(60),
           caption: optionalText(160),
         }),

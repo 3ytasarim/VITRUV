@@ -73,179 +73,248 @@
   }
 }
 
-/* ---- Gallery: hanging polaroid carousel ------------------------------------------------------ */
+/* ---- Gallery: kinetic training reel (pinned horizontal track on desktop) --------------------- */
 @layer components {
-  .vt-polaroids {
-    --vt-paper-photo: color-mix(in srgb, white 93%, var(--color-brand-gold));
-    --vt-paper-ink: color-mix(in srgb, black 80%, var(--color-brand-gold));
-    --vt-peg: color-mix(in srgb, var(--color-brand-gold) 70%, black);
+  .vt-reel {
+    --reel-cut: var(--chamfer-lg);
+    --reel-ease: cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
-    width: 100%;
+    margin-top: calc(var(--spacing) * 10);
   }
-  .vt-polaroids__stage {
+  .vt-reel__sticky {
     position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: calc(var(--spacing) * 8);
     overflow: hidden;
-    touch-action: pan-y;
-    cursor: grab;
-    user-select: none;
-    outline: none;
-    /* soft fade at both edges */
-    mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
   }
-  .vt-polaroids[data-dragging] .vt-polaroids__stage {
-    cursor: grabbing;
+  .vt-reel[data-pinned] .vt-reel__sticky {
+    position: sticky;
+    top: 0;
+    height: 100svh;
   }
-  .vt-polaroids__stage:focus-visible {
-    box-shadow: inset 0 0 0 2px var(--color-focus-ring);
-    border-radius: var(--radius-md);
-  }
-  .vt-polaroids__line {
+
+  /* Outlined ghost title running behind the track. */
+  .vt-reel__ghost {
     position: absolute;
-    inset: 0 0 auto;
-    width: 100%;
-    height: calc(var(--spacing) * 40);
-    overflow: visible;
+    top: 50%;
+    left: 0;
+    z-index: 0;
+    color: transparent;
+    font-family: var(--font-label);
+    font-size: clamp(6rem, 18vw, 18rem);
+    font-style: italic;
+    font-weight: 700;
+    line-height: 0.8;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    -webkit-text-stroke: 1px color-mix(in srgb, var(--color-fg) 16%, transparent);
+    translate: calc(var(--progress, 0) * -45%) -50%;
     pointer-events: none;
   }
-  .vt-polaroids__line path {
-    stroke: color-mix(in srgb, var(--color-fg) 45%, transparent);
-    stroke-width: 1.5;
-    vector-effect: non-scaling-stroke;
-  }
-  .vt-polaroid {
-    position: absolute;
-    top: 0;
-    left: 50%;
+
+  .vt-reel__track {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    gap: calc(var(--spacing) * 4);
     margin: 0;
-    padding: calc(var(--spacing) * 2.5) calc(var(--spacing) * 2.5) calc(var(--spacing) * 3);
-    background: var(--vt-paper-photo);
-    color: var(--vt-paper-ink);
-    border-radius: 3px;
-    box-shadow:
-      0 18px 40px -18px color-mix(in srgb, black 70%, transparent),
-      0 2px 6px -2px color-mix(in srgb, black 40%, transparent);
-    transform-origin: 50% 0;
-    transform: translate(calc(-50% + var(--x)), calc(var(--y) + 6px)) rotate(var(--r))
-      scale(var(--s));
-    transition:
-      transform 900ms cubic-bezier(0.34, 1.56, 0.64, 1),
-      box-shadow var(--duration-base) var(--ease-out);
+    padding: calc(var(--spacing) * 2) var(--gutter);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: var(--gutter);
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    list-style: none;
+  }
+  .vt-reel__track::-webkit-scrollbar {
+    display: none;
+  }
+  .vt-reel__track:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: -2px;
+  }
+  .vt-reel[data-pinned] .vt-reel__track {
+    gap: calc(var(--spacing) * 6);
+    padding-inline: max(var(--gutter), calc((100vw - var(--container-content, 77.5rem)) / 2));
+    overflow: visible;
+    scroll-snap-type: none;
     will-change: transform;
   }
-  .vt-polaroids[data-dragging] .vt-polaroid {
-    transition: transform 120ms linear;
+
+  /* Card = chamfer frame (vt-chamfer + vt-media from components.css): clip, hairline, fill. */
+  .vt-reel__card {
+    --vt-cut: var(--reel-cut);
+    --vt-bw: 1px;
+    --vt-border: color-mix(in srgb, var(--color-fg) 14%, transparent);
+    flex: none;
+    width: min(80vw, 22rem);
+    aspect-ratio: 3 / 4;
+    scroll-snap-align: start;
   }
-  .vt-polaroid:not([data-active]) {
-    cursor: pointer;
+  .vt-reel__card[data-active] {
+    --vt-bw: 2px;
+    --vt-border: var(--color-accent);
   }
-  .vt-polaroid[data-active] {
-    box-shadow:
-      0 30px 60px -22px color-mix(in srgb, black 80%, transparent),
-      0 3px 10px -3px color-mix(in srgb, black 45%, transparent);
+  .vt-reel[data-pinned] .vt-reel__card {
+    width: clamp(18rem, 30vw, 30rem);
   }
-  .vt-polaroid__peg {
-    position: absolute;
-    top: calc(var(--spacing) * -3.5);
-    left: 50%;
-    width: 12px;
-    height: calc(var(--spacing) * 8);
-    translate: -50% 0;
-    border-radius: 2px;
-    background: linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--vt-peg) 80%, black),
-      var(--vt-peg) 45%,
-      color-mix(in srgb, var(--vt-peg) 70%, white)
-    );
-    box-shadow: 0 2px 3px color-mix(in srgb, black 40%, transparent);
-  }
-  .vt-polaroid__peg::after {
-    content: '';
-    position: absolute;
-    inset: 40% -2px auto;
-    height: 3px;
-    border-radius: 1px;
-    background: color-mix(in srgb, var(--vt-peg) 40%, white);
-  }
-  .vt-polaroid__photo {
-    position: relative;
-    display: block;
-    aspect-ratio: 4 / 5;
-    overflow: hidden;
-    background: color-mix(in srgb, var(--vt-paper-ink) 12%, transparent);
-  }
-  .vt-polaroid__photo img,
-  .vt-polaroid__photo video {
+  /* Upward wipe the first time a card enters (only with JS; never hides content without it). */
+  .vt-reel__media {
     position: absolute;
     inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    transition: translate 1100ms var(--reel-ease) calc(min(var(--i, 0), 4) * 90ms);
+  }
+  .vt-reel[data-enhanced] .vt-reel__card:not([data-in]) .vt-reel__media {
+    translate: 0 101%;
+  }
+  .vt-reel__media :is(img, video) {
+    filter: grayscale(0.85) contrast(1.12) brightness(0.9);
+    scale: 1.2;
+    translate: calc(var(--p, 0) * -7%) 0;
+    transition:
+      filter 600ms var(--reel-ease),
+      scale 900ms var(--reel-ease);
+  }
+  .vt-reel__card:is([data-active], :hover) .vt-reel__media :is(img, video) {
+    filter: none;
+    scale: 1.26;
+  }
+  /* Dark fade under the caption. */
+  .vt-reel__shade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      transparent 45%,
+      color-mix(in srgb, var(--vt-ink) 85%, transparent)
+    );
     pointer-events: none;
   }
-  .vt-polaroid__caption {
-    display: flex;
-    min-height: calc(var(--spacing) * 9);
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    padding-top: calc(var(--spacing) * 2.5);
-    text-align: center;
-  }
-  .vt-polaroid__title {
-    font-family: var(--font-public-serif);
-    font-size: 1.125rem;
+
+  .vt-reel__num {
+    position: absolute;
+    top: calc(var(--spacing) * 4);
+    left: calc(var(--spacing) * 5);
+    z-index: 1;
+    color: var(--color-accent-text);
+    font-family: var(--font-label);
+    font-size: clamp(2.5rem, 4vw, 4rem);
     font-style: italic;
-    line-height: 1.15;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    text-shadow: 0 2px 18px color-mix(in srgb, var(--vt-ink) 60%, transparent);
   }
-  .vt-polaroid__text {
-    font-size: 0.75rem;
-    line-height: 1.35;
+  .vt-reel__caption {
+    position: absolute;
+    right: calc(var(--spacing) * 5);
+    bottom: calc(var(--spacing) * 5);
+    left: calc(var(--spacing) * 5);
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 1.5);
+    color: var(--vt-paper);
+    translate: 0 calc(var(--spacing) * 3);
     opacity: 0.75;
+    transition:
+      translate 600ms var(--reel-ease),
+      opacity 600ms var(--reel-ease);
   }
-  .vt-polaroids__nav {
+  .vt-reel__card[data-active] .vt-reel__caption,
+  .vt-reel__card:hover .vt-reel__caption {
+    translate: 0 0;
+    opacity: 1;
+  }
+  .vt-reel__title {
+    font-family: var(--font-label);
+    font-size: clamp(1.5rem, 2.2vw, 2.25rem);
+    font-style: italic;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+  }
+  .vt-reel__text {
+    color: color-mix(in srgb, var(--vt-paper) 78%, transparent);
+    font-size: var(--text-body-sm);
+    line-height: 1.5;
+  }
+
+  /* Counter · progress bar · arrows */
+  .vt-reel__hud {
+    position: relative;
+    z-index: 1;
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: calc(var(--spacing) * 5);
-    margin-top: calc(var(--spacing) * 4);
+    width: 100%;
+    max-width: var(--container-content, 77.5rem);
+    margin-inline: auto;
+    padding-inline: var(--gutter);
   }
-  .vt-polaroids__btn {
-    display: inline-grid;
+  .vt-reel__count {
+    min-width: 7ch;
+    color: var(--color-fg);
+    font-family: var(--font-label);
+    font-size: var(--text-body-lg);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.14em;
+  }
+  .vt-reel__bar {
+    position: relative;
+    flex: 1;
+    height: 2px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--color-fg) 14%, transparent);
+  }
+  .vt-reel__bar > span {
+    position: absolute;
+    inset: 0;
+    background: var(--color-accent);
+    box-shadow: 0 0 12px var(--color-accent);
+    transform-origin: left;
+    scale: var(--progress, 0) 1;
+  }
+  .vt-reel__nav {
+    display: flex;
+    gap: calc(var(--spacing) * 2);
+  }
+  .vt-reel__btn {
+    --vt-cut: var(--chamfer-xs);
+    --vt-bw: 1px;
+    --vt-border: var(--color-border-strong);
+    display: grid;
     width: calc(var(--spacing) * 12);
     height: calc(var(--spacing) * 12);
     place-items: center;
-    border: var(--border-hairline) solid var(--color-border-strong);
-    border-radius: var(--radius-pill);
     color: var(--color-fg);
-    transition:
-      background-color var(--duration-micro) var(--ease-out),
-      color var(--duration-micro) var(--ease-out);
+    transition: color var(--duration-short) var(--ease-out);
   }
-  .vt-polaroids__btn:hover {
-    background: var(--color-fg);
-    color: var(--color-bg);
+  .vt-reel__btn:hover {
+    --vt-border: var(--color-accent);
+    --vt-fill: var(--color-accent);
+    color: var(--color-on-accent);
   }
-  .vt-polaroids__btn:focus-visible {
+  .vt-reel__btn:focus-visible {
     outline: 2px solid var(--color-focus-ring);
     outline-offset: 2px;
   }
-  .vt-polaroids__count {
-    min-width: 5ch;
-    color: var(--color-fg-muted);
-    font-size: var(--text-body-sm);
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.12em;
-    text-align: center;
-  }
-  .vt-polaroids[data-reduced] .vt-polaroid,
-  .vt-polaroids[data-reduced][data-dragging] .vt-polaroid {
-    transition: none;
-  }
+
   @media (prefers-reduced-motion: reduce) {
-    .vt-polaroid {
+    .vt-reel__ghost {
+      translate: 0 -50%;
+    }
+    .vt-reel__media,
+    .vt-reel__media :is(img, video),
+    .vt-reel__caption,
+    .vt-reel[data-enhanced] .vt-reel__card:not([data-in]) .vt-reel__media {
       transition: none;
+      translate: none;
     }
   }
 }

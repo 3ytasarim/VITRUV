@@ -129,7 +129,7 @@ const CONTENT: { [T in (typeof WEBSITE_SECTION_TYPES)[number]]: PublicSectionCon
     items: [
       {
         id: 'foto-1',
-        title: 'Polaroid-T',
+        title: 'Foto-T',
         media: {
           desktop: {
             assetId: '00000000-0000-4000-8000-000000000077',
