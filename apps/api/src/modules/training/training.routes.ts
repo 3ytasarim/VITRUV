@@ -6,6 +6,7 @@ import {
   createSectionRequestSchema,
   exerciseListQuerySchema,
   reorderRequestSchema,
+  saveClientPlanRequestSchema,
   updateAssignmentRequestSchema,
   updateDayRequestSchema,
   updateExerciseRequestSchema,
@@ -29,6 +30,7 @@ import {
   updateExercise,
   type TrainingDeps,
 } from './exercises.service';
+import * as plan from './plan.service';
 import * as programs from './programs.service';
 
 const idParam = z.object({ id: z.uuid() });
@@ -96,6 +98,26 @@ export function adminTrainingRoutes(deps: TrainingDeps) {
         c.json(await setExerciseActive(deps, actorOf(c), c.req.valid('param').id, active)),
     );
   }
+
+  // ---- dated client plan (flat list: exercise + date + note; saved as a whole)
+  r.get('/clients/:clientId/plan', read, validate('param', clientParam), async (c) =>
+    c.json(await plan.clientPlan(deps, actorOf(c), c.req.valid('param').clientId)),
+  );
+  r.put(
+    '/clients/:clientId/plan',
+    update,
+    validate('param', clientParam),
+    validate('json', saveClientPlanRequestSchema),
+    async (c) =>
+      c.json(
+        await plan.saveClientPlan(
+          deps,
+          actorOf(c),
+          c.req.valid('param').clientId,
+          c.req.valid('json'),
+        ),
+      ),
+  );
 
   // ---- programs
   r.get('/clients/:clientId/programs', read, validate('param', clientParam), async (c) =>
@@ -356,6 +378,9 @@ export function clientTrainingRoutes(deps: TrainingDeps) {
   const r = new Hono<AppEnv>();
   r.get('/active', requirePermission('training.self.read'), async (c) =>
     c.json(await programs.clientActiveProgram(deps, actorOf(c))),
+  );
+  r.get('/plan', requirePermission('training.self.read'), async (c) =>
+    c.json(await plan.ownPlan(deps, actorOf(c))),
   );
   return r;
 }

@@ -396,3 +396,58 @@ export const exerciseMediaUsageSchema = z.object({
   active: z.boolean(),
 });
 export type ExerciseMediaUsage = z.infer<typeof exerciseMediaUsageSchema>;
+
+// ---------------------------------------------------------------- dated client plan
+
+/** Most items one plan save may contain. */
+export const CLIENT_PLAN_MAX_ITEMS = 300;
+export const CLIENT_PLAN_NOTE_MAX = 1000;
+
+/**
+ * One planned exercise as the coach edits it (order = position in the list): a period from
+ * `scheduledOn` to `endsOn` (inclusive; omitted/null = that single day).
+ */
+export const clientPlanItemInputSchema = z
+  .object({
+    exerciseId: z.uuid(),
+    scheduledOn: calendarDate,
+    endsOn: calendarDate.nullable().optional(),
+    note: z.string().trim().max(CLIENT_PLAN_NOTE_MAX).nullable().optional(),
+  })
+  .refine((item) => !item.endsOn || item.endsOn >= item.scheduledOn, {
+    path: ['endsOn'],
+    message: 'Das Enddatum liegt vor dem Startdatum.',
+  });
+export type ClientPlanItemInput = z.infer<typeof clientPlanItemInputSchema>;
+
+/** PUT /v1/admin/training/clients/:clientId/plan — replaces the client's whole plan. */
+export const saveClientPlanRequestSchema = z.object({
+  items: z.array(clientPlanItemInputSchema).max(CLIENT_PLAN_MAX_ITEMS),
+});
+export type SaveClientPlanRequest = z.infer<typeof saveClientPlanRequestSchema>;
+
+export const clientPlanItemSchema = z.object({
+  id: z.uuid(),
+  scheduledOn: calendarDate,
+  /** Last day of the period; null = single day. */
+  endsOn: calendarDate.nullable(),
+  note: z.string().nullable(),
+  exercise: z.object({
+    id: z.uuid(),
+    name: z.string(),
+    description: z.string().nullable(),
+    active: z.boolean(),
+    media: exerciseMediaSchema.nullable(),
+  }),
+});
+export type ClientPlanItem = z.infer<typeof clientPlanItemSchema>;
+
+/**
+ * GET (admin and client) — items sorted by date, then by the coach's order. `updatedAt` is the
+ * last save (null while the plan is empty and was never saved).
+ */
+export const clientPlanSchema = z.object({
+  items: z.array(clientPlanItemSchema),
+  updatedAt: isoDate.nullable(),
+});
+export type ClientPlan = z.infer<typeof clientPlanSchema>;

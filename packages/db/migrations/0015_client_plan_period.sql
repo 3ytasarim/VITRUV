@@ -1,0 +1,2 @@
+ALTER TABLE "client_plan_items" ADD COLUMN "ends_on" date;--> statement-breakpoint
+ALTER TABLE "client_plan_items" ADD CONSTRAINT "client_plan_items_period" CHECK ("client_plan_items"."ends_on" is null or "client_plan_items"."ends_on" >= "client_plan_items"."scheduled_on");

@@ -140,26 +140,39 @@ describe('exercise library pages', () => {
 });
 
 describe('client training tab', () => {
-  it('groups programs by lifecycle and offers "new draft"', async () => {
+  it('shows the dated plan editor with the exercise library — no program screens', async () => {
     routes({
-      '/v1/admin/training/clients/': () =>
+      [`/v1/admin/training/clients/${uuid(900)}/plan`]: () =>
         reply(200, {
           items: [
-            summary(1, 'Aktueller Plan', 'ACTIVE'),
-            summary(2, 'Nächster Block', 'DRAFT'),
-            summary(3, 'Alter Block', 'ARCHIVED'),
+            {
+              id: uuid(301),
+              scheduledOn: '2026-11-02',
+              endsOn: '2026-11-08',
+              note: 'Langsam runter',
+              exercise: {
+                id: uuid(401),
+                name: 'Kniebeuge',
+                description: null,
+                active: true,
+                media: null,
+              },
+            },
           ],
+          updatedAt: '2026-10-19T10:00:00.000Z',
         }),
+      '/v1/admin/training/exercises': () => reply(200, { items: [] }),
     });
     const { default: Page } = await import('./(shell)/kunden/[id]/training/page');
-    const markup = await html(
-      Page({ params: Promise.resolve({ id: uuid(900) }), searchParams: Promise.resolve({}) }),
-    );
-    expect(markup.indexOf('Aktiver Plan')).toBeLessThan(markup.indexOf('Entwürfe'));
-    expect(markup.indexOf('Entwürfe')).toBeLessThan(markup.indexOf('Abgeschlossen und archiviert'));
-    expect(markup).toContain(`href="/admin/kunden/${uuid(900)}/training/${uuid(201)}"`);
-    expect(markup).toContain('2 Wochen · 7 Übungen');
-    expect(markup).toContain('Plan als Entwurf anlegen');
+    const markup = await html(Page({ params: Promise.resolve({ id: uuid(900) }) }));
+    expect(markup).toContain('Trainingsplan mit Datum');
+    expect(markup).toContain('Kniebeuge');
+    expect(markup).toContain('Langsam runter');
+    expect(markup).toContain('2026-11-02');
+    expect(markup).not.toContain('Entwürfe');
+    expect(markup).not.toContain('Neuer Trainingsplan');
+    // no earlier sessions → no history block
+    expect(markup).not.toContain('Trainingsverlauf');
   });
 
   it('shows read-only workout summaries (snapshot values) with status, duration and counts', async () => {
@@ -196,13 +209,11 @@ describe('client training tab', () => {
             }),
           ],
         }),
-      '/v1/admin/training/clients/': () =>
-        reply(200, { items: [summary(1, 'Aktueller Plan', 'ACTIVE')] }),
+      [`/v1/admin/training/clients/${uuid(900)}/plan`]: () =>
+        reply(200, { items: [], updatedAt: null }),
     });
     const { default: Page } = await import('./(shell)/kunden/[id]/training/page');
-    const markup = await html(
-      Page({ params: Promise.resolve({ id: uuid(900) }), searchParams: Promise.resolve({}) }),
-    );
+    const markup = await html(Page({ params: Promise.resolve({ id: uuid(900) }) }));
     expect(markup).toContain('Trainingsverlauf');
     expect(markup).toContain('Woche 1 · Tag 2 · Oberkörper A');
     expect(markup).toContain('Läuft');
@@ -216,9 +227,9 @@ describe('client training tab', () => {
   it('a client outside the coach scope is a 404 page (API 404)', async () => {
     routes({});
     const { default: Page } = await import('./(shell)/kunden/[id]/training/page');
-    await expect(
-      html(Page({ params: Promise.resolve({ id: uuid(901) }), searchParams: Promise.resolve({}) })),
-    ).rejects.toThrow('NOT_FOUND');
+    await expect(html(Page({ params: Promise.resolve({ id: uuid(901) }) }))).rejects.toThrow(
+      'NOT_FOUND',
+    );
   });
 });
 

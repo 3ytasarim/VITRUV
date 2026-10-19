@@ -180,3 +180,22 @@ individually (high volume; `updated_at` is maintained).
   WORKOUT-ARCHITECTURE §8); videos as PRIVATE media.
 - Retired programs are kept (ARCHIVED/COMPLETED), so history stays referenceable.
 - Flutter consumes `/v1/client/training/active` and `/v1/client/workouts` (Sprint 7 UI).
+
+## Dated client plan (2026-10-19)
+
+A simpler alternative to week/day programs, requested by the owner: the coach drags exercises
+from the shared library onto a client's plan, gives each a **period (from – to)** and a **note the
+client sees**, and saves the whole list.
+
+- Table `client_plan_items` (migration 0013, additive): `client_user_id` (RESTRICT),
+  `exercise_id` (RESTRICT), `scheduled_on date` (first day), `ends_on date` (last day, null = single
+  day, ≥ scheduled_on; migration 0015), `note ≤ 1000`, `sort_order`, `created_by_user_id`.
+- API: `GET|PUT /v1/admin/training/clients/:clientId/plan` (`training.programs.read|update`,
+  scoped with `clientAccessible()` — out of scope = 404); `PUT` replaces the list in one
+  transaction under a per-client advisory lock and records `CLIENT_PLAN_SAVED` (migration 0014).
+  New entries must reference an active exercise; already planned inactive ones may stay.
+  `GET /v1/client/training/plan` (`training.self.read`) — self context only.
+- Web: `PlanEditor` on the client's Training tab (library ↔ plan, drag & drop or "+", date +
+  note per row, explicit "Speichern", unsaved-changes guard); portal: `DatedPlan` on
+  /mein-training/plan and the "Heute / Als Nächstes geplant" card on the dashboard.
+- No workout sessions are created from these entries (programs keep that role).

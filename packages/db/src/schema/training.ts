@@ -244,9 +244,57 @@ export const trainingExerciseAssignments = pgTable(
   ],
 );
 
+/**
+ * Dated exercise plan of ONE client (owner request 2026-10-19): the coach drags exercises from
+ * the library onto the plan, sets a date and a note the client sees, and saves the whole list.
+ * Simple alternative to the week/day programs — no snapshot, no sessions. Exercises are
+ * and clients (never hard-deleted) are protected by RESTRICT.
+ */
+export const clientPlanItems = pgTable(
+  'client_plan_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    clientUserId: uuid('client_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    exerciseId: uuid('exercise_id')
+      .notNull()
+      .references(() => exercises.id, { onDelete: 'restrict' }),
+    /** First day of the period. */
+    scheduledOn: date('scheduled_on').notNull(),
+    /** Last day of the period (inclusive); null = a single day (additive 2026-10-19). */
+    endsOn: date('ends_on'),
+    /** Shown to the client next to the exercise. */
+    note: text('note'),
+    sortOrder: integer('sort_order').notNull(),
+    createdByUserId: uuid('created_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    ...timestamps,
+  },
+  (table) => [
+    index('client_plan_items_client_date_idx').on(
+      table.clientUserId,
+      table.scheduledOn,
+      table.sortOrder,
+    ),
+    index('client_plan_items_exercise_idx').on(table.exerciseId),
+    check(
+      'client_plan_items_note_length',
+      sql`${table.note} is null or char_length(${table.note}) <= 1000`,
+    ),
+    check('client_plan_items_sort_nonnegative', sql`${table.sortOrder} >= 0`),
+    check(
+      'client_plan_items_period',
+      sql`${table.endsOn} is null or ${table.endsOn} >= ${table.scheduledOn}`,
+    ),
+  ],
+);
+
 export type Exercise = typeof exercises.$inferSelect;
 export type TrainingProgram = typeof trainingPrograms.$inferSelect;
 export type TrainingWeek = typeof trainingWeeks.$inferSelect;
 export type TrainingDay = typeof trainingDays.$inferSelect;
 export type TrainingSection = typeof trainingSections.$inferSelect;
 export type TrainingExerciseAssignment = typeof trainingExerciseAssignments.$inferSelect;
+export type ClientPlanItem = typeof clientPlanItems.$inferSelect;

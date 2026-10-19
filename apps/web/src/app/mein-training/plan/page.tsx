@@ -2,6 +2,7 @@ import { Check, ChevronRight } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ErrorState } from '@/components/admin/states';
+import { DatedPlan } from '@/components/portal/dated-plan';
 import { Badge } from '@/components/ui';
 import { PORTAL_PATH } from '@/lib/auth/cookies';
 import { portalApi } from '@/lib/portal-api';
@@ -10,11 +11,30 @@ import { WEEKDAY_LABEL } from '@/lib/training-format';
 
 export const metadata: Metadata = { title: 'Trainingsplan' };
 
-/** The ACTIVE weekly plan: every week (current first) with its days; done days are ticked. */
+/**
+ * The coach's dated plan (exercise + date + note, upcoming first) and, if there is one, the
+ * ACTIVE weekly plan: every week (current first) with its days; done days are ticked.
+ */
 export default async function PortalPlanPage() {
-  const [active, history] = await Promise.all([portalApi.activeProgram(), portalApi.history(100)]);
+  const [active, history, dated] = await Promise.all([
+    portalApi.activeProgram(),
+    portalApi.history(100),
+    portalApi.plan(),
+  ]);
   if (!active.ok) return <ErrorState message="Dein Trainingsplan konnte nicht geladen werden." />;
   const program = active.data.program;
+  const datedPlan = dated.ok && dated.data.items.length > 0 ? dated.data : null;
+  if (!program && datedPlan) {
+    return (
+      <>
+        <div className="vt-phead">
+          <p className="type-eyebrow text-accent-text">Trainingsplan</p>
+          <h1 className="vt-phead__title">Deine Übungen</h1>
+        </div>
+        <DatedPlan plan={datedPlan} />
+      </>
+    );
+  }
   if (!program) {
     return (
       <div className="vt-pcard">
@@ -43,6 +63,7 @@ export default async function PortalPlanPage() {
           </p>
         )}
       </div>
+      {datedPlan && <DatedPlan plan={datedPlan} />}
       {weeks.map((week, wi) => {
         const doneCount = week.days.filter((d) => done.has(d.id)).length;
         return (

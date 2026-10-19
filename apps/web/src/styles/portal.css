@@ -876,3 +876,50 @@
     outline-offset: 3px;
   }
 }
+
+/* ---- Dated plan (coach: exercise + date + note) -------------------------------------------- */
+@layer components {
+  .vt-dplan {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .vt-dplan__item {
+    display: grid;
+    gap: calc(var(--spacing) * 3);
+  }
+  @media (min-width: 640px) {
+    .vt-dplan__item:has(.vt-dplan__media) {
+      grid-template-columns: minmax(0, 14rem) minmax(0, 1fr);
+      align-items: start;
+    }
+  }
+  .vt-dplan__media {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    border-radius: var(--radius-md);
+    background: var(--color-surface-sunken);
+    object-fit: cover;
+  }
+  .vt-dplan__note {
+    display: flex;
+    gap: calc(var(--spacing) * 2);
+    border-left: 2px solid var(--color-accent);
+    padding: calc(var(--spacing) * 1) calc(var(--spacing) * 3);
+    color: var(--color-fg);
+    font-size: var(--text-body-sm);
+  }
+  .vt-dplan__note > svg {
+    margin-top: 0.2em;
+    color: var(--color-accent-text);
+  }
+  .vt-pcard[data-today] {
+    border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  }
+  .vt-dplan__past > summary {
+    cursor: pointer;
+  }
+}

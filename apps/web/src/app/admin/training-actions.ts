@@ -7,6 +7,7 @@ import {
   createProgramRequestSchema,
   createSectionRequestSchema,
   reorderRequestSchema,
+  saveClientPlanRequestSchema,
   updateAssignmentRequestSchema,
   updateDayRequestSchema,
   updateExerciseRequestSchema,
@@ -17,6 +18,7 @@ import {
   type AdminExercise,
   type AdminMediaAsset,
   type AdminProgram,
+  type ClientPlan,
 } from '@vitruv/contracts';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -288,4 +290,22 @@ export async function deleteProgramAction(
   if (!result.ok) return failure(result);
   revalidatePath(`/admin/kunden/${clientId}/training`);
   redirect(`/admin/kunden/${clientId}/training?hinweis=geloescht`);
+}
+
+// ---------------------------------------------------------------- dated client plan
+
+/** Saves the client's whole plan (exercise + date + note per row, in list order). */
+export async function saveClientPlanAction(
+  clientId: string,
+  items: unknown,
+): Promise<TrainingResult<ClientPlan>> {
+  const c = id.safeParse(clientId);
+  const body = saveClientPlanRequestSchema.safeParse({ items });
+  if (!c.success) return invalid([{ path: ['form'], message: 'Ungültige Anfrage.' }]);
+  if (!body.success) return invalid(body.error.issues);
+  const result = await trainingApi.savePlan(c.data, body.data);
+  if (!result.ok) return failure(result);
+  revalidatePath(`/admin/kunden/${c.data}/training`);
+  revalidatePath('/mein-training', 'layout');
+  return { ok: true, data: result.data };
 }

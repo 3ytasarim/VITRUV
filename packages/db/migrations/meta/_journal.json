@@ -92,6 +92,27 @@
       "when": 1792364721490,
       "tag": "0012_user_username",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792429529455,
+      "tag": "0013_client_plan_items",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792429612376,
+      "tag": "0014_client_plan_event",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1792434089833,
+      "tag": "0015_client_plan_period",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,6 @@
 import 'server-only';
 import {
+  clientPlanSchema,
   clientActiveNutritionResponseSchema,
   clientActiveTrainingResponseSchema,
   clientSelfProfileSchema,
@@ -30,6 +31,8 @@ export const portalApi = {
   /** The ACTIVE meal plan (PDF metadata; the file is fetched through the portal proxy). */
   nutrition: () => adminFetch(`${C}/nutrition/active`, clientActiveNutritionResponseSchema),
   activeProgram: () => adminFetch(`${C}/training/active`, clientActiveTrainingResponseSchema),
+  /** The dated exercise plan (exercise + date + coach note). */
+  plan: () => adminFetch(`${C}/training/plan`, clientPlanSchema),
   currentWorkout: () => adminFetch(`${W}/current`, currentWorkoutResponseSchema),
   history: (limit = 10) => adminFetch(`${W}?limit=${limit}`, workoutSessionSummaryListSchema),
   workout: (sessionId: string) => adminFetch(`${W}/${sessionId}`, workoutSessionSchema),

@@ -15,6 +15,12 @@ import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
 import { ErrorState } from '@/components/admin/states';
 import { CountUp } from '@/components/portal/count-up';
+import {
+  currentOrNext,
+  groupByPeriod,
+  periodLabel,
+  todayIso,
+} from '@/components/portal/dated-plan';
 import { Greeting } from '@/components/portal/greeting';
 import { SessionList } from '@/components/portal/session-list';
 import { StartWorkoutButton } from '@/components/portal/start-workout-button';
@@ -90,16 +96,23 @@ function Kpi({
  * DTOs only (profile, ACTIVE plan, running workout, own session summaries).
  */
 export default async function PortalDashboardPage() {
-  const [profile, active, current, history, nutrition] = await Promise.all([
+  const [profile, active, current, history, nutrition, dated] = await Promise.all([
     portalApi.me(),
     portalApi.activeProgram(),
     portalApi.currentWorkout(),
     portalApi.history(100),
     portalApi.nutrition(),
+    portalApi.plan(),
   ]);
   const mealPlan = nutrition.ok ? nutrition.data.document : null;
   if (!active.ok) return <ErrorState message="Dein Trainingsplan konnte nicht geladen werden." />;
   const program = active.data.program;
+  // the coach's dated plan: what runs today, else the next period
+  const planNow = dated.ok
+    ? currentOrNext(groupByPeriod(dated.data.items), todayIso())
+    : { now: false, periods: [] };
+  const plannedItems = planNow.periods.flatMap((p) => p.items);
+  const nextPlanned = plannedItems.length > 0 ? planNow : null;
   const running = current.ok ? current.data.session : null;
   const items = history.ok ? history.data.items : [];
   const now = new Date();
@@ -113,15 +126,18 @@ export default async function PortalDashboardPage() {
   const name = profile.ok ? `${profile.data.firstName} ${profile.data.lastName}`.trim() : '';
   const maxBar = Math.max(1, ...stats.perWeek);
 
-  const subtitle = !program
-    ? 'Dein Coach stellt gerade deinen Plan zusammen – sobald er freigegeben ist, findest du ihn hier.'
-    : running
-      ? `Dein Training „${running.dayTitle}“ läuft noch – mach dort weiter, wo du aufgehört hast.`
-      : planned > 0 && doneThisWeek === planned
-        ? 'Diese Woche ist geschafft. Stark – gönn dir die Erholung.'
-        : next
-          ? `Als Nächstes steht „${next.title}“ an. ${doneThisWeek} von ${planned} Einheiten dieser Woche sind geschafft.`
-          : 'Schön, dass du da bist.';
+  const subtitle =
+    !program && nextPlanned
+      ? `Dein Coach hat ${plannedItems.length} ${plannedItems.length === 1 ? 'Übung' : 'Übungen'} für dich geplant.`
+      : !program
+        ? 'Dein Coach stellt gerade deinen Plan zusammen – sobald er freigegeben ist, findest du ihn hier.'
+        : running
+          ? `Dein Training „${running.dayTitle}“ läuft noch – mach dort weiter, wo du aufgehört hast.`
+          : planned > 0 && doneThisWeek === planned
+            ? 'Diese Woche ist geschafft. Stark – gönn dir die Erholung.'
+            : next
+              ? `Als Nächstes steht „${next.title}“ an. ${doneThisWeek} von ${planned} Einheiten dieser Woche sind geschafft.`
+              : 'Schön, dass du da bist.';
 
   return (
     <>
@@ -180,6 +196,44 @@ export default async function PortalDashboardPage() {
             Fortsetzen <ArrowRight aria-hidden className="size-4" />
           </span>
         </Link>
+      )}
+
+      {/* ---- Next dated plan day ------------------------------------------------------------ */}
+      {nextPlanned && (
+        <section
+          className="vt-pcard vt-rise"
+          aria-labelledby="dated-next"
+          style={{ '--i': 1 } as CSSProperties}
+        >
+          <div className="vt-pcard__head">
+            <h2 id="dated-next" className="vt-pcard__title">
+              {nextPlanned.now ? 'Aktuell geplant' : 'Als Nächstes geplant'}
+            </h2>
+          </div>
+          <ul className="flex flex-col gap-3">
+            {nextPlanned.periods.flatMap((period) =>
+              period.items.map((item) => (
+                <li key={item.id} className="flex min-w-0 flex-col gap-1">
+                  <span className="type-body font-semibold break-words">{item.exercise.name}</span>
+                  <span className="type-caption text-fg-subtle">
+                    {periodLabel(period.from, period.to)}
+                  </span>
+                  {item.note && (
+                    <span className="type-body-sm whitespace-pre-line text-fg-muted">
+                      {item.note}
+                    </span>
+                  )}
+                </li>
+              )),
+            )}
+          </ul>
+          <Link
+            href={`${PORTAL_PATH}/plan`}
+            className="type-body-sm mt-4 inline-flex items-center gap-1 font-semibold text-accent-text"
+          >
+            Ganzer Plan <ArrowRight aria-hidden className="size-4" />
+          </Link>
+        </section>
       )}
 
       {/* ---- KPIs ---------------------------------------------------------------------------- */}

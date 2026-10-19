@@ -1,5 +1,7 @@
 import 'server-only';
 import {
+  clientPlanSchema,
+  type SaveClientPlanRequest,
   adminExerciseListSchema,
   adminExerciseSchema,
   adminMediaListSchema,
@@ -50,6 +52,10 @@ export const trainingApi = {
   media: (kind?: 'IMAGE' | 'VIDEO') =>
     adminFetch(`${T}/media${kind ? `?kind=${kind}` : ''}`, adminMediaListSchema),
 
+  /** Dated exercise plan of a client (flat list, saved as a whole). */
+  plan: (clientId: string) => adminFetch(`${T}/clients/${clientId}/plan`, clientPlanSchema),
+  savePlan: (clientId: string, body: SaveClientPlanRequest) =>
+    adminFetch(`${T}/clients/${clientId}/plan`, clientPlanSchema, { method: 'PUT', body }),
   programs: (clientId: string) =>
     adminFetch(`${T}/clients/${clientId}/programs`, adminProgramListSchema),
   program: (id: string) => adminFetch(`${T}/programs/${id}`, adminProgramSchema),
