@@ -1,0 +1,43 @@
+{
+  "name": "@vitruv/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "VITRUV backend API (Hono on Node.js) — shared by the web app and the Flutter app",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/server.ts",
+    "build": "tsup",
+    "start": "node --env-file-if-exists=../../.env dist/server.js",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:integration": "vitest run -c vitest.integration.config.ts",
+    "seed:website": "tsx --env-file-if-exists=../../.env scripts/seed-website.ts",
+    "auth:bootstrap-admin": "tsx --env-file-if-exists=../../.env scripts/auth-bootstrap-admin.ts",
+    "auth:set-password": "tsx --env-file-if-exists=../../.env scripts/auth-set-password.ts",
+    "auth:cleanup": "tsx --env-file-if-exists=../../.env scripts/auth-cleanup.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.5",
+    "@hono/zod-validator": "^0.9.1",
+    "@node-rs/argon2": "^2.2.2",
+    "@vitruv/contracts": "workspace:*",
+    "@vitruv/db": "workspace:*",
+    "@vitruv/shared": "workspace:*",
+    "drizzle-orm": "^0.45.4",
+    "hono": "^4.13.13",
+    "pg": "^8.23.1",
+    "pino": "^10.4.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@vitruv/config": "workspace:*",
+    "eslint": "^9.39.5",
+    "pino-pretty": "^13.2.0",
+    "tsup": "^8.5.0",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.4"
+  }
+}
