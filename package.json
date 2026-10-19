@@ -1,0 +1,40 @@
+{
+  "name": "vitruv",
+  "private": true,
+  "description": "VITRUV coaching platform — monorepo (web, api, shared packages; Flutter app in apps/mobile)",
+  "packageManager": "pnpm@10.34.5",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @vitruv/web --filter @vitruv/api dev",
+    "dev:web": "pnpm --filter @vitruv/web dev",
+    "dev:api": "pnpm --filter @vitruv/api dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:integration": "pnpm --filter @vitruv/api --filter @vitruv/db test:integration",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "pnpm --filter @vitruv/db generate",
+    "db:check": "pnpm --filter @vitruv/db check",
+    "db:migrate": "pnpm --filter @vitruv/db migrate",
+    "db:inspect": "pnpm --filter @vitruv/db inspect",
+    "mobile:analyze": "cd apps/mobile && flutter analyze",
+    "mobile:test": "cd apps/mobile && flutter test"
+  },
+  "devDependencies": {
+    "@vitruv/config": "workspace:*",
+    "prettier": "^3.9.10",
+    "typescript": "~6.0.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "unrs-resolver"
+    ]
+  }
+}

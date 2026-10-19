@@ -1,0 +1,22 @@
+{
+  "name": "@vitruv/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared TypeScript, ESLint and Prettier configuration",
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./tsconfig.node.json": "./tsconfig.node.json",
+    "./eslint/base": "./eslint/base.js",
+    "./prettier": "./prettier.json",
+    "./vitest/load-root-env": "./vitest/load-root-env.ts"
+  },
+  "dependencies": {
+    "@eslint/js": "^9.39.5",
+    "globals": "^17.13.0",
+    "typescript-eslint": "^8.71.2"
+  },
+  "peerDependencies": {
+    "eslint": "^9"
+  }
+}

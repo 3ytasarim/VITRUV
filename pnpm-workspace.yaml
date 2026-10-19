@@ -1,0 +1,5 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+  # apps/mobile is a Flutter/Dart project (no package.json) and is not a JS workspace.
+  - '!apps/mobile'
