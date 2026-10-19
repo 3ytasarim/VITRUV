@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { Permission } from '@vitruv/shared';
 import { cx } from '@/components/ui';
+import { COACH_TEAM_ENABLED } from '@/lib/team';
 
 interface NavItem {
   href?: string;
@@ -56,7 +57,16 @@ const GROUPS: {
         icon: Dumbbell,
         permission: 'training.exercises.read',
       },
-      { href: '/admin/coaches', label: 'Coaches', icon: UserCog, permission: 'coaches.read' },
+      ...(COACH_TEAM_ENABLED
+        ? [
+            {
+              href: '/admin/coaches',
+              label: 'Coaches',
+              icon: UserCog,
+              permission: 'coaches.read' as const,
+            },
+          ]
+        : []),
     ],
   },
   {

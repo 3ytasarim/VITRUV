@@ -410,10 +410,10 @@ describe('admin navigation', () => {
     expect(markup).toContain('href="/admin/training/uebungen"');
   });
 
-  it('shows only permitted areas: ADMIN sees coaches, a COACH does not', () => {
+  it('shows only permitted areas; the coach team is switched off (one coach)', () => {
     const admin = html(<AdminNav permissions={ADMIN} />);
     expect(admin).toContain('href="/admin/kunden"');
-    expect(admin).toContain('href="/admin/coaches"');
+    expect(admin).not.toContain('href="/admin/coaches"');
     const coach = html(<AdminNav permissions={COACH} />);
     expect(coach).toContain('href="/admin/kunden"');
     expect(coach).not.toContain('href="/admin/coaches"');

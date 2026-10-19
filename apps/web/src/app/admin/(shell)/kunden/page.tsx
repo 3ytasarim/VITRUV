@@ -9,6 +9,7 @@ import { AdminPageHeader, EmptyState, ErrorState } from '@/components/admin/stat
 import { Button, ButtonLink, Card } from '@/components/ui';
 import { adminApi } from '@/lib/admin-api';
 import { requirePagePermission } from '@/lib/auth/session';
+import { COACH_TEAM_ENABLED } from '@/lib/team';
 
 export const metadata: Metadata = { title: 'Kund:innen' };
 
@@ -28,14 +29,14 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
     q: one(raw.q) || undefined,
     coachingStatus: one(raw.status) || undefined,
     activation: one(raw.aktivierung) || undefined,
-    coach: isAdmin ? one(raw.coach) || undefined : undefined,
+    coach: isAdmin && COACH_TEAM_ENABLED ? one(raw.coach) || undefined : undefined,
     page: one(raw.seite) || undefined,
     pageSize: 20,
   });
   const query = parsed.success ? parsed.data : { page: 1, pageSize: 20 };
   const [result, coaches] = await Promise.all([
     adminApi.clients(query),
-    isAdmin ? adminApi.coachOptions() : Promise.resolve(null),
+    isAdmin && COACH_TEAM_ENABLED ? adminApi.coachOptions() : Promise.resolve(null),
   ]);
   const filtered = Boolean(
     'q' in query && (query.q || query.coachingStatus || query.activation || query.coach),
@@ -58,7 +59,9 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
         title="Kund:innen"
         description={
           isAdmin
-            ? 'Alle Kund:innen mit Coach-Zuordnung, Coaching- und Kontostatus.'
+            ? COACH_TEAM_ENABLED
+              ? 'Alle Kund:innen mit Coach-Zuordnung, Coaching- und Kontostatus.'
+              : 'Alle Kund:innen mit Coaching- und Kontostatus.'
             : 'Deine zugeordneten Kund:innen.'
         }
         actions={
@@ -182,7 +185,11 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
           </p>
           <ul className="grid gap-3" aria-label="Kund:innen">
             {result.data.items.map((client) => (
-              <ClientRow key={client.id} client={client} showCoach={isAdmin} />
+              <ClientRow
+                key={client.id}
+                client={client}
+                showCoach={isAdmin && COACH_TEAM_ENABLED}
+              />
             ))}
           </ul>
           <Pagination

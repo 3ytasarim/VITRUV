@@ -6,6 +6,7 @@ import { Card } from '@/components/ui';
 import { adminApi } from '@/lib/admin-api';
 import { loadClient } from '@/lib/admin-data';
 import { requirePagePermission } from '@/lib/auth/session';
+import { COACH_TEAM_ENABLED } from '@/lib/team';
 
 export const metadata: Metadata = { title: 'Profil · Kund:in' };
 
@@ -16,7 +17,7 @@ export default async function ClientProfilePage({ params }: { params: Promise<{ 
   if (!result.ok) return null;
   const client = result.data;
   const canEdit = user.permissions.includes('clients.update');
-  const canAssign = user.permissions.includes('clients.assign');
+  const canAssign = COACH_TEAM_ENABLED && user.permissions.includes('clients.assign');
   const options = canAssign ? await adminApi.coachOptions() : null;
   return (
     <div className="grid gap-6">

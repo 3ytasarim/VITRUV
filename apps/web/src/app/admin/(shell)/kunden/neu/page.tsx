@@ -3,15 +3,17 @@ import { ClientCreateForm } from '@/components/admin/management/client-create-fo
 import { AdminPageHeader } from '@/components/admin/states';
 import { adminApi } from '@/lib/admin-api';
 import { requirePagePermission } from '@/lib/auth/session';
+import { COACH_TEAM_ENABLED } from '@/lib/team';
 
 export const metadata: Metadata = { title: 'Kund:in anlegen' };
 
 export default async function NewClientPage() {
   const user = await requirePagePermission('clients.create', '/admin/kunden/neu');
   // ADMIN chooses the coach; a COACH always creates for themselves (enforced by the API).
-  const options = user.permissions.includes('clients.assign')
-    ? await adminApi.coachOptions()
-    : null;
+  const options =
+    COACH_TEAM_ENABLED && user.permissions.includes('clients.assign')
+      ? await adminApi.coachOptions()
+      : null;
   return (
     <>
       <AdminPageHeader

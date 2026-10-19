@@ -8,10 +8,14 @@ import {
 } from '@/components/admin/management/labels';
 import { Card } from '@/components/ui';
 import { loadClient } from '@/lib/admin-data';
+import { COACH_TEAM_ENABLED } from '@/lib/team';
 
 export const metadata: Metadata = { title: 'Kund:in' };
 
-/** Overview: identity, coach, states and dates — no invented progress metrics before Training. */
+/**
+ * Overview: identity, states and dates (coach + coach history only with the coach team, see
+ * lib/team.ts) — no invented progress metrics.
+ */
 export default async function ClientOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const result = await loadClient(id);
@@ -20,8 +24,12 @@ export default async function ClientOverviewPage({ params }: { params: Promise<{
   const rows: [string, string][] = [
     ['E-Mail', client.email],
     ['Telefon', client.phone ?? '—'],
-    ['Coach', client.coach?.displayName ?? 'Ohne Coach'],
-    ['Zugeordnet seit', formatDate(client.assignedAt)],
+    ...(COACH_TEAM_ENABLED
+      ? ([
+          ['Coach', client.coach?.displayName ?? 'Ohne Coach'],
+          ['Zugeordnet seit', formatDate(client.assignedAt)],
+        ] as [string, string][])
+      : []),
     ['Coaching-Status', COACHING_LABEL[client.coachingStatus]],
     ['Konto', ACCOUNT_LABEL[client.account.status]],
     ['Aktivierung', ACTIVATION_LABEL[client.account.activation]],
@@ -49,27 +57,29 @@ export default async function ClientOverviewPage({ params }: { params: Promise<{
           Das Coaching ist abgeschlossen. Profil und Verlauf bleiben erhalten.
         </p>
       )}
-      <Card padding="md">
-        <h2 className="type-title mb-4">Coach-Verlauf</h2>
-        {client.assignments.length === 0 ? (
-          <p className="type-body-sm text-fg-muted">Bisher keinem Coach zugeordnet.</p>
-        ) : (
-          <ol className="grid gap-2">
-            {client.assignments.map((entry) => (
-              <li
-                key={`${entry.coach.id}-${entry.assignedAt}`}
-                className="type-body-sm flex flex-wrap gap-x-3"
-              >
-                <span className="text-fg">{entry.coach.displayName}</span>
-                <span className="text-fg-muted">
-                  {formatDate(entry.assignedAt)} –{' '}
-                  {entry.endedAt ? formatDate(entry.endedAt) : 'heute'}
-                </span>
-              </li>
-            ))}
-          </ol>
-        )}
-      </Card>
+      {COACH_TEAM_ENABLED && (
+        <Card padding="md">
+          <h2 className="type-title mb-4">Coach-Verlauf</h2>
+          {client.assignments.length === 0 ? (
+            <p className="type-body-sm text-fg-muted">Bisher keinem Coach zugeordnet.</p>
+          ) : (
+            <ol className="grid gap-2">
+              {client.assignments.map((entry) => (
+                <li
+                  key={`${entry.coach.id}-${entry.assignedAt}`}
+                  className="type-body-sm flex flex-wrap gap-x-3"
+                >
+                  <span className="text-fg">{entry.coach.displayName}</span>
+                  <span className="text-fg-muted">
+                    {formatDate(entry.assignedAt)} –{' '}
+                    {entry.endedAt ? formatDate(entry.endedAt) : 'heute'}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </Card>
+      )}
     </div>
   );
 }
