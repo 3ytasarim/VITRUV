@@ -94,8 +94,9 @@ export function MediaPickerGrid({
 
 /**
  * Media picker: Select media → library → choose → assign, or upload new media and assign it
- * directly. A native modal <dialog> (focus is trapped and Escape closes it), portalled to <body>:
- * pickers live inside editor forms and contain their own upload form, which must never be nested.
+ * directly. A native modal <dialog> (focus is trapped and Escape closes it), portalled out of the
+ * editor form (pickers contain their own upload form, which must never be nested) into the themed
+ * shell root (`[data-glass]` / `[data-surface]`) so it gets the same black glass colours and fonts.
  */
 export function MediaPicker({
   open,
@@ -213,7 +214,9 @@ export function MediaPicker({
         </div>
       )}
     </dialog>,
-    document.body,
+    document.querySelector('[data-glass]') ??
+      document.querySelector('[data-surface]') ??
+      document.body,
   );
 }
 
