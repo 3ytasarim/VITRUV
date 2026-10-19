@@ -1,0 +1,36 @@
+{
+  "name": "@vitruv/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Drizzle ORM schema, migrations and client for the existing Neon PostgreSQL database",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema/index.ts"
+  },
+  "scripts": {
+    "generate": "drizzle-kit generate",
+    "check": "drizzle-kit check",
+    "migrate": "tsx --env-file-if-exists=../../.env scripts/migrate.ts",
+    "inspect": "tsx --env-file-if-exists=../../.env scripts/inspect.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:integration": "vitest run -c vitest.integration.config.ts"
+  },
+  "dependencies": {
+    "@vitruv/shared": "workspace:*",
+    "drizzle-orm": "^0.45.4",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/pg": "^8.23.1",
+    "@vitruv/config": "workspace:*",
+    "drizzle-kit": "^0.31.11",
+    "eslint": "^9.39.5",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.4"
+  }
+}
