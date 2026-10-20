@@ -149,6 +149,12 @@ export const adminApi = {
       method: 'PUT',
       body: { status },
     }),
+  /** Staff sets/resets the client's password (204-like: returns the client detail). */
+  setClientPassword: (id: string, password: string) =>
+    adminFetch(`/v1/admin/clients/${id}/password`, adminClientDetailSchema, {
+      method: 'PUT',
+      body: { password },
+    }),
   clientActivation: (id: string) =>
     adminFetch(`/v1/admin/clients/${id}/activation`, activationResponseSchema, {
       method: 'POST',

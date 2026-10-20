@@ -10,7 +10,14 @@ import type {
   CreateCoachResponse,
 } from '@vitruv/contracts';
 import { schema, type DbExecutor } from '@vitruv/db';
-import { roleHasPermission, type CoachingStatus, type UserStatus } from '@vitruv/shared';
+import {
+  normalizeEmail,
+  roleHasPermission,
+  usernameFromName,
+  usernameWithSuffix,
+  type CoachingStatus,
+  type UserStatus,
+} from '@vitruv/shared';
 import {
   and,
   asc,
@@ -30,6 +37,7 @@ import type { Principal } from '../../auth/principal';
 import { AppError, PG_UNIQUE_VIOLATION, pgErrorCode } from '../../lib/errors';
 import type { Logger } from '../../lib/logger';
 import { recordEvent, revokeSessions } from '../auth/auth.service';
+import { hashPassword } from '../auth/password';
 import { issueActivation, revokeActivations } from './activation.service';
 
 /**
@@ -54,6 +62,20 @@ const emailTaken = () =>
   AppError.conflict('E-mail address already in use.', [
     { path: 'email', message: 'Diese E-Mail-Adresse wird bereits verwendet.' },
   ]);
+const usernameTaken = () =>
+  AppError.conflict('Username already in use.', [
+    { path: 'username', message: 'Dieser Benutzername ist bereits vergeben.' },
+  ]);
+const passwordLikeLogin = () =>
+  AppError.validation(
+    [
+      {
+        path: 'password',
+        message: 'Das Passwort darf nicht dem Benutzernamen oder der E-Mail entsprechen.',
+      },
+    ],
+    'Password rejected.',
+  );
 
 /** ADMIN sees every client; everyone else only their actively assigned clients. */
 const seesAllClients = (actor: Principal) => actor.role === 'ADMIN';
@@ -87,6 +109,7 @@ function clientSelect(db: DbExecutor) {
       user: {
         id: schema.users.id,
         email: schema.users.email,
+        username: schema.users.username,
         status: schema.users.status,
         passwordHash: schema.users.passwordHash,
         lastLoginAt: schema.users.lastLoginAt,
@@ -140,6 +163,7 @@ function toListItem(row: ClientRow, now: Date): AdminClientListItem {
     firstName: row.profile.firstName,
     lastName: row.profile.lastName,
     email: row.user.email,
+    username: row.user.username,
     coachingStatus: row.profile.coachingStatus,
     account: accountSummary(row.user, row.activationExpiresAt, now),
     coach: row.coachId && row.coachName ? { id: row.coachId, displayName: row.coachName } : null,
@@ -170,6 +194,7 @@ export async function listClients(
         ilike(schema.clientProfiles.firstName, pattern),
         ilike(schema.clientProfiles.lastName, pattern),
         ilike(schema.users.email, pattern),
+        ilike(schema.users.username, pattern),
         ilike(
           sql`${schema.clientProfiles.firstName} || ' ' || ${schema.clientProfiles.lastName}`,
           pattern,
@@ -301,13 +326,22 @@ async function requireAssignableCoach(db: DbExecutor, coachId: string) {
 
 async function insertAccount(
   db: DbExecutor,
-  values: { email: string; role: 'CLIENT' | 'COACH'; displayName: string },
+  values: {
+    email: string | null;
+    username?: string | null;
+    passwordHash?: string | null;
+    role: 'CLIENT' | 'COACH';
+    displayName: string;
+  },
 ) {
   try {
     const [user] = await db
       .insert(schema.users)
       .values({
         email: values.email,
+        username: values.username ?? null,
+        passwordHash: values.passwordHash ?? null,
+        passwordChangedAt: values.passwordHash ? new Date() : null,
         role: values.role,
         status: 'ACTIVE',
         displayName: values.displayName,
@@ -316,9 +350,44 @@ async function insertAccount(
     if (!user) throw new Error('user insert returned nothing');
     return user.id;
   } catch (error) {
-    if (pgErrorCode(error) === PG_UNIQUE_VIOLATION) throw emailTaken();
+    if (pgErrorCode(error) === PG_UNIQUE_VIOLATION) {
+      const e = error as { constraint?: string; cause?: { constraint?: string } };
+      const name = e.constraint ?? e.cause?.constraint ?? '';
+      throw name.includes('username') ? usernameTaken() : emailTaken();
+    }
     throw error;
   }
+}
+
+/**
+ * Username for a new account: the one staff typed (must be free), or one derived from the name
+ * ("Rauf Onur Çullu" → raufonurcullu, then raufonurcullu2, 3 … if taken). Runs inside the
+ * creating transaction under an advisory lock, so two creations cannot pick the same name.
+ */
+async function pickUsername(
+  tx: DbExecutor,
+  input: { username?: string | null; firstName: string; lastName: string },
+): Promise<string> {
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext('vitruv.users.username'))`);
+  const isFree = async (name: string) =>
+    (
+      await tx
+        .select({ id: schema.users.id })
+        .from(schema.users)
+        .where(eq(schema.users.username, name))
+        .limit(1)
+    ).length === 0;
+  if (input.username) {
+    if (!(await isFree(input.username))) throw usernameTaken();
+    return input.username;
+  }
+  const base = usernameFromName(input.firstName, input.lastName);
+  if (await isFree(base)) return base;
+  for (let n = 2; n < 1000; n++) {
+    const candidate = usernameWithSuffix(base, n);
+    if (await isFree(candidate)) return candidate;
+  }
+  throw usernameTaken();
 }
 
 export async function createClient(
@@ -327,12 +396,17 @@ export async function createClient(
   input: {
     firstName: string;
     lastName: string;
-    email: string;
+    email?: string | null;
+    username?: string | null;
+    password: string;
     phone?: string | null;
     coachId?: string | null;
     coachingStatus: CoachingStatus;
   },
 ): Promise<CreateClientResponse> {
+  const email = input.email ? normalizeEmail(input.email) : null;
+  if (email && input.password.trim().toLowerCase() === email) throw passwordLikeLogin();
+  const passwordHash = await hashPassword(input.password);
   // Who coaches the new client: ADMIN chooses (or none); a COACH always creates for themselves.
   const coachId = roleHasPermission(actor.role, 'clients.assign')
     ? input.coachId
@@ -341,9 +415,14 @@ export async function createClient(
     : await requireAssignableCoach(deps.db, actor.userId);
   const now = nowOf(deps);
 
-  const { userId, activation } = await deps.db.transaction(async (tx) => {
+  const userId = await deps.db.transaction(async (tx) => {
+    const username = await pickUsername(tx, input);
+    if (input.password.trim().toLowerCase() === username) throw passwordLikeLogin();
+    // Owner decision 2026-10-20: staff sets the password, no activation link is issued.
     const id = await insertAccount(tx, {
-      email: input.email,
+      email,
+      username,
+      passwordHash,
       role: 'CLIENT',
       displayName: `${input.firstName} ${input.lastName}`,
     });
@@ -364,14 +443,50 @@ export async function createClient(
       });
     }
     await recordEvent(tx, 'ACCOUNT_CREATED', { userId: id, actorUserId: actor.userId });
-    const issued = await issueActivation(tx, { userId: id, actorUserId: actor.userId, now });
-    return { userId: id, activation: issued };
+    await recordEvent(tx, 'PASSWORD_SET_BY_STAFF', { userId: id, actorUserId: actor.userId });
+    return id;
   });
   deps.logger.info(
     { event: 'client_created', userId, actorUserId: actor.userId },
     'client created',
   );
-  return { client: await getClient(deps, actor, userId), activation };
+  return { client: await getClient(deps, actor, userId) };
+}
+
+/**
+ * Staff sets (or resets) a client's password; the client is told the new one in person.
+ * Scoped like every client action (out of scope = 404). Pending activation links are revoked
+ * and all of the client's sessions end, so an old password or link stops working at once.
+ */
+export async function setClientPassword(
+  deps: ManagementDeps,
+  actor: Principal,
+  clientId: string,
+  input: { password: string },
+): Promise<AdminClientDetail> {
+  const now = nowOf(deps);
+  const passwordHash = await hashPassword(input.password);
+  await deps.db.transaction(async (tx) => {
+    const [row] = await clientSelect(tx)
+      .where(and(eq(schema.users.id, clientId), clientScope(actor)))
+      .limit(1);
+    if (!row) throw notFound();
+    const typed = input.password.trim().toLowerCase();
+    if (typed === row.user.username || (row.user.email && typed === row.user.email)) {
+      throw passwordLikeLogin();
+    }
+    await tx
+      .update(schema.users)
+      .set({ passwordHash, passwordChangedAt: now })
+      .where(eq(schema.users.id, clientId));
+    await revokeActivations(tx, clientId, now);
+    await revokeSessions(tx, eq(schema.authSessions.userId, clientId), 'PASSWORD_CHANGED', now);
+    await recordEvent(tx, 'PASSWORD_SET_BY_STAFF', {
+      userId: clientId,
+      actorUserId: actor.userId,
+    });
+  });
+  return getClient(deps, actor, clientId);
 }
 
 export async function updateClient(
@@ -576,7 +691,7 @@ function toCoach(row: CoachRow, now: Date): AdminCoach {
   return {
     id: row.user.id,
     displayName: row.profile.displayName,
-    email: row.user.email,
+    email: row.user.email ?? '',
     phone: row.profile.phone,
     account: accountSummary(row.user, row.activationExpiresAt, now),
     activeClientCount: Number(row.activeClientCount ?? 0),

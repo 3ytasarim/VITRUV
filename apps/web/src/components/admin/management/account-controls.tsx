@@ -11,7 +11,8 @@ import { FormStatus } from './form-field';
 import { ACCOUNT_LABEL, ACTIVATION_LABEL, formatDateTime } from './labels';
 
 /**
- * Account management for a client or coach: activation state + new one-time link, and
+ * Account management for a client or coach: activation state + new one-time link (coaches
+ * only — clients get a staff-set password instead, so `regenerate` is omitted for them), and
  * disable / re-enable (with confirmation). Disabling ends every session immediately;
  * re-enabling restores none.
  */
@@ -26,7 +27,7 @@ export function AccountControls({
   personName: string;
   canManage: boolean;
   setStatus: (status: 'ACTIVE' | 'DISABLED') => Promise<FormState>;
-  regenerate: () => Promise<FormState<ActivationLink>>;
+  regenerate?: () => Promise<FormState<ActivationLink>>;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -47,6 +48,7 @@ export function AccountControls({
 
   const runRegenerate = () =>
     startTransition(async () => {
+      if (!regenerate) return;
       const result = await regenerate();
       if (result.status === 'success') {
         setLink(result.data);
@@ -63,16 +65,27 @@ export function AccountControls({
       <dl className="grid gap-3 sm:grid-cols-[12rem_minmax(0,1fr)]">
         <dt className="type-body-sm text-fg-muted">Konto</dt>
         <dd className="type-body">{ACCOUNT_LABEL[account.status]}</dd>
-        <dt className="type-body-sm text-fg-muted">Aktivierung</dt>
-        <dd className="type-body">
-          {ACTIVATION_LABEL[account.activation]}
-          {account.activation === 'PENDING' && (
-            <span className="type-body-sm text-fg-muted">
-              {' '}
-              – Link gültig bis {formatDateTime(account.activationExpiresAt)}
-            </span>
-          )}
-        </dd>
+        {regenerate ? (
+          <>
+            <dt className="type-body-sm text-fg-muted">Aktivierung</dt>
+            <dd className="type-body">
+              {ACTIVATION_LABEL[account.activation]}
+              {account.activation === 'PENDING' && (
+                <span className="type-body-sm text-fg-muted">
+                  {' '}
+                  – Link gültig bis {formatDateTime(account.activationExpiresAt)}
+                </span>
+              )}
+            </dd>
+          </>
+        ) : (
+          <>
+            <dt className="type-body-sm text-fg-muted">Passwort</dt>
+            <dd className="type-body">
+              {account.activation === 'ACTIVATED' ? 'gesetzt' : 'noch nicht gesetzt'}
+            </dd>
+          </>
+        )}
         <dt className="type-body-sm text-fg-muted">Letzte Anmeldung</dt>
         <dd className="type-body">{formatDateTime(account.lastLoginAt)}</dd>
       </dl>
@@ -89,7 +102,7 @@ export function AccountControls({
 
       {canManage && (
         <div className="flex flex-wrap gap-3">
-          {account.activation !== 'ACTIVATED' && !disabled && (
+          {regenerate && account.activation !== 'ACTIVATED' && !disabled && (
             <Button variant="secondary" loading={pending && !confirm} onClick={runRegenerate}>
               {account.activation === 'PENDING'
                 ? 'Neuen Aktivierungslink erstellen'
@@ -107,7 +120,7 @@ export function AccountControls({
           )}
         </div>
       )}
-      {account.activation === 'PENDING' && canManage && !link && (
+      {regenerate && account.activation === 'PENDING' && canManage && !link && (
         <p className="type-caption text-fg-subtle">
           Ein neuer Link macht den bisherigen sofort ungültig.
         </p>

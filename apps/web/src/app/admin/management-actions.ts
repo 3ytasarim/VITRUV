@@ -2,6 +2,7 @@
 
 import {
   createClientRequestSchema,
+  setClientPasswordRequestSchema,
   createCoachRequestSchema,
   updateClientRequestSchema,
   updateCoachRequestSchema,
@@ -87,16 +88,33 @@ const text = (form: FormData, key: string) => {
 
 // ---------------------------------------------------------------- clients
 
+export type CreatedClient = {
+  clientId: string;
+  name: string;
+  username: string | null;
+  email: string | null;
+};
+
+/**
+ * New client WITH a password set by staff (owner decision 2026-10-20: no activation e-mail).
+ * E-mail, phone and username are optional; the API derives a unique username from the name.
+ */
 export async function createClientAction(
-  _prev: FormState<{ clientId: string; name: string; activation: ActivationLink }>,
+  _prev: FormState<CreatedClient>,
   form: FormData,
-): Promise<FormState<{ clientId: string; name: string; activation: ActivationLink }>> {
+): Promise<FormState<CreatedClient>> {
   const coach = text(form, 'coachId');
+  const optional = (key: string) => {
+    const value = text(form, key)?.trim();
+    return value ? value : null;
+  };
   const parsed = createClientRequestSchema.safeParse({
     firstName: text(form, 'firstName') ?? '',
     lastName: text(form, 'lastName') ?? '',
-    email: text(form, 'email') ?? '',
-    phone: text(form, 'phone'),
+    email: optional('email'),
+    username: optional('username'),
+    password: text(form, 'password') ?? '',
+    phone: optional('phone'),
     coachingStatus: text(form, 'coachingStatus') || undefined,
     ...(coach === undefined ? {} : { coachId: coach === '' ? null : coach }),
   });
@@ -110,15 +128,39 @@ export async function createClientAction(
   const result = await adminApi.createClient(parsed.data);
   if (!result.ok) return apiFailure(result);
   revalidatePath('/admin/kunden');
-  const { client, activation } = result.data;
+  const { client } = result.data;
   return {
     status: 'success',
     data: {
       clientId: client.id,
       name: `${client.firstName} ${client.lastName}`,
-      activation: activationLink(activation),
+      username: client.username,
+      email: client.email,
     },
   };
+}
+
+/** Staff sets a new password for the client (told in person); all sessions of the client end. */
+export async function setClientPasswordAction(
+  clientId: string,
+  _prev: FormState,
+  form: FormData,
+): Promise<FormState> {
+  if (!idSchema.safeParse(clientId).success) return { status: 'error', message: GENERIC };
+  const parsed = setClientPasswordRequestSchema.safeParse({
+    password: text(form, 'password') ?? '',
+  });
+  if (!parsed.success) {
+    return {
+      status: 'error',
+      message: 'Bitte prüfe das Passwort.',
+      fieldErrors: fieldErrorsOf(parsed.error.issues),
+    };
+  }
+  const result = await adminApi.setClientPassword(clientId, parsed.data.password);
+  if (!result.ok) return apiFailure(result);
+  revalidatePath(`/admin/kunden/${clientId}`, 'layout');
+  return { status: 'success', data: undefined };
 }
 
 export async function updateClientAction(

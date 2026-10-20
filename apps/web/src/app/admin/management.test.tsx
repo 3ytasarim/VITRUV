@@ -42,6 +42,7 @@ const detail = {
   firstName: 'Erika',
   lastName: 'Muster',
   email: 'erika@example.invalid',
+  username: 'erikamuster',
   coachingStatus: 'ACTIVE',
   account,
   coach: { id: COACH_ID, displayName: 'Coach A' },
@@ -73,37 +74,83 @@ afterEach(() => {
 });
 
 describe('client management actions', () => {
-  it('creates a client via the API (Bearer from the session cookie) and returns the one-time link', async () => {
-    fetchMock.mockResolvedValue(
-      reply(201, {
-        client: detail,
-        activation: { token: TOKEN, expiresAt: '2030-01-04T10:00:00.000Z', path: '/aktivieren' },
-      }),
-    );
+  it('creates a client with a staff-set password via the API (Bearer from the session cookie)', async () => {
+    fetchMock.mockResolvedValue(reply(201, { client: detail }));
     const state = await actions.createClientAction(
       { status: 'idle' },
       form({
         firstName: 'Erika',
         lastName: 'Muster',
+        username: '',
+        password: 'ein langes Passwort',
         email: 'Erika@Example.invalid',
         phone: '',
         coachId: COACH_ID,
         coachingStatus: 'ACTIVE',
       }),
     );
-    expect(state).toMatchObject({
+    expect(state).toEqual({
       status: 'success',
-      data: { clientId: CLIENT_ID, name: 'Erika Muster' },
+      data: {
+        clientId: CLIENT_ID,
+        name: 'Erika Muster',
+        username: 'erikamuster',
+        email: 'erika@example.invalid',
+      },
     });
-    if (state.status !== 'success') throw new Error('expected success');
-    // token only in the fragment of the link — never a query parameter
-    expect(state.data.activation.url).toBe(`${process.env.PUBLIC_SITE_URL}/aktivieren#t=${TOKEN}`);
+    // the password is never echoed back into the UI state
+    expect(JSON.stringify(state)).not.toContain('ein langes Passwort');
     const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
     expect(String(url)).toMatch(/\/v1\/admin\/clients$/);
     expect(new Headers(init.headers).get('authorization')).toBe(`Bearer ${'A'.repeat(43)}`);
     const body = JSON.parse(String(init.body)) as Record<string, unknown>;
-    expect(body).toMatchObject({ email: 'erika@example.invalid', coachId: COACH_ID, phone: null });
+    expect(body).toMatchObject({
+      email: 'erika@example.invalid',
+      username: null,
+      password: 'ein langes Passwort',
+      coachId: COACH_ID,
+      phone: null,
+    });
     expect(body).not.toHaveProperty('role');
+  });
+
+  it('e-mail and phone are optional; a typed username is sent normalised', async () => {
+    fetchMock.mockResolvedValue(reply(201, { client: { ...detail, email: null } }));
+    const state = await actions.createClientAction(
+      { status: 'idle' },
+      form({
+        firstName: 'Erika',
+        lastName: 'Muster',
+        username: ' Erika.M ',
+        password: 'ein langes Passwort',
+        email: '',
+      }),
+    );
+    expect(state).toMatchObject({ status: 'success', data: { email: null } });
+    const body = JSON.parse(String((fetchMock.mock.calls[0] as [URL, RequestInit])[1].body));
+    expect(body).toMatchObject({ email: null, username: 'erika.m', phone: null });
+  });
+
+  it('sets a new client password; short passwords are rejected locally', async () => {
+    expect(
+      await actions.setClientPasswordAction(
+        CLIENT_ID,
+        { status: 'idle' },
+        form({ password: 'kurz' }),
+      ),
+    ).toMatchObject({ status: 'error', fieldErrors: { password: expect.any(String) } });
+    expect(fetchMock).not.toHaveBeenCalled();
+    fetchMock.mockResolvedValue(reply(200, detail));
+    expect(
+      await actions.setClientPasswordAction(
+        CLIENT_ID,
+        { status: 'idle' },
+        form({ password: 'ein neues langes Passwort' }),
+      ),
+    ).toEqual({ status: 'success', data: undefined });
+    const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(String(url)).toMatch(new RegExp(`/v1/admin/clients/${CLIENT_ID}/password$`));
+    expect(init.method).toBe('PUT');
   });
 
   it('shows the API field error when the e-mail is taken', async () => {
@@ -118,7 +165,12 @@ describe('client management actions', () => {
     );
     const state = await actions.createClientAction(
       { status: 'idle' },
-      form({ firstName: 'A', lastName: 'B', email: 'a@example.invalid' }),
+      form({
+        firstName: 'A',
+        lastName: 'B',
+        email: 'a@example.invalid',
+        password: 'ein langes Passwort',
+      }),
     );
     expect(state).toMatchObject({
       status: 'error',
@@ -274,7 +326,12 @@ describe('management UI markup', async () => {
       (m) => m[1],
     );
     for (const id of ids) expect(admin).toContain(`for="${id}"`);
-    expect(admin).not.toMatch(/name="(password|role)"/);
+    // staff sets the password (owner decision 2026-10-20); a role is never chosen in the UI
+    expect(admin).toContain('name="password"');
+    expect(admin).toContain('autoComplete="new-password"');
+    expect(admin).toContain('name="username"');
+    expect(admin).not.toMatch(/name="role"/);
+    expect(admin).not.toMatch(/<input[^>]*name="email"[^>]*required/);
     const coach = html(<ClientCreateForm coaches={null} />);
     expect(coach).not.toContain('name="coachId"');
   });

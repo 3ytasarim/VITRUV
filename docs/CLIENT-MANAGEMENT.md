@@ -193,3 +193,19 @@ reference the client by `users.id` (the same id used here) and reuse `loadScoped
 scoping: a coach reaches a client's data only through an active assignment. The workspace tabs
 already reserve their places. Flutter reads `/v1/client/me` and later client-scoped endpoints
 under `/v1/client/*`.
+
+## Clients with a staff-set password (owner decision 2026-10-20)
+
+Clients no longer get an activation link. The coach creates the client **with a password** and
+tells the client the login data in person:
+
+- `POST /v1/admin/clients` takes `password` (policy as everywhere: ≥ 12 characters, never equal to
+  username/e-mail) and optional `email`, `phone`, `username`. Without a username the API derives
+  one from the name (`usernameFromName` in `@vitruv/shared`: "Rauf Onur Çullu" → `raufonurcullu`,
+  then `raufonurcullu2` … under an advisory lock). No activation token is issued; the response
+  carries the client only (never the password). Events: `ACCOUNT_CREATED`, `PASSWORD_SET_BY_STAFF`.
+- `PUT /v1/admin/clients/:id/password` (`clients.account.manage`, client scope) sets a new
+  password, revokes pending links and ends every session of the client.
+- `users.email` is nullable since migration 0016; the check `users_login_identifier` keeps at
+  least one of e-mail / username. Login accepts either (`/login`, "E-Mail oder Benutzername").
+- Coaches are still invited by activation link (unchanged).

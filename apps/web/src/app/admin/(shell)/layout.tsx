@@ -17,7 +17,7 @@ const ROLE_LABEL = { ADMIN: 'Admin', COACH: 'Coach', CLIENT: 'Kund:in' } as cons
  */
 export default async function AdminShellLayout({ children }: { children: ReactNode }) {
   const { user } = await requireAdminUser();
-  const name = user.displayName ?? user.email;
+  const name = user.displayName ?? user.email ?? 'Konto';
   return (
     <div className={publicFontVariables} data-surface="admin" data-glass="">
       <AdminShell

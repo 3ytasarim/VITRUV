@@ -52,6 +52,7 @@ export const AUTH_EVENT_TYPES = [
   'NUTRITION_DOCUMENT_ACTIVATED',
   'NUTRITION_DOCUMENT_ARCHIVED',
   'CLIENT_PLAN_SAVED',
+  'PASSWORD_SET_BY_STAFF',
 ] as const;
 export type AuthEventType = (typeof AUTH_EVENT_TYPES)[number];
 

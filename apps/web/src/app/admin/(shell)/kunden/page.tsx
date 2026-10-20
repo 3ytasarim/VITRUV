@@ -214,7 +214,9 @@ function ClientRow({ client, showCoach }: { client: AdminClientListItem; showCoa
           >
             {client.firstName} {client.lastName}
           </Link>
-          <p className="type-body-sm truncate text-fg-muted">{client.email}</p>
+          <p className="type-body-sm truncate text-fg-muted">
+            {[client.username, client.email].filter(Boolean).join(' · ') || '—'}
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <CoachingBadge status={client.coachingStatus} />

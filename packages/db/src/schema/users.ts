@@ -12,8 +12,12 @@ export const users = pgTable(
   'users',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    /** Normalised: trimmed + lowercased (normalizeEmail in @vitruv/shared; DB check below). */
-    email: text('email').notNull(),
+    /**
+     * Normalised: trimmed + lowercased (normalizeEmail in @vitruv/shared; DB check below).
+     * Optional since 2026-10-20 (clients created by the coach with username + password); every
+     * account keeps at least one login identifier (check below).
+     */
+    email: text('email'),
     displayName: text('display_name'),
     /** Optional login name instead of the e-mail (e.g. "admin"), lowercase; owner request 2026-10-19. */
     username: text('username'),
@@ -30,6 +34,10 @@ export const users = pgTable(
     uniqueIndex('users_email_lower_unique').on(sql`lower(${table.email})`),
     check('users_email_normalized', sql`${table.email} = lower(btrim(${table.email}))`),
     uniqueIndex('users_username_unique').on(table.username),
+    check(
+      'users_login_identifier',
+      sql`${table.email} is not null or ${table.username} is not null`,
+    ),
     check(
       'users_username_format',
       sql`${table.username} is null or ${table.username} ~ '^[a-z0-9][a-z0-9._-]{2,31}$'`,

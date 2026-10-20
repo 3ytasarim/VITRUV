@@ -91,7 +91,8 @@ export type ChangePasswordRequest = z.infer<typeof changePasswordRequestSchema>;
 /** Safe account data — never password hashes, token hashes or session internals. */
 export const currentUserSchema = z.object({
   id: z.uuid(),
-  email: z.string(),
+  /** Null for clients created with a username only. */
+  email: z.string().nullable(),
   displayName: z.string().nullable(),
   role: z.enum(USER_ROLES),
   status: z.enum(USER_STATUSES),

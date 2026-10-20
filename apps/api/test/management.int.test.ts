@@ -3,6 +3,7 @@ import { Writable } from 'node:stream';
 import {
   adminClientDetailSchema,
   adminClientListSchema,
+  adminCoachSchema,
   authSessionResponseSchema,
   clientSelfProfileSchema,
   createClientResponseSchema,
@@ -27,6 +28,8 @@ import { databaseUrl, inRollback, must, openTestDatabase } from './rollback';
  */
 const PASSWORD = 'ein sicheres Test-Passwort';
 const NEW_PASSWORD = 'selbst gewähltes Passwort';
+/** Password staff sets when creating a client (told to the client in person). */
+const CLIENT_PASSWORD = 'vom Coach gesetztes Passwort';
 
 function captureLogger() {
   const lines: string[] = [];
@@ -99,12 +102,23 @@ function setup(tx: DbExecutor, logger?: pino.Logger) {
       firstName: 'Erika',
       lastName: `Muster-${randomUUID().slice(0, 4)}`,
       email: `it-client-${randomUUID().slice(0, 8)}@vitruv.invalid`,
+      password: CLIENT_PASSWORD,
       ...extra,
     });
-    expect(res.status).toBe(201);
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
     return createClientResponseSchema.parse(res.body);
   };
-  return { app, call, login, userWithSession, activatedCoach, createClientAs };
+  /** Admin creates a coach through the API; the coach is still invited by activation link. */
+  const pendingCoach = async (adminToken: string, name = 'Coach Pending') => {
+    const email = `it-coach-${randomUUID().slice(0, 8)}@vitruv.invalid`;
+    const created = await call('POST', '/v1/admin/coaches', adminToken, {
+      displayName: name,
+      email,
+    });
+    expect(created.status).toBe(201);
+    return { email, ...createCoachResponseSchema.parse(created.body) };
+  };
+  return { app, call, login, userWithSession, activatedCoach, createClientAs, pendingCoach };
 }
 
 describe.skipIf(!databaseUrl)('coach & client management (integration, rolled back)', () => {
@@ -157,11 +171,11 @@ describe.skipIf(!databaseUrl)('coach & client management (integration, rolled ba
       });
     });
 
-    it('activates once: valid → password set → login works; reuse, expiry and regeneration fail safely', async () => {
+    it('activates once (coach invite): valid → password set → login works; reuse, expiry and regeneration fail safely', async () => {
       await inRollback(handle, async (tx) => {
         const t = setup(tx);
         const admin = await t.userWithSession('ADMIN');
-        const { client, activation } = await t.createClientAs(admin.token);
+        const { coach: client, activation, email: coachEmail } = await t.pendingCoach(admin.token);
 
         const check = await t.call('POST', '/v1/auth/activation/check', undefined, {
           token: activation.token,
@@ -173,7 +187,7 @@ describe.skipIf(!databaseUrl)('coach & client management (integration, rolled ba
         // regenerate → the first link dies, the second works
         const regen = await t.call(
           'POST',
-          `/v1/admin/clients/${client.id}/activation`,
+          `/v1/admin/coaches/${client.id}/activation`,
           admin.token,
         );
         expect(regen.status).toBe(201);
@@ -195,9 +209,9 @@ describe.skipIf(!databaseUrl)('coach & client management (integration, rolled ba
           password: NEW_PASSWORD,
           role: 'ADMIN',
         });
-        expect(done.body).toEqual({ destination: 'APP' });
+        expect(done.body).toEqual({ destination: 'PANEL' });
         const [user] = await tx.select().from(schema.users).where(eq(schema.users.id, client.id));
-        expect(must(user).role).toBe('CLIENT');
+        expect(must(user).role).toBe('COACH');
         expect(must(user).passwordHash).toMatch(/^\$argon2id\$/);
 
         // replay of the consumed link
@@ -208,26 +222,21 @@ describe.skipIf(!databaseUrl)('coach & client management (integration, rolled ba
         expect(replay.status).toBe(400);
         expect((replay.body.error as { code: string }).code).toBe('ACTIVATION_INVALID');
 
-        // the client can sign in (mobile) with the chosen password only
-        await t.login(client.email, NEW_PASSWORD, 'MOBILE');
+        // the coach can sign in with the chosen password only
         const me = await t.call(
           'GET',
           '/v1/auth/me',
-          (await t.login(client.email, NEW_PASSWORD)).accessToken,
+          (await t.login(coachEmail, NEW_PASSWORD)).accessToken,
         );
-        expect((me.body.user as { role: string }).role).toBe('CLIENT');
+        expect((me.body.user as { role: string }).role).toBe('COACH');
 
         // an activated account gets no new link
         const again = await t.call(
           'POST',
-          `/v1/admin/clients/${client.id}/activation`,
+          `/v1/admin/coaches/${client.id}/activation`,
           admin.token,
         );
         expect(again.status).toBe(409);
-        const detail = adminClientDetailSchema.parse(
-          (await t.call('GET', `/v1/admin/clients/${client.id}`, admin.token)).body,
-        );
-        expect(detail.account.activation).toBe('ACTIVATED');
       });
     });
 
@@ -235,7 +244,7 @@ describe.skipIf(!databaseUrl)('coach & client management (integration, rolled ba
       await inRollback(handle, async (tx) => {
         const t = setup(tx);
         const admin = await t.userWithSession('ADMIN');
-        const { client, activation } = await t.createClientAs(admin.token);
+        const { coach: client, activation } = await t.pendingCoach(admin.token);
         await tx
           .update(schema.accountActivationTokens)
           .set({ expiresAt: new Date(Date.now() - 1000) })
@@ -254,8 +263,8 @@ describe.skipIf(!databaseUrl)('coach & client management (integration, rolled ba
         expect((expired.body.error as { message: string }).message).toBe(
           (unknown.body.error as { message: string }).message,
         );
-        const detail = adminClientDetailSchema.parse(
-          (await t.call('GET', `/v1/admin/clients/${client.id}`, admin.token)).body,
+        const detail = adminCoachSchema.parse(
+          (await t.call('GET', `/v1/admin/coaches/${client.id}`, admin.token)).body,
         );
         expect(detail.account).toMatchObject({ activation: 'EXPIRED', activationExpiresAt: null });
       });
@@ -269,9 +278,133 @@ describe.skipIf(!databaseUrl)('coach & client management (integration, rolled ba
           firstName: 'Doppelt',
           lastName: 'Vergeben',
           email: `  ${admin.email.toUpperCase()} `,
+          password: CLIENT_PASSWORD,
         });
         expect(res.status).toBe(409);
         expect(JSON.stringify(res.body)).toContain('bereits verwendet');
+      });
+    });
+  });
+
+  describe('clients with staff-set password + username', () => {
+    it('creates without e-mail/phone, derives a unique username, signs in by username or e-mail', async () => {
+      await inRollback(handle, async (tx) => {
+        const t = setup(tx);
+        const admin = await t.userWithSession('ADMIN');
+        const marker = randomUUID()
+          .slice(0, 6)
+          .replace(/[^a-z]/g, 'x');
+        const first = await t.createClientAs(admin.token, {
+          firstName: 'Rauf Onur',
+          lastName: `Çullu${marker}`,
+          email: null,
+        });
+        expect(first.client).toMatchObject({
+          email: null,
+          username: `raufonurcullu${marker}`,
+          phone: null,
+        });
+        expect(first.client.account.activation).toBe('ACTIVATED');
+        expect(JSON.stringify(first)).not.toContain(CLIENT_PASSWORD);
+        // same name again → suffix 2
+        const second = await t.createClientAs(admin.token, {
+          firstName: 'Rauf Onur',
+          lastName: `Çullu${marker}`,
+        });
+        expect(second.client.username).toBe(`raufonurcullu${marker}2`);
+
+        const [row] = await tx
+          .select()
+          .from(schema.users)
+          .where(eq(schema.users.id, first.client.id));
+        expect(must(row).passwordHash).toMatch(/^\$argon2id\$/);
+        expect(JSON.stringify(row)).not.toContain(CLIENT_PASSWORD);
+        const links = await tx
+          .select()
+          .from(schema.accountActivationTokens)
+          .where(eq(schema.accountActivationTokens.userId, first.client.id));
+        expect(links).toHaveLength(0);
+
+        const byName = await t.login(must(first.client.username), CLIENT_PASSWORD, 'MOBILE');
+        const me = await t.call('GET', '/v1/auth/me', byName.accessToken);
+        expect(me.body.user).toMatchObject({ role: 'CLIENT', email: null });
+        await t.login(must(second.client.email), CLIENT_PASSWORD);
+
+        // explicit username: taken → field error; invalid → 400
+        const taken = await t.call('POST', '/v1/admin/clients', admin.token, {
+          firstName: 'X',
+          lastName: 'Y',
+          username: first.client.username,
+          password: CLIENT_PASSWORD,
+        });
+        expect(taken.status).toBe(409);
+        expect(JSON.stringify(taken.body)).toContain('bereits vergeben');
+        const bad = await t.call('POST', '/v1/admin/clients', admin.token, {
+          firstName: 'X',
+          lastName: 'Y',
+          username: 'Ü!',
+          password: CLIENT_PASSWORD,
+        });
+        expect(bad.status).toBe(400);
+        // password policy + not the username itself
+        const weak = await t.call('POST', '/v1/admin/clients', admin.token, {
+          firstName: 'X',
+          lastName: 'Y',
+          password: 'kurz',
+        });
+        expect(weak.status).toBe(400);
+        const same = await t.call('POST', '/v1/admin/clients', admin.token, {
+          firstName: 'X',
+          lastName: 'Y',
+          username: `gleichespasswort${marker}`,
+          password: `gleichespasswort${marker}`,
+        });
+        expect(same.status).toBe(400);
+
+        const events = (
+          await tx
+            .select({ type: schema.authEvents.type, actor: schema.authEvents.actorUserId })
+            .from(schema.authEvents)
+            .where(eq(schema.authEvents.userId, first.client.id))
+        ).map((e) => [e.type, e.actor]);
+        expect(events).toEqual(
+          expect.arrayContaining([
+            ['ACCOUNT_CREATED', admin.id],
+            ['PASSWORD_SET_BY_STAFF', admin.id],
+          ]),
+        );
+      });
+    });
+
+    it('staff resets a password: old one and existing sessions stop working; scope applies', async () => {
+      await inRollback(handle, async (tx) => {
+        const t = setup(tx);
+        const admin = await t.userWithSession('ADMIN');
+        const coachA = await t.activatedCoach(admin.token, 'Coach A');
+        const coachB = await t.activatedCoach(admin.token, 'Coach B');
+        const { client } = await t.createClientAs(coachA.token);
+        const session = await t.login(must(client.username), CLIENT_PASSWORD, 'MOBILE');
+        const path = `/v1/admin/clients/${client.id}/password`;
+
+        expect((await t.call('PUT', path, coachB.token, { password: NEW_PASSWORD })).status).toBe(
+          404,
+        );
+        expect((await t.call('PUT', path, coachA.token, { password: 'kurz' })).status).toBe(400);
+        const reset = await t.call('PUT', path, coachA.token, { password: NEW_PASSWORD });
+        expect(reset.status).toBe(200);
+        expect(JSON.stringify(reset.body)).not.toContain(NEW_PASSWORD);
+
+        expect((await t.call('GET', '/v1/client/me', session.accessToken)).status).toBe(401);
+        expect(
+          (
+            await t.call('POST', '/v1/auth/login', undefined, {
+              email: client.username,
+              password: CLIENT_PASSWORD,
+              clientType: 'WEB',
+            })
+          ).status,
+        ).toBe(401);
+        await t.login(must(client.username), NEW_PASSWORD);
       });
     });
   });
@@ -437,27 +570,24 @@ describe.skipIf(!databaseUrl)('coach & client management (integration, rolled ba
         const t = setup(tx);
         const admin = await t.userWithSession('ADMIN');
         const coach = await t.activatedCoach(admin.token, 'Coach C');
-        const { client, activation } = await t.createClientAs(coach.token);
+        const { client } = await t.createClientAs(coach.token);
         await t.call('PATCH', `/v1/admin/clients/${client.id}`, coach.token, {
           internalNotes: 'Vertrauliche Coach-Notiz 4711',
         });
-        await t.call('POST', '/v1/auth/activate', undefined, {
-          token: activation.token,
-          password: NEW_PASSWORD,
-        });
-        const token = (await t.login(client.email, NEW_PASSWORD, 'MOBILE')).accessToken;
+        const token = (await t.login(must(client.username), CLIENT_PASSWORD, 'MOBILE')).accessToken;
 
         for (const [method, path, body] of [
           ['GET', '/v1/admin/clients'],
           [
             'POST',
             '/v1/admin/clients',
-            { firstName: 'a', lastName: 'b', email: 'c@vitruv.invalid' },
+            { firstName: 'a', lastName: 'b', password: CLIENT_PASSWORD },
           ],
           ['GET', `/v1/admin/clients/${client.id}`],
           ['PATCH', `/v1/admin/clients/${client.id}`, { firstName: 'Hack' }],
           ['GET', '/v1/admin/coaches'],
           ['PUT', `/v1/admin/clients/${client.id}/assignment`, { coachId: null }],
+          ['PUT', `/v1/admin/clients/${client.id}/password`, { password: NEW_PASSWORD }],
         ] as const) {
           expect((await t.call(method, path, token, body)).status).toBe(403);
         }
@@ -480,12 +610,8 @@ describe.skipIf(!databaseUrl)('coach & client management (integration, rolled ba
       await inRollback(handle, async (tx) => {
         const t = setup(tx);
         const admin = await t.userWithSession('ADMIN');
-        const { client, activation } = await t.createClientAs(admin.token);
-        await t.call('POST', '/v1/auth/activate', undefined, {
-          token: activation.token,
-          password: NEW_PASSWORD,
-        });
-        const session = await t.login(client.email, NEW_PASSWORD, 'MOBILE');
+        const { client } = await t.createClientAs(admin.token);
+        const session = await t.login(must(client.email), CLIENT_PASSWORD, 'MOBILE');
         expect((await t.call('GET', '/v1/client/me', session.accessToken)).status).toBe(200);
 
         const disabled = await t.call(
@@ -509,7 +635,7 @@ describe.skipIf(!databaseUrl)('coach & client management (integration, rolled ba
           (
             await t.call('POST', '/v1/auth/login', undefined, {
               email: client.email,
-              password: NEW_PASSWORD,
+              password: CLIENT_PASSWORD,
               clientType: 'MOBILE',
             })
           ).status,
@@ -531,7 +657,7 @@ describe.skipIf(!databaseUrl)('coach & client management (integration, rolled ba
             })
           ).status,
         ).toBe(401);
-        const fresh = await t.login(client.email, NEW_PASSWORD, 'MOBILE');
+        const fresh = await t.login(must(client.email), CLIENT_PASSWORD, 'MOBILE');
         expect((await t.call('GET', '/v1/client/me', fresh.accessToken)).status).toBe(200);
 
         const types = (
@@ -544,12 +670,12 @@ describe.skipIf(!databaseUrl)('coach & client management (integration, rolled ba
       });
     });
 
-    it('disabling a pending account revokes its link; status changes are idempotent', async () => {
+    it('disabling a pending (coach) account revokes its link; status changes are idempotent', async () => {
       await inRollback(handle, async (tx) => {
         const t = setup(tx);
         const admin = await t.userWithSession('ADMIN');
-        const { client, activation } = await t.createClientAs(admin.token);
-        await t.call('PUT', `/v1/admin/clients/${client.id}/account`, admin.token, {
+        const { coach: client, activation } = await t.pendingCoach(admin.token);
+        await t.call('PUT', `/v1/admin/coaches/${client.id}/account`, admin.token, {
           status: 'DISABLED',
         });
         const res = await t.call('POST', '/v1/auth/activate', undefined, {
@@ -558,15 +684,15 @@ describe.skipIf(!databaseUrl)('coach & client management (integration, rolled ba
         });
         expect(res.status).toBe(400);
         expect(
-          (await t.call('POST', `/v1/admin/clients/${client.id}/activation`, admin.token)).status,
+          (await t.call('POST', `/v1/admin/coaches/${client.id}/activation`, admin.token)).status,
         ).toBe(409);
         // re-enable, then a fresh link works
-        await t.call('PUT', `/v1/admin/clients/${client.id}/account`, admin.token, {
+        await t.call('PUT', `/v1/admin/coaches/${client.id}/account`, admin.token, {
           status: 'ACTIVE',
         });
         const regen = await t.call(
           'POST',
-          `/v1/admin/clients/${client.id}/activation`,
+          `/v1/admin/coaches/${client.id}/activation`,
           admin.token,
         );
         expect(regen.status).toBe(201);
@@ -629,11 +755,12 @@ describe.skipIf(!databaseUrl)('coach & client management (integration, rolled ba
           ).body,
         );
         expect(fullName.total).toBe(1);
-        const pending = adminClientListSchema.parse(
-          (await t.call('GET', `/v1/admin/clients?q=Zz${marker}&activation=PENDING`, coach.token))
+        // clients are created with a password → already "activated"
+        const activated = adminClientListSchema.parse(
+          (await t.call('GET', `/v1/admin/clients?q=Zz${marker}&activation=ACTIVATED`, coach.token))
             .body,
         );
-        expect(pending.total).toBe(3);
+        expect(activated.total).toBe(3);
         // LIKE wildcards are literal
         const wildcard = adminClientListSchema.parse(
           (await t.call('GET', '/v1/admin/clients?q=%25', coach.token)).body,
@@ -656,6 +783,7 @@ describe.skipIf(!databaseUrl)('coach & client management (integration, rolled ba
         expect(capture.text()).not.toContain('9876');
         // nor raw activation tokens / passwords
         expect(capture.text()).not.toContain(NEW_PASSWORD);
+        expect(capture.text()).not.toContain(CLIENT_PASSWORD);
       });
     });
 

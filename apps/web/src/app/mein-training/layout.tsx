@@ -46,7 +46,7 @@ export default async function PortalLayout({ children }: { children: ReactNode }
   const initials =
     (profile.ok
       ? `${profile.data.firstName.charAt(0)}${profile.data.lastName.charAt(0)}`
-      : (user.displayName ?? user.email).charAt(0)
+      : (user.displayName ?? user.email ?? '·').charAt(0)
     ).toUpperCase() || '·';
 
   const brand = (

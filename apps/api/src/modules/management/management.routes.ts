@@ -6,6 +6,7 @@ import {
   clientListQuerySchema,
   createClientRequestSchema,
   createCoachRequestSchema,
+  setClientPasswordRequestSchema,
   updateClientRequestSchema,
   updateCoachRequestSchema,
 } from '@vitruv/contracts';
@@ -32,6 +33,7 @@ import {
   regenerateClientActivation,
   regenerateCoachActivation,
   setClientAccountStatus,
+  setClientPassword,
   setCoachAccountStatus,
   updateClient,
   updateCoach,
@@ -95,6 +97,17 @@ export function adminClientRoutes(deps: ManagementDeps) {
     async (c) =>
       c.json(
         await assignClient(deps, actorOf(c), c.req.valid('param').id, c.req.valid('json').coachId),
+      ),
+  );
+  // Staff sets/resets the client's password (told to the client in person; no e-mail).
+  routes.put(
+    '/:id/password',
+    requirePermission('clients.account.manage'),
+    validate('param', idParam),
+    validate('json', setClientPasswordRequestSchema),
+    async (c) =>
+      c.json(
+        await setClientPassword(deps, actorOf(c), c.req.valid('param').id, c.req.valid('json')),
       ),
   );
   routes.put(

@@ -14,6 +14,7 @@ describe('management contracts', () => {
       firstName: ' Erika ',
       lastName: 'Muster',
       email: ' Erika@Example.DE ',
+      password: 'ein langes Passwort',
       role: 'ADMIN',
     });
     expect(created).not.toHaveProperty('role');
@@ -28,6 +29,24 @@ describe('management contracts', () => {
     expect(updateClientRequestSchema.safeParse({ role: 'ADMIN' }).success).toBe(false);
     expect(updateClientRequestSchema.safeParse({ email: 'neu@x.de' }).success).toBe(false);
     expect(updateClientRequestSchema.safeParse({}).success).toBe(false);
+  });
+
+  it('creates clients with a password; e-mail and username optional, username normalised', () => {
+    const minimal = createClientRequestSchema.parse({
+      firstName: 'Rauf Onur',
+      lastName: 'Cullu',
+      password: 'ein langes Passwort',
+    });
+    expect(minimal).not.toHaveProperty('email');
+    expect(createClientRequestSchema.parse({ ...minimal, username: ' RaufOnur.C ' }).username).toBe(
+      'raufonur.c',
+    );
+    expect(createClientRequestSchema.safeParse({ ...minimal, username: 'ab' }).success).toBe(false);
+    expect(createClientRequestSchema.safeParse({ ...minimal, password: 'kurz' }).success).toBe(
+      false,
+    );
+    const { password: _omit, ...withoutPassword } = minimal;
+    expect(createClientRequestSchema.safeParse(withoutPassword).success).toBe(false);
   });
 
   it('normalises optional text: empty phone/notes become null, notes are plain text with a limit', () => {

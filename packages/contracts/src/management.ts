@@ -2,6 +2,7 @@ import {
   ACTIVATION_STATES,
   COACHING_STATUSES,
   INTERNAL_NOTES_MAX_LENGTH,
+  USERNAME_PATTERN,
   USER_STATUSES,
 } from '@vitruv/shared';
 import { z } from 'zod';
@@ -79,10 +80,24 @@ export type AccountStatusRequest = z.infer<typeof accountStatusRequestSchema>;
 
 // ---------------------------------------------------------------- clients (Admin/Coach)
 
+/** Login name as entered by staff (lowercase; same rule as the DB check). */
+export const usernameSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(USERNAME_PATTERN, '3–32 Zeichen: a–z, 0–9, Punkt, Bindestrich oder Unterstrich.');
+
+/**
+ * New client created by staff WITH a password (owner decision 2026-10-20: no activation e-mail —
+ * the coach tells the client username + password). E-mail and phone are optional; the username
+ * is derived from the name when left out (the API makes it unique).
+ */
 export const createClientRequestSchema = z.object({
   firstName: plain(80),
   lastName: plain(80),
-  email: authEmailSchema,
+  email: authEmailSchema.nullable().optional(),
+  username: usernameSchema.nullable().optional(),
+  password: newPasswordSchema,
   phone: phoneSchema.nullable().optional(),
   /** ADMIN: target coach or null (unassigned). COACH: ignored — always the creating coach. */
   coachId: z.uuid().nullable().optional(),
@@ -120,7 +135,8 @@ export const adminClientListItemSchema = z.object({
   id: z.uuid(),
   firstName: z.string(),
   lastName: z.string(),
-  email: z.string(),
+  email: z.string().nullable(),
+  username: z.string().nullable(),
   coachingStatus: coachingStatusSchema,
   account: accountSummarySchema,
   coach: coachRefSchema.nullable(),
@@ -149,8 +165,11 @@ export type AdminClientDetail = z.infer<typeof adminClientDetailSchema>;
 
 export const createClientResponseSchema = z.object({
   client: adminClientDetailSchema,
-  activation: issuedActivationSchema,
 });
+
+/** PUT /v1/admin/clients/:id/password — staff sets (or resets) a client's password. */
+export const setClientPasswordRequestSchema = z.object({ password: newPasswordSchema });
+export type SetClientPasswordRequest = z.infer<typeof setClientPasswordRequestSchema>;
 export type CreateClientResponse = z.infer<typeof createClientResponseSchema>;
 
 // ---------------------------------------------------------------- coaches (Admin)
@@ -224,7 +243,7 @@ export const clientSelfProfileSchema = z.object({
   id: z.uuid(),
   firstName: z.string(),
   lastName: z.string(),
-  email: z.string(),
+  email: z.string().nullable(),
   coachingStatus: coachingStatusSchema,
   coach: z.object({ displayName: z.string() }).nullable(),
 });

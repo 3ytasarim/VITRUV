@@ -8,3 +8,4 @@ export * from './clients';
 export * from './training';
 export * from './workout';
 export * from './nutrition';
+export * from './username';

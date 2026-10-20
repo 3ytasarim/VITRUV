@@ -22,7 +22,8 @@ export default async function ClientOverviewPage({ params }: { params: Promise<{
   if (!result.ok) return null;
   const client = result.data;
   const rows: [string, string][] = [
-    ['E-Mail', client.email],
+    ['Benutzername', client.username ?? '—'],
+    ['E-Mail', client.email ?? '—'],
     ['Telefon', client.phone ?? '—'],
     ...(COACH_TEAM_ENABLED
       ? ([
