@@ -32,6 +32,24 @@ import { users } from './users';
  * Future workout sessions/feedback will reference training_days / assignment ids (stable uuids).
  */
 
+/**
+ * Categories of the exercise library (owner request 2026-10-21, e.g. "Warm-up Oberkörper",
+ * "Oberkörper · Hauptteil", "Cardio"); ordered for the picker. Never deleted while in use.
+ */
+export const exerciseCategories = pgTable(
+  'exercise_categories',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: text('name').notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex('exercise_categories_name_lower_unique').on(sql`lower(${table.name})`),
+    check('exercise_categories_name_length', sql`char_length(${table.name}) between 1 and 80`),
+  ],
+);
+
 /** Shared, organisation-wide exercise library. Never hard-deleted once used — deactivated. */
 export const exercises = pgTable(
   'exercises',
@@ -42,6 +60,18 @@ export const exercises = pgTable(
     description: text('description'),
     /** Demonstration image/video from the media library (purpose TRAINING_VIDEO, PUBLIC). */
     mediaAssetId: uuid('media_asset_id').references(() => mediaAssets.id, { onDelete: 'restrict' }),
+    /** Library category (additive 2026-10-21); null = uncategorised. */
+    categoryId: uuid('category_id').references(() => exerciseCategories.id, {
+      onDelete: 'restrict',
+    }),
+    /** Fixed catalogue ID, e.g. "OK-01" (unique, uppercase). */
+    code: text('code'),
+    /** "Erfassung": which values the exercise records, e.g. "Wdh. + kg", "Zeit pro Seite". */
+    captureType: text('capture_type'),
+    /** "Standard": default sets/rest, e.g. "3 Sätze · Pause 1:30 Min.". */
+    standard: text('standard'),
+    /** "Einsatz": where it is used, e.g. "OK A · OK B". */
+    usage: text('usage'),
     active: boolean('active').notNull().default(true),
     createdByUserId: uuid('created_by_user_id').references(() => users.id, {
       onDelete: 'set null',
@@ -50,6 +80,16 @@ export const exercises = pgTable(
   },
   (table) => [
     uniqueIndex('exercises_name_lower_unique').on(sql`lower(${table.name})`),
+    uniqueIndex('exercises_code_unique').on(table.code),
+    index('exercises_category_idx').on(table.categoryId),
+    check(
+      'exercises_code_format',
+      sql`${table.code} is null or ${table.code} ~ '^[A-Z0-9][A-Z0-9-]{0,15}$'`,
+    ),
+    check(
+      'exercises_detail_lengths',
+      sql`(${table.captureType} is null or char_length(${table.captureType}) <= 60) and (${table.standard} is null or char_length(${table.standard}) <= 160) and (${table.usage} is null or char_length(${table.usage}) <= 160)`,
+    ),
     index('exercises_media_idx').on(table.mediaAssetId),
     check('exercises_name_length', sql`char_length(${table.name}) between 1 and 120`),
     check(
@@ -250,6 +290,31 @@ export const trainingExerciseAssignments = pgTable(
  * Simple alternative to the week/day programs — no snapshot, no sessions. Exercises are
  * and clients (never hard-deleted) are protected by RESTRICT.
  */
+/**
+ * The client's training plan period (owner request 2026-10-21: start and end belong to the PLAN,
+ * not to single exercises). One row per client; items are client_plan_items.
+ */
+export const clientPlans = pgTable(
+  'client_plans',
+  {
+    clientUserId: uuid('client_user_id')
+      .primaryKey()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    startsOn: date('starts_on'),
+    endsOn: date('ends_on'),
+    updatedByUserId: uuid('updated_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    ...timestamps,
+  },
+  (table) => [
+    check(
+      'client_plans_period',
+      sql`${table.startsOn} is null or ${table.endsOn} is null or ${table.endsOn} >= ${table.startsOn}`,
+    ),
+  ],
+);
+
 export const clientPlanItems = pgTable(
   'client_plan_items',
   {
@@ -260,8 +325,11 @@ export const clientPlanItems = pgTable(
     exerciseId: uuid('exercise_id')
       .notNull()
       .references(() => exercises.id, { onDelete: 'restrict' }),
-    /** First day of the period. */
-    scheduledOn: date('scheduled_on').notNull(),
+    /**
+     * Legacy per-exercise date (2026-10-19/20). Since 2026-10-21 the period lives on client_plans
+     * and new items are saved without a date.
+     */
+    scheduledOn: date('scheduled_on'),
     /** Last day of the period (inclusive); null = a single day (additive 2026-10-19). */
     endsOn: date('ends_on'),
     /** Shown to the client next to the exercise. */
@@ -298,3 +366,5 @@ export type TrainingDay = typeof trainingDays.$inferSelect;
 export type TrainingSection = typeof trainingSections.$inferSelect;
 export type TrainingExerciseAssignment = typeof trainingExerciseAssignments.$inferSelect;
 export type ClientPlanItem = typeof clientPlanItems.$inferSelect;
+export type ClientPlan = typeof clientPlans.$inferSelect;
+export type ExerciseCategory = typeof exerciseCategories.$inferSelect;

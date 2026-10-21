@@ -1,6 +1,8 @@
 import 'server-only';
 import {
   clientPlanSchema,
+  exerciseCategoryListSchema,
+  exerciseCategorySchema,
   type SaveClientPlanRequest,
   adminExerciseListSchema,
   adminExerciseSchema,
@@ -37,10 +39,22 @@ export const trainingApi = {
     return adminFetch(`${T}/exercises${qs ? `?${qs}` : ''}`, adminExerciseListSchema);
   },
   exercise: (id: string) => adminFetch(`${T}/exercises/${id}`, adminExerciseSchema),
+  /** Library categories in picker order (with active exercise counts). */
+  categories: () => adminFetch(`${T}/exercise-categories`, exerciseCategoryListSchema),
+  createCategory: (name: string) =>
+    adminFetch(`${T}/exercise-categories`, exerciseCategorySchema, {
+      method: 'POST',
+      body: { name },
+    }),
   createExercise: (body: CreateExerciseRequest) =>
     adminFetch(`${T}/exercises`, adminExerciseSchema, { method: 'POST', body }),
   updateExercise: (id: string, body: UpdateExerciseRequest) =>
     adminFetch(`${T}/exercises/${id}`, adminExerciseSchema, { method: 'PATCH', body }),
+  /** Hard delete (only without training history); also removes it from client plans. */
+  deleteExercise: (id: string) =>
+    adminFetch(`${T}/exercises/${id}`, z.object({ removedFromPlans: z.number().int() }), {
+      method: 'DELETE',
+    }),
   setExerciseActive: (id: string, active: boolean) =>
     adminFetch(
       `${T}/exercises/${id}/${active ? 'reactivate' : 'deactivate'}`,

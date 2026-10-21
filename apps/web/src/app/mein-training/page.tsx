@@ -15,12 +15,7 @@ import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
 import { ErrorState } from '@/components/admin/states';
 import { CountUp } from '@/components/portal/count-up';
-import {
-  currentOrNext,
-  groupByPeriod,
-  periodLabel,
-  todayIso,
-} from '@/components/portal/dated-plan';
+import { groupByCategory, periodLabel, planStatus, todayIso } from '@/components/portal/dated-plan';
 import { Greeting } from '@/components/portal/greeting';
 import { SessionList } from '@/components/portal/session-list';
 import { StartWorkoutButton } from '@/components/portal/start-workout-button';
@@ -107,12 +102,10 @@ export default async function PortalDashboardPage() {
   const mealPlan = nutrition.ok ? nutrition.data.document : null;
   if (!active.ok) return <ErrorState message="Dein Trainingsplan konnte nicht geladen werden." />;
   const program = active.data.program;
-  // the coach's dated plan: what runs today, else the next period
-  const planNow = dated.ok
-    ? currentOrNext(groupByPeriod(dated.data.items), todayIso())
-    : { now: false, periods: [] };
-  const plannedItems = planNow.periods.flatMap((p) => p.items);
-  const nextPlanned = plannedItems.length > 0 ? planNow : null;
+  // the coach's training plan (period + exercises grouped by category)
+  const plan = dated.ok && dated.data.items.length > 0 ? dated.data : null;
+  const plannedItems = plan?.items ?? [];
+  const planState = plan ? planStatus(plan, todayIso()) : null;
   const running = current.ok ? current.data.session : null;
   const items = history.ok ? history.data.items : [];
   const now = new Date();
@@ -127,7 +120,7 @@ export default async function PortalDashboardPage() {
   const maxBar = Math.max(1, ...stats.perWeek);
 
   const subtitle =
-    !program && nextPlanned
+    !program && plan
       ? `Dein Coach hat ${plannedItems.length} ${plannedItems.length === 1 ? 'Übung' : 'Übungen'} für dich geplant.`
       : !program
         ? 'Dein Coach stellt gerade deinen Plan zusammen – sobald er freigegeben ist, findest du ihn hier.'
@@ -198,34 +191,34 @@ export default async function PortalDashboardPage() {
         </Link>
       )}
 
-      {/* ---- Next dated plan day ------------------------------------------------------------ */}
-      {nextPlanned && (
+      {/* ---- Training plan (coach) --------------------------------------------------------- */}
+      {plan && (
         <section
           className="vt-pcard vt-rise"
-          aria-labelledby="dated-next"
+          aria-labelledby="plan-card"
           style={{ '--i': 1 } as CSSProperties}
         >
           <div className="vt-pcard__head">
-            <h2 id="dated-next" className="vt-pcard__title">
-              {nextPlanned.now ? 'Aktuell geplant' : 'Als Nächstes geplant'}
+            <h2 id="plan-card" className="vt-pcard__title">
+              Dein Trainingsplan
             </h2>
+            {periodLabel(plan.startsOn, plan.endsOn) && (
+              <span className="type-body-sm text-fg-muted">
+                {periodLabel(plan.startsOn, plan.endsOn)}
+                {planState === 'upcoming' ? ' · startet bald' : ''}
+                {planState === 'finished' ? ' · abgeschlossen' : ''}
+              </span>
+            )}
           </div>
           <ul className="flex flex-col gap-3">
-            {nextPlanned.periods.flatMap((period) =>
-              period.items.map((item) => (
-                <li key={item.id} className="flex min-w-0 flex-col gap-1">
-                  <span className="type-body font-semibold break-words">{item.exercise.name}</span>
-                  <span className="type-caption text-fg-subtle">
-                    {periodLabel(period.from, period.to)}
-                  </span>
-                  {item.note && (
-                    <span className="type-body-sm whitespace-pre-line text-fg-muted">
-                      {item.note}
-                    </span>
-                  )}
-                </li>
-              )),
-            )}
+            {groupByCategory(plan.items).map((group) => (
+              <li key={group.key || 'none'} className="flex min-w-0 flex-col gap-1">
+                <span className="type-body font-semibold break-words">{group.name}</span>
+                <span className="type-body-sm text-fg-muted">
+                  {group.items.map((item) => item.exercise.code ?? item.exercise.name).join(' · ')}
+                </span>
+              </li>
+            ))}
           </ul>
           <Link
             href={`${PORTAL_PATH}/plan`}

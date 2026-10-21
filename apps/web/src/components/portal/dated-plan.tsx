@@ -9,50 +9,45 @@ export function todayIso(now = new Date()) {
 }
 
 const at = (date: string) => new Date(`${date}T12:00:00`);
-const long = new Intl.DateTimeFormat('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
-const short = new Intl.DateTimeFormat('de-DE', {
-  weekday: 'short',
-  day: 'numeric',
-  month: 'short',
-});
+const day = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'long', year: 'numeric' });
 
-/** "Montag, 2. November" for one day, "Mo., 2. Nov. – So., 8. Nov." for a period. */
-export function periodLabel(from: string, to: string) {
-  return from === to
-    ? long.format(at(from))
-    : `${short.format(at(from))} – ${short.format(at(to))}`;
+/** "2. November 2026 – 13. Dezember 2026", "ab 2. November 2026", "bis …" or null. */
+export function periodLabel(from: string | null, to: string | null) {
+  if (from && to) return `${day.format(at(from))} – ${day.format(at(to))}`;
+  if (from) return `ab ${day.format(at(from))}`;
+  if (to) return `bis ${day.format(at(to))}`;
+  return null;
 }
 
-export type PlanPeriod = { key: string; from: string; to: string; items: ClientPlanItem[] };
+/** Where today is relative to the plan period. */
+export function planStatus(plan: Pick<ClientPlan, 'startsOn' | 'endsOn'>, today: string) {
+  if (plan.startsOn && today < plan.startsOn) return 'upcoming' as const;
+  if (plan.endsOn && today > plan.endsOn) return 'finished' as const;
+  return 'running' as const;
+}
 
-/**
- * Plan items grouped by period (same from – to); single days have from = to. Sorted by start,
- * then end; within a period the coach's order is kept.
- */
-export function groupByPeriod(items: ClientPlanItem[]): PlanPeriod[] {
-  const groups = new Map<string, PlanPeriod>();
+export type PlanGroup = { key: string; name: string; items: ClientPlanItem[] };
+
+/** Items grouped by category, groups in the order the coach first placed them. */
+export function groupByCategory(items: ClientPlanItem[]): PlanGroup[] {
+  const groups = new Map<string, PlanGroup>();
   for (const item of items) {
-    const to = item.endsOn ?? item.scheduledOn;
-    const key = `${item.scheduledOn}_${to}`;
-    const group = groups.get(key) ?? { key, from: item.scheduledOn, to, items: [] };
+    const key = item.exercise.category?.id ?? '';
+    const group = groups.get(key) ?? {
+      key,
+      name: item.exercise.category?.name ?? 'Weitere Übungen',
+      items: [],
+    };
     group.items.push(item);
     groups.set(key, group);
   }
-  return [...groups.values()].sort((a, b) =>
-    a.from === b.from ? a.to.localeCompare(b.to) : a.from.localeCompare(b.from),
-  );
-}
-
-/** Periods that include today, or else the next period that starts later. */
-export function currentOrNext(periods: PlanPeriod[], today: string) {
-  const running = periods.filter((p) => p.from <= today && p.to >= today);
-  if (running.length > 0) return { now: true, periods: running };
-  const next = periods.find((p) => p.from > today);
-  return { now: false, periods: next ? [next] : [] };
+  return [...groups.values()];
 }
 
 function PlanItem({ item }: { item: ClientPlanItem }) {
-  const media = item.exercise.media;
+  const { exercise } = item;
+  const media = exercise.media;
+  const facts = [exercise.standard, exercise.captureType].filter(Boolean).join(' · ');
   return (
     <li className="vt-dplan__item">
       {media &&
@@ -63,84 +58,78 @@ function PlanItem({ item }: { item: ClientPlanItem }) {
             controls
             playsInline
             preload="metadata"
-            aria-label={`Video: ${item.exercise.name}`}
+            aria-label={`Video: ${exercise.name}`}
           />
         ) : (
           <img className="vt-dplan__media" src={media.url} alt="" loading="lazy" decoding="async" />
         ))}
       <div className="flex min-w-0 flex-col gap-1.5">
-        <p className="type-body font-semibold break-words">{item.exercise.name}</p>
+        <p className="type-body font-semibold break-words">
+          {exercise.code && <span className="mr-2 text-accent-text">{exercise.code}</span>}
+          {exercise.name}
+        </p>
+        {facts && <p className="type-caption text-fg-subtle">{facts}</p>}
         {item.note && (
           <p className="vt-dplan__note">
             <MessageSquareText aria-hidden className="size-4 shrink-0" />
             <span className="whitespace-pre-line">{item.note}</span>
           </p>
         )}
-        {item.exercise.description && (
-          <p className="type-body-sm whitespace-pre-line text-fg-muted">
-            {item.exercise.description}
-          </p>
+        {exercise.description && (
+          <p className="type-body-sm whitespace-pre-line text-fg-muted">{exercise.description}</p>
         )}
       </div>
     </li>
   );
 }
 
+const STATUS_BADGE = {
+  running: { tone: 'accent', label: 'Aktuell' },
+  upcoming: { tone: 'neutral', label: 'Startet bald' },
+  finished: { tone: 'neutral', label: 'Abgeschlossen' },
+} as const;
+
 /**
- * The client's dated plan: running and upcoming periods first (the current one highlighted),
- * finished periods afterwards in a collapsed list. Notes are the coach's text, shown as written.
+ * The client's training plan: the period on top (with its state), then the exercises grouped by
+ * category in the coach's order — code, standard / Erfassung, the coach's note and the Ausführung.
  */
 export function DatedPlan({ plan, now = new Date() }: { plan: ClientPlan; now?: Date }) {
-  const today = todayIso(now);
-  const periods = groupByPeriod(plan.items);
-  const upcoming = periods.filter((p) => p.to >= today);
-  const past = periods.filter((p) => p.to < today).reverse();
-  if (periods.length === 0) return null;
-
-  const day = (d: PlanPeriod, i: number) => {
-    const running = d.from <= today && d.to >= today;
-    return (
-      <section
-        key={d.key}
-        aria-labelledby={`plan-${d.key}`}
-        className="vt-pcard vt-rise"
-        style={{ '--i': i } as CSSProperties}
-        data-today={running || undefined}
-      >
-        <div className="vt-pcard__head">
-          <h2 id={`plan-${d.key}`} className="vt-pcard__title">
-            <CalendarDays aria-hidden className="mr-2 inline size-5 align-[-3px]" />
-            {periodLabel(d.from, d.to)}
-          </h2>
-          {running && <Badge tone="accent">{d.from === d.to ? 'Heute' : 'Aktuell'}</Badge>}
-        </div>
-        <ul className="vt-dplan">
-          {d.items.map((item) => (
-            <PlanItem key={item.id} item={item} />
-          ))}
-        </ul>
-      </section>
-    );
-  };
-
+  if (plan.items.length === 0) return null;
+  const period = periodLabel(plan.startsOn, plan.endsOn);
+  const status = STATUS_BADGE[planStatus(plan, todayIso(now))];
   return (
     <>
-      {upcoming.map(day)}
-      {upcoming.length === 0 && (
-        <div className="vt-pcard">
-          <p className="type-body text-fg-muted">
-            Aktuell sind keine weiteren Übungen geplant – dein Coach trägt die nächsten bald ein.
+      {period && (
+        <div className="vt-pcard vt-rise flex flex-wrap items-center justify-between gap-3">
+          <p className="type-body flex items-center gap-2 font-semibold">
+            <CalendarDays aria-hidden className="size-5 text-accent-text" />
+            {period}
           </p>
+          <Badge tone={status.tone}>{status.label}</Badge>
         </div>
       )}
-      {past.length > 0 && (
-        <details className="vt-pcard vt-dplan__past">
-          <summary className="type-body font-semibold">
-            Vergangene Zeiträume ({past.length})
-          </summary>
-          <div className="mt-4 flex flex-col gap-4">{past.map(day)}</div>
-        </details>
-      )}
+      {groupByCategory(plan.items).map((group, i) => (
+        <section
+          key={group.key || 'none'}
+          aria-labelledby={`plan-${group.key || 'none'}`}
+          className="vt-pcard vt-rise"
+          style={{ '--i': i + 1 } as CSSProperties}
+        >
+          <div className="vt-pcard__head">
+            <h2 id={`plan-${group.key || 'none'}`} className="vt-pcard__title">
+              {group.name}
+            </h2>
+            <span className="type-caption text-fg-subtle">
+              {group.items.length} {group.items.length === 1 ? 'Übung' : 'Übungen'}
+            </span>
+          </div>
+          <ul className="vt-dplan">
+            {group.items.map((item) => (
+              <PlanItem key={item.id} item={item} />
+            ))}
+          </ul>
+        </section>
+      ))}
     </>
   );
 }

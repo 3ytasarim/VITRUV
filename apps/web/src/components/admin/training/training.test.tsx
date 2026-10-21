@@ -36,7 +36,13 @@ const exercise = (n: number, name: string): AdminExercise => ({
   description: null,
   active: true,
   media: null,
+  category: null,
+  code: null,
+  captureType: null,
+  standard: null,
+  usage: null,
   usageCount: 0,
+  planCount: 0,
   createdAt: '2026-10-16T10:00:00.000Z',
   updatedAt: '2026-10-16T10:00:00.000Z',
 });

@@ -1,6 +1,7 @@
 import {
   createAssignmentRequestSchema,
   createDayRequestSchema,
+  createExerciseCategoryRequestSchema,
   createExerciseRequestSchema,
   createProgramRequestSchema,
   createSectionRequestSchema,
@@ -24,7 +25,10 @@ import { validate } from '../../lib/validation';
 import type { AppEnv } from '../../types';
 import {
   createExercise,
+  createExerciseCategory,
+  deleteExercise,
   getExercise,
+  listExerciseCategories,
   listExercises,
   setExerciseActive,
   updateExercise,
@@ -60,6 +64,17 @@ export function adminTrainingRoutes(deps: TrainingDeps) {
   const read = requirePermission('training.programs.read');
   const update = requirePermission('training.programs.update');
 
+  // ---- exercise library: categories
+  r.get('/exercise-categories', requirePermission('training.exercises.read'), async (c) =>
+    c.json(await listExerciseCategories(deps)),
+  );
+  r.post(
+    '/exercise-categories',
+    requirePermission('training.exercises.write'),
+    validate('json', createExerciseCategoryRequestSchema),
+    async (c) => c.json(await createExerciseCategory(deps, c.req.valid('json')), 201),
+  );
+
   // ---- exercise library
   r.get(
     '/exercises',
@@ -85,6 +100,12 @@ export function adminTrainingRoutes(deps: TrainingDeps) {
     validate('param', idParam),
     validate('json', updateExerciseRequestSchema),
     async (c) => c.json(await updateExercise(deps, c.req.valid('param').id, c.req.valid('json'))),
+  );
+  r.delete(
+    '/exercises/:id',
+    requirePermission('training.exercises.write'),
+    validate('param', idParam),
+    async (c) => c.json(await deleteExercise(deps, actorOf(c), c.req.valid('param').id)),
   );
   for (const [path, active] of [
     ['/exercises/:id/deactivate', false],

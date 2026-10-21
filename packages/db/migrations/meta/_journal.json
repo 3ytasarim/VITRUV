@@ -120,6 +120,13 @@
       "when": 1792498727183,
       "tag": "0016_client_login_by_username",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792584852096,
+      "tag": "0017_exercise_catalog_and_plan_period",
+      "breakpoints": true
     }
   ]
 }

@@ -21,11 +21,11 @@ export default async function ClientTrainingPage({ params }: { params: Promise<{
     `/admin/kunden/${id}/training`,
   );
   const canSeeWorkouts = user.permissions.includes('training.sessions.read');
-  const [plan, exercises, workouts] = await Promise.all([
+  const canReadLibrary = user.permissions.includes('training.exercises.read');
+  const [plan, exercises, categories, workouts] = await Promise.all([
     trainingApi.plan(id),
-    user.permissions.includes('training.exercises.read')
-      ? trainingApi.exercises({ status: 'active' })
-      : null,
+    canReadLibrary ? trainingApi.exercises({ status: 'active' }) : null,
+    canReadLibrary ? trainingApi.categories() : null,
     canSeeWorkouts ? trainingApi.workouts(id) : null,
   ]);
   if (!plan.ok && (plan.status === 404 || plan.status === 400)) notFound();
@@ -36,6 +36,7 @@ export default async function ClientTrainingPage({ params }: { params: Promise<{
       <PlanEditor
         clientId={id}
         exercises={exercises?.ok ? exercises.data.items : []}
+        categories={categories?.ok ? categories.data.items : []}
         initial={plan.data}
         canEdit={user.permissions.includes('training.programs.update')}
       />

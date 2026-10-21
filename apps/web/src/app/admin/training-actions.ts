@@ -76,14 +76,57 @@ const text = (form: FormData, key: string) => {
   return typeof value === 'string' ? value : undefined;
 };
 
+/** Catalogue fields of the exercise form (category, code, Erfassung, Standard, Einsatz). */
+function catalogFields(form: FormData) {
+  return {
+    categoryId: text(form, 'categoryId') || null,
+    code: text(form, 'code') ?? '',
+    captureType: text(form, 'captureType') ?? '',
+    standard: text(form, 'standard') ?? '',
+    usage: text(form, 'usage') ?? '',
+  };
+}
+
+/**
+ * "Neue Kategorie …" in the form: create the category first and use its id. Returns the
+ * failure to show, or the category id (unchanged when no new category was typed).
+ */
+async function resolveCategory(
+  form: FormData,
+  categoryId: string | null,
+): Promise<
+  { ok: true; categoryId: string | null } | Extract<TrainingResult<never>, { ok: false }>
+> {
+  const name = text(form, 'newCategory')?.trim();
+  if (categoryId !== '__new__') return { ok: true, categoryId };
+  if (!name) {
+    return {
+      ok: false,
+      message: 'Bitte prüfe die Eingaben.',
+      fieldErrors: { newCategory: 'Bitte einen Namen eingeben.' },
+    };
+  }
+  const created = await trainingApi.createCategory(name);
+  if (!created.ok) {
+    const f = failure(created);
+    return { ...f, fieldErrors: { newCategory: f.fieldErrors.name ?? f.message } };
+  }
+  return { ok: true, categoryId: created.data.id };
+}
+
 export async function createExerciseAction(
   _prev: TrainingResult<AdminExercise> | null,
   form: FormData,
 ): Promise<TrainingResult<AdminExercise>> {
+  const fields = catalogFields(form);
+  const category = await resolveCategory(form, fields.categoryId);
+  if (!category.ok) return category;
   const parsed = createExerciseRequestSchema.safeParse({
     name: text(form, 'name') ?? '',
     description: text(form, 'description') ?? null,
     mediaAssetId: text(form, 'mediaAssetId') || null,
+    ...fields,
+    categoryId: category.categoryId,
   });
   if (!parsed.success) return invalid(parsed.error.issues);
   const result = await trainingApi.createExercise(parsed.data);
@@ -98,10 +141,15 @@ export async function updateExerciseAction(
   form: FormData,
 ): Promise<TrainingResult<AdminExercise>> {
   if (!id.safeParse(exerciseId).success) return { ok: false, message: GENERIC, fieldErrors: {} };
+  const fields = catalogFields(form);
+  const category = await resolveCategory(form, fields.categoryId);
+  if (!category.ok) return category;
   const parsed = updateExerciseRequestSchema.safeParse({
     name: text(form, 'name') ?? '',
     description: text(form, 'description') ?? null,
     mediaAssetId: text(form, 'mediaAssetId') || null,
+    ...fields,
+    categoryId: category.categoryId,
   });
   if (!parsed.success) return invalid(parsed.error.issues);
   const result = await trainingApi.updateExercise(exerciseId, parsed.data);
@@ -292,15 +340,27 @@ export async function deleteProgramAction(
   redirect(`/admin/kunden/${clientId}/training?hinweis=geloescht`);
 }
 
+/** Deletes a library exercise (the API refuses exercises with training history). */
+export async function deleteExerciseAction(
+  exerciseId: string,
+): Promise<TrainingResult<{ removedFromPlans: number }>> {
+  if (!id.safeParse(exerciseId).success) return { ok: false, message: GENERIC, fieldErrors: {} };
+  const result = await trainingApi.deleteExercise(exerciseId);
+  if (!result.ok) return failure(result);
+  revalidatePath('/admin/training/uebungen', 'layout');
+  revalidatePath('/admin/kunden', 'layout');
+  return { ok: true, data: result.data };
+}
+
 // ---------------------------------------------------------------- dated client plan
 
-/** Saves the client's whole plan (exercise + date + note per row, in list order). */
+/** Saves the client's whole plan: period (start – end) + exercises with coach notes, in order. */
 export async function saveClientPlanAction(
   clientId: string,
-  items: unknown,
+  plan: unknown,
 ): Promise<TrainingResult<ClientPlan>> {
   const c = id.safeParse(clientId);
-  const body = saveClientPlanRequestSchema.safeParse({ items });
+  const body = saveClientPlanRequestSchema.safeParse(plan);
   if (!c.success) return invalid([{ path: ['form'], message: 'Ungültige Anfrage.' }]);
   if (!body.success) return invalid(body.error.issues);
   const result = await trainingApi.savePlan(c.data, body.data);

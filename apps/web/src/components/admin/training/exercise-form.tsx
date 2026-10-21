@@ -1,6 +1,6 @@
 'use client';
 
-import type { AdminExercise, AdminMediaAsset } from '@vitruv/contracts';
+import type { AdminExercise, AdminMediaAsset, ExerciseCategory } from '@vitruv/contracts';
 import { ImageIcon, Video, X } from 'lucide-react';
 import { useActionState, useEffect, useRef, useState } from 'react';
 import type { TrainingResult } from '@/app/admin/training-actions';
@@ -13,19 +13,40 @@ type Action = (
   form: FormData,
 ) => Promise<TrainingResult<AdminExercise>>;
 
+/** Typical "Erfassung" values from the exercise catalogue (free text stays possible). */
+const CAPTURE_TYPES = [
+  'Wdh.',
+  'Wdh. + kg',
+  'Wdh. + kg Zusatz',
+  'Wdh. pro Seite',
+  'Wdh. pro Seite + kg',
+  'Wdh. / Zeit',
+  'Wdh. + Zeit',
+  'Zeit',
+  'Zeit pro Seite',
+  'Dauer',
+  'Dauer (+ km)',
+  'erledigt ja/nein',
+];
+
 /**
- * Exercise create/edit. Media comes from the TRAINING media library (same media system as the
- * website, separate permissions); only the asset id is stored on the exercise.
+ * Exercise create/edit: name, Ausführung, catalogue data (Kategorie, Code, Erfassung, Standard,
+ * Einsatz — owner request 2026-10-21, same columns as the exercise library PDF) and media from
+ * the TRAINING media library (only the asset id is stored on the exercise). A new category can be
+ * created right here ("Neue Kategorie …").
  */
 export function ExerciseForm({
   action,
   exercise,
+  categories,
   submitLabel,
 }: {
   action: Action;
   exercise?: AdminExercise;
+  categories: ExerciseCategory[];
   submitLabel: string;
 }) {
+  const [categoryId, setCategoryId] = useState(exercise?.category?.id ?? '');
   const [state, formAction, pending] = useActionState(action, null);
   const statusRef = useRef<HTMLDivElement>(null);
   const [media, setMedia] = useState<{ assetId: string; kind: string; fileName: string } | null>(
@@ -100,10 +121,65 @@ export function ExerciseForm({
             />
           )}
         </FormField>
+        <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_10rem]">
+          <FormField label="Kategorie" error={error('categoryId')}>
+            {({ id, describedBy, invalid }) => (
+              <select
+                id={id}
+                name="categoryId"
+                value={categoryId}
+                onChange={(event) => setCategoryId(event.target.value)}
+                aria-describedby={describedBy}
+                aria-invalid={invalid}
+                className="vt-input type-body"
+              >
+                <option value="">Ohne Kategorie</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+                <option value="__new__">+ Neue Kategorie …</option>
+              </select>
+            )}
+          </FormField>
+          <FormField label="Code" error={error('code')} hint="z. B. OK-01">
+            {({ id, describedBy, invalid }) => (
+              <input
+                id={id}
+                name="code"
+                maxLength={16}
+                defaultValue={exercise?.code ?? ''}
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+                aria-describedby={describedBy}
+                aria-invalid={invalid}
+                className="vt-input type-body uppercase"
+              />
+            )}
+          </FormField>
+        </div>
+        {categoryId === '__new__' && (
+          <FormField label="Name der neuen Kategorie" required error={error('newCategory')}>
+            {({ id, describedBy, invalid }) => (
+              <input
+                id={id}
+                name="newCategory"
+                required
+                maxLength={80}
+                autoComplete="off"
+                aria-describedby={describedBy}
+                aria-invalid={invalid}
+                className="vt-input type-body"
+              />
+            )}
+          </FormField>
+        )}
         <FormField
-          label="Beschreibung / Standard-Ausführung"
+          label="Ausführung"
           error={error('description')}
-          hint="Wird bei jeder Verwendung angezeigt, sofern der Plan keine eigene Anleitung vorgibt."
+          hint="Wie die Übung ausgeführt wird. Die Kund:in sieht den Text im Plan."
         >
           {({ id, describedBy, invalid }) => (
             <textarea
@@ -118,6 +194,66 @@ export function ExerciseForm({
             />
           )}
         </FormField>
+        <div className="grid gap-5 sm:grid-cols-3">
+          <FormField
+            label="Erfassung"
+            error={error('captureType')}
+            hint="Welche Werte erfasst werden (Wdh., kg, Zeit …)."
+          >
+            {({ id, describedBy, invalid }) => (
+              <>
+                <input
+                  id={id}
+                  name="captureType"
+                  maxLength={60}
+                  list={`${id}-list`}
+                  defaultValue={exercise?.captureType ?? ''}
+                  autoComplete="off"
+                  aria-describedby={describedBy}
+                  aria-invalid={invalid}
+                  className="vt-input type-body"
+                />
+                <datalist id={`${id}-list`}>
+                  {CAPTURE_TYPES.map((value) => (
+                    <option key={value} value={value} />
+                  ))}
+                </datalist>
+              </>
+            )}
+          </FormField>
+          <FormField
+            label="Standard"
+            error={error('standard')}
+            hint="z. B. „3 Sätze · Pause 1:30 Min.“"
+          >
+            {({ id, describedBy, invalid }) => (
+              <input
+                id={id}
+                name="standard"
+                maxLength={160}
+                defaultValue={exercise?.standard ?? ''}
+                autoComplete="off"
+                aria-describedby={describedBy}
+                aria-invalid={invalid}
+                className="vt-input type-body"
+              />
+            )}
+          </FormField>
+          <FormField label="Einsatz" error={error('usage')} hint="z. B. „OK A · OK B“">
+            {({ id, describedBy, invalid }) => (
+              <input
+                id={id}
+                name="usage"
+                maxLength={160}
+                defaultValue={exercise?.usage ?? ''}
+                autoComplete="off"
+                aria-describedby={describedBy}
+                aria-invalid={invalid}
+                className="vt-input type-body"
+              />
+            )}
+          </FormField>
+        </div>
         <fieldset className="flex flex-col gap-2">
           <legend className="type-body-sm mb-1 font-semibold">
             Medium <span className="type-caption ml-2 text-fg-subtle">optional</span>

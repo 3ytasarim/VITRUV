@@ -1,5 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { authSessionResponseSchema, clientPlanSchema } from '@vitruv/contracts';
+import {
+  adminExerciseListSchema,
+  adminExerciseSchema,
+  authSessionResponseSchema,
+  clientPlanSchema,
+  exerciseCategoryListSchema,
+  exerciseCategorySchema,
+} from '@vitruv/contracts';
 import { schema, type DatabaseHandle, type DbExecutor } from '@vitruv/db';
 import type { UserRole } from '@vitruv/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -10,7 +17,7 @@ import { buildTestApp, testAuthLimits } from './helpers';
 import { databaseUrl, inRollback, must, openTestDatabase } from './rollback';
 
 /**
- * Dated client plan against the real schema. Every test: ONE rolled-back transaction.
+ * Client training plan + exercise catalogue against the real schema. Every test: ONE rolled-back transaction.
  * Fictional people and exercises only.
  */
 const PASSWORD = 'ein sicheres Test-Passwort';
@@ -76,7 +83,7 @@ function setup(tx: DbExecutor) {
 }
 
 describe.skipIf(!databaseUrl)(
-  'dated client plan (integration, rolled back)',
+  'client training plan + exercise catalogue (integration, rolled back)',
   { timeout: 90_000 },
   () => {
     let handle: DatabaseHandle;
@@ -87,7 +94,90 @@ describe.skipIf(!databaseUrl)(
       await handle?.close();
     });
 
-    it('coach saves exercises with date + note; client reads them sorted; save replaces the list', async () => {
+    it('catalogue: categories, codes and catalogue fields; code and name stay unique', async () => {
+      await inRollback(handle, async (tx) => {
+        const t = setup(tx);
+        const coach = await t.coach();
+        const tag = randomUUID()
+          .slice(0, 6)
+          .toUpperCase()
+          .replace(/[^A-Z0-9]/g, 'X');
+        const cat = await t.call('POST', '/v1/admin/training/exercise-categories', coach.token, {
+          name: `Warm-up Test ${tag}`,
+        });
+        expect(cat.status).toBe(201);
+        const category = exerciseCategorySchema.parse(await cat.json());
+        expect(
+          (
+            await t.call('POST', '/v1/admin/training/exercise-categories', coach.token, {
+              name: `warm-up test ${tag}`,
+            })
+          ).status,
+        ).toBe(409);
+
+        const created = await t.call('POST', '/v1/admin/training/exercises', coach.token, {
+          name: `Schulterrotation ${tag}`,
+          description: '10 Kreise, beide Arme gleichzeitig.',
+          categoryId: category.id,
+          code: ` t${tag}-01 `,
+          captureType: 'Wdh.',
+          standard: '1 Durchgang',
+          usage: 'Warm-up OK · Mobility',
+        });
+        expect(created.status, await created.clone().text()).toBe(201);
+        const exercise = adminExerciseSchema.parse(await created.json());
+        expect(exercise).toMatchObject({
+          code: `T${tag}-01`,
+          category: { id: category.id },
+          captureType: 'Wdh.',
+          standard: '1 Durchgang',
+          usage: 'Warm-up OK · Mobility',
+        });
+
+        const dupCode = await t.call('POST', '/v1/admin/training/exercises', coach.token, {
+          name: `Andere ${tag}`,
+          code: `T${tag}-01`,
+        });
+        expect(dupCode.status).toBe(409);
+        expect(await dupCode.text()).toContain('Code ist bereits vergeben');
+        expect(
+          (
+            await t.call('POST', '/v1/admin/training/exercises', coach.token, {
+              name: `Falsch ${tag}`,
+              code: 'Ü 1',
+            })
+          ).status,
+        ).toBe(400);
+        expect(
+          (
+            await t.call('POST', '/v1/admin/training/exercises', coach.token, {
+              name: `Ohne Kategorie ${tag}`,
+              categoryId: randomUUID(),
+            })
+          ).status,
+        ).toBe(400);
+
+        // search finds by code; the category counts the exercise
+        const list = adminExerciseListSchema.parse(
+          await (
+            await t.call('GET', `/v1/admin/training/exercises?q=T${tag}-01`, coach.token)
+          ).json(),
+        );
+        expect(list.items.map((e) => e.id)).toEqual([exercise.id]);
+        const categories = exerciseCategoryListSchema.parse(
+          await (await t.call('GET', '/v1/admin/training/exercise-categories', coach.token)).json(),
+        );
+        expect(categories.items.find((c) => c.id === category.id)?.exerciseCount).toBe(1);
+
+        // a client has no access to the library
+        const client = await t.client(coach.id);
+        expect(
+          (await t.call('GET', '/v1/admin/training/exercise-categories', client.token)).status,
+        ).toBe(403);
+      });
+    });
+
+    it('plan: period on the plan, exercises with coach notes in order; save replaces everything', async () => {
       await inRollback(handle, async (tx) => {
         const t = setup(tx);
         const coach = await t.coach();
@@ -97,42 +187,110 @@ describe.skipIf(!databaseUrl)(
         const path = `/v1/admin/training/clients/${client.id}/plan`;
 
         const empty = clientPlanSchema.parse(await (await t.call('GET', path, coach.token)).json());
-        expect(empty).toEqual({ items: [], updatedAt: null });
+        expect(empty).toEqual({ startsOn: null, endsOn: null, items: [], updatedAt: null });
 
         const saved = await t.call('PUT', path, coach.token, {
+          startsOn: '2026-11-02',
+          endsOn: '2026-12-13',
           items: [
-            {
-              exerciseId: plank.id,
-              scheduledOn: '2026-11-03',
-              endsOn: '2026-11-09',
-              note: '3 × 45 s',
-            },
-            { exerciseId: squat.id, scheduledOn: '2026-11-02', note: '  Langsam runter  ' },
-            // a period ending on its first day is stored as a single day
-            { exerciseId: squat.id, scheduledOn: '2026-11-03', endsOn: '2026-11-03', note: '' },
+            { exerciseId: plank.id, note: '3 × 45 s' },
+            { exerciseId: squat.id, note: '  Langsam runter  ' },
+            { exerciseId: squat.id, note: '' },
           ],
         });
         expect(saved.status, await saved.clone().text()).toBe(200);
         const plan = clientPlanSchema.parse(await saved.json());
-        expect(plan.items.map((i) => [i.scheduledOn, i.endsOn, i.exercise.id, i.note])).toEqual([
-          ['2026-11-02', null, squat.id, 'Langsam runter'],
-          ['2026-11-03', '2026-11-09', plank.id, '3 × 45 s'],
-          ['2026-11-03', null, squat.id, null],
+        expect(plan).toMatchObject({ startsOn: '2026-11-02', endsOn: '2026-12-13' });
+        expect(plan.items.map((i) => [i.exercise.id, i.note])).toEqual([
+          [plank.id, '3 × 45 s'],
+          [squat.id, 'Langsam runter'],
+          [squat.id, null],
         ]);
         expect(plan.updatedAt).not.toBeNull();
 
         const own = clientPlanSchema.parse(
           await (await t.call('GET', '/v1/client/training/plan', client.token)).json(),
         );
-        expect(own.items).toEqual(plan.items);
+        expect(own).toEqual(plan);
 
         await t.call('PUT', path, coach.token, {
-          items: [{ exerciseId: plank.id, scheduledOn: '2026-11-10' }],
+          startsOn: null,
+          endsOn: null,
+          items: [{ exerciseId: squat.id }],
         });
         const replaced = clientPlanSchema.parse(
           await (await t.call('GET', '/v1/client/training/plan', client.token)).json(),
         );
-        expect(replaced.items.map((i) => i.scheduledOn)).toEqual(['2026-11-10']);
+        expect(replaced).toMatchObject({ startsOn: null, endsOn: null });
+        expect(replaced.items.map((i) => i.exercise.id)).toEqual([squat.id]);
+      });
+    });
+
+    it('delete: unused or plan-only exercises go (and leave the plans); history blocks it', async () => {
+      await inRollback(handle, async (tx) => {
+        const t = setup(tx);
+        const coach = await t.coach();
+        const client = await t.client(coach.id);
+        const demo = await t.exercise('DEMO');
+        const used = await t.exercise('Kniebeuge');
+        await t.call('PUT', `/v1/admin/training/clients/${client.id}/plan`, coach.token, {
+          startsOn: null,
+          endsOn: null,
+          items: [{ exerciseId: demo.id }, { exerciseId: used.id }],
+        });
+        const detail = adminExerciseSchema.parse(
+          await (
+            await t.call('GET', `/v1/admin/training/exercises/${demo.id}`, coach.token)
+          ).json(),
+        );
+        expect(detail.planCount).toBe(1);
+
+        // used in a program → 409, nothing deleted
+        const [program] = await tx
+          .insert(schema.trainingPrograms)
+          .values({ clientUserId: client.id, title: 'Test' })
+          .returning();
+        const [week] = await tx
+          .insert(schema.trainingWeeks)
+          .values({ programId: must(program).id, sortOrder: 0 })
+          .returning();
+        const [day] = await tx
+          .insert(schema.trainingDays)
+          .values({ weekId: must(week).id, sortOrder: 0, title: 'Tag' })
+          .returning();
+        const [section] = await tx
+          .insert(schema.trainingSections)
+          .values({ dayId: must(day).id, type: 'MAIN', sortOrder: 0 })
+          .returning();
+        await tx.insert(schema.trainingExerciseAssignments).values({
+          sectionId: must(section).id,
+          exerciseId: used.id,
+          sortOrder: 0,
+          sets: 3,
+        });
+        const blocked = await t.call(
+          'DELETE',
+          `/v1/admin/training/exercises/${used.id}`,
+          coach.token,
+        );
+        expect(blocked.status).toBe(409);
+        expect(await blocked.text()).toContain('deaktivieren');
+
+        // plan-only → deleted and removed from the plan
+        const gone = await t.call('DELETE', `/v1/admin/training/exercises/${demo.id}`, coach.token);
+        expect(gone.status).toBe(200);
+        expect(await gone.json()).toEqual({ removedFromPlans: 1 });
+        expect(
+          (await t.call('GET', `/v1/admin/training/exercises/${demo.id}`, coach.token)).status,
+        ).toBe(404);
+        const plan = clientPlanSchema.parse(
+          await (await t.call('GET', '/v1/client/training/plan', client.token)).json(),
+        );
+        expect(plan.items.map((i) => i.exercise.id)).toEqual([used.id]);
+        // a client can not delete library exercises
+        expect(
+          (await t.call('DELETE', `/v1/admin/training/exercises/${used.id}`, client.token)).status,
+        ).toBe(403);
       });
     });
 
@@ -147,7 +305,7 @@ describe.skipIf(!databaseUrl)(
         const squat = await t.exercise('Kniebeuge');
         const retired = await t.exercise('Alt', false);
         const path = `/v1/admin/training/clients/${client.id}/plan`;
-        const body = { items: [{ exerciseId: squat.id, scheduledOn: '2026-11-02' }] };
+        const body = { startsOn: null, endsOn: null, items: [{ exerciseId: squat.id }] };
 
         expect((await t.call('GET', path, coachB.token)).status).toBe(404);
         expect((await t.call('PUT', path, coachB.token, body)).status).toBe(404);
@@ -160,36 +318,14 @@ describe.skipIf(!databaseUrl)(
         );
         expect(otherPlan.items).toEqual([]);
 
-        expect(
-          (
-            await t.call('PUT', path, coachA.token, {
-              items: [{ exerciseId: squat.id, scheduledOn: '2026-13-40' }],
-            })
-          ).status,
-        ).toBe(400);
-        expect(
-          (
-            await t.call('PUT', path, coachA.token, {
-              items: [{ exerciseId: randomUUID(), scheduledOn: '2026-11-02' }],
-            })
-          ).status,
-        ).toBe(400);
-        // a period that ends before it starts
-        expect(
-          (
-            await t.call('PUT', path, coachA.token, {
-              items: [{ exerciseId: squat.id, scheduledOn: '2026-11-05', endsOn: '2026-11-01' }],
-            })
-          ).status,
-        ).toBe(400);
-        // a deactivated exercise cannot be newly planned
-        expect(
-          (
-            await t.call('PUT', path, coachA.token, {
-              items: [{ exerciseId: retired.id, scheduledOn: '2026-11-02' }],
-            })
-          ).status,
-        ).toBe(400);
+        const put = async (payload: unknown) =>
+          (await t.call('PUT', path, coachA.token, payload)).status;
+        // a period that ends before it starts / an invalid date
+        expect(await put({ ...body, startsOn: '2026-11-05', endsOn: '2026-11-01' })).toBe(400);
+        expect(await put({ ...body, startsOn: '2026-13-40' })).toBe(400);
+        // unknown exercise; a deactivated exercise cannot be newly planned
+        expect(await put({ ...body, items: [{ exerciseId: randomUUID() }] })).toBe(400);
+        expect(await put({ ...body, items: [{ exerciseId: retired.id }] })).toBe(400);
         // a coach's id for a non-client user is a 404, too
         expect(
           (await t.call('GET', `/v1/admin/training/clients/${coachB.id}/plan`, coachA.token))

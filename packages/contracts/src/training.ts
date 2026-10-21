@@ -62,11 +62,34 @@ export const weightUnitSchema = z.enum(WEIGHT_UNITS);
 
 // ---------------------------------------------------------------- exercise library
 
+/** Catalogue ID like "OK-01": uppercase letters/digits and dashes; empty → null. */
+const exerciseCodeSchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .max(16, 'Höchstens 16 Zeichen.')
+  .refine(
+    (value) => value === '' || /^[A-Z0-9][A-Z0-9-]{0,15}$/.test(value),
+    'Nur A–Z, 0–9 und Bindestrich (z. B. OK-01).',
+  )
+  .transform((value) => (value === '' ? null : value));
+
 export const exerciseInputSchema = z.object({
   name: line(120),
+  /** "Ausführung": how the exercise is done. */
   description: longText(4000).nullable().optional(),
   /** A TRAINING media asset (image/video) or null to remove. */
   mediaAssetId: id.nullable().optional(),
+  /** Library category or null (uncategorised). */
+  categoryId: id.nullable().optional(),
+  /** Fixed catalogue ID, e.g. "OK-01". */
+  code: exerciseCodeSchema.nullable().optional(),
+  /** "Erfassung": which values are recorded, e.g. "Wdh. + kg", "Zeit pro Seite". */
+  captureType: optionalLine(60).nullable().optional(),
+  /** "Standard": default sets/rest, e.g. "3 Sätze · Pause 1:30 Min.". */
+  standard: optionalLine(160).nullable().optional(),
+  /** "Einsatz": where it is used, e.g. "OK A · OK B". */
+  usage: optionalLine(160).nullable().optional(),
 });
 export const createExerciseRequestSchema = exerciseInputSchema;
 export type CreateExerciseRequest = z.input<typeof createExerciseRequestSchema>;
@@ -83,6 +106,29 @@ export const exerciseListQuerySchema = z.object({
 });
 export type ExerciseListQuery = z.input<typeof exerciseListQuerySchema>;
 
+export const exerciseCategorySchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  sortOrder: z.number().int(),
+  /** Active exercises in the category. */
+  exerciseCount: z.number().int().nonnegative(),
+});
+export type ExerciseCategory = z.infer<typeof exerciseCategorySchema>;
+export const exerciseCategoryListSchema = z.object({ items: z.array(exerciseCategorySchema) });
+export type ExerciseCategoryList = z.infer<typeof exerciseCategoryListSchema>;
+/** POST /v1/admin/training/exercise-categories */
+export const createExerciseCategoryRequestSchema = z.object({ name: line(80) });
+export type CreateExerciseCategoryRequest = z.infer<typeof createExerciseCategoryRequestSchema>;
+
+/** The catalogue fields of an exercise (shown in the library, the plan and the client portal). */
+export const exerciseCatalogFieldsSchema = z.object({
+  category: z.object({ id: z.uuid(), name: z.string() }).nullable(),
+  code: z.string().nullable(),
+  captureType: z.string().nullable(),
+  standard: z.string().nullable(),
+  usage: z.string().nullable(),
+});
+
 export const exerciseMediaSchema = z.object({
   assetId: z.uuid(),
   kind: z.enum(['IMAGE', 'VIDEO']),
@@ -90,7 +136,7 @@ export const exerciseMediaSchema = z.object({
   fileName: z.string(),
 });
 
-export const adminExerciseSchema = z.object({
+export const adminExerciseSchema = exerciseCatalogFieldsSchema.extend({
   id: z.uuid(),
   name: z.string(),
   description: z.string().nullable(),
@@ -98,6 +144,8 @@ export const adminExerciseSchema = z.object({
   media: exerciseMediaSchema.nullable(),
   /** Number of program assignments using this exercise (any program status). */
   usageCount: z.number().int().nonnegative(),
+  /** Number of client training plans that contain this exercise. */
+  planCount: z.number().int().nonnegative(),
   createdAt: isoDate,
   updatedAt: isoDate,
 });
@@ -397,42 +445,40 @@ export const exerciseMediaUsageSchema = z.object({
 });
 export type ExerciseMediaUsage = z.infer<typeof exerciseMediaUsageSchema>;
 
-// ---------------------------------------------------------------- dated client plan
+// ---------------------------------------------------------------- client training plan
 
 /** Most items one plan save may contain. */
 export const CLIENT_PLAN_MAX_ITEMS = 300;
 export const CLIENT_PLAN_NOTE_MAX = 1000;
 
+/** One planned exercise as the coach edits it (order = position in the list) + coach note. */
+export const clientPlanItemInputSchema = z.object({
+  exerciseId: z.uuid(),
+  note: z.string().trim().max(CLIENT_PLAN_NOTE_MAX).nullable().optional(),
+});
+export type ClientPlanItemInput = z.infer<typeof clientPlanItemInputSchema>;
+
 /**
- * One planned exercise as the coach edits it (order = position in the list): a period from
- * `scheduledOn` to `endsOn` (inclusive; omitted/null = that single day).
+ * PUT /v1/admin/training/clients/:clientId/plan — replaces the client's whole plan: the period
+ * (owner request 2026-10-21: start and end belong to the plan, not to single exercises) and the
+ * ordered exercises with their coach notes.
  */
-export const clientPlanItemInputSchema = z
+export const saveClientPlanRequestSchema = z
   .object({
-    exerciseId: z.uuid(),
-    scheduledOn: calendarDate,
-    endsOn: calendarDate.nullable().optional(),
-    note: z.string().trim().max(CLIENT_PLAN_NOTE_MAX).nullable().optional(),
+    startsOn: calendarDate.nullable(),
+    endsOn: calendarDate.nullable(),
+    items: z.array(clientPlanItemInputSchema).max(CLIENT_PLAN_MAX_ITEMS),
   })
-  .refine((item) => !item.endsOn || item.endsOn >= item.scheduledOn, {
+  .refine((plan) => !plan.startsOn || !plan.endsOn || plan.endsOn >= plan.startsOn, {
     path: ['endsOn'],
     message: 'Das Enddatum liegt vor dem Startdatum.',
   });
-export type ClientPlanItemInput = z.infer<typeof clientPlanItemInputSchema>;
-
-/** PUT /v1/admin/training/clients/:clientId/plan — replaces the client's whole plan. */
-export const saveClientPlanRequestSchema = z.object({
-  items: z.array(clientPlanItemInputSchema).max(CLIENT_PLAN_MAX_ITEMS),
-});
 export type SaveClientPlanRequest = z.infer<typeof saveClientPlanRequestSchema>;
 
 export const clientPlanItemSchema = z.object({
   id: z.uuid(),
-  scheduledOn: calendarDate,
-  /** Last day of the period; null = single day. */
-  endsOn: calendarDate.nullable(),
   note: z.string().nullable(),
-  exercise: z.object({
+  exercise: exerciseCatalogFieldsSchema.extend({
     id: z.uuid(),
     name: z.string(),
     description: z.string().nullable(),
@@ -443,10 +489,12 @@ export const clientPlanItemSchema = z.object({
 export type ClientPlanItem = z.infer<typeof clientPlanItemSchema>;
 
 /**
- * GET (admin and client) — items sorted by date, then by the coach's order. `updatedAt` is the
- * last save (null while the plan is empty and was never saved).
+ * GET (admin and client) — the period and the items in the coach's order. `updatedAt` is the
+ * last save (null while the plan was never saved).
  */
 export const clientPlanSchema = z.object({
+  startsOn: calendarDate.nullable(),
+  endsOn: calendarDate.nullable(),
   items: z.array(clientPlanItemSchema),
   updatedAt: isoDate.nullable(),
 });

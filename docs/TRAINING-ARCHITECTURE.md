@@ -199,3 +199,17 @@ client sees**, and saves the whole list.
   note per row, explicit "Speichern", unsaved-changes guard); portal: `DatedPlan` on
   /mein-training/plan and the "Heute / Als Nächstes geplant" card on the dashboard.
 - No workout sessions are created from these entries (programs keep that role).
+
+### Update 2026-10-21 — exercise catalogue + plan period
+
+- Exercises carry the catalogue columns of the owner's exercise library: `category_id`
+  (`exercise_categories`, ordered), `code` (unique, e.g. `OK-01`), `capture_type` ("Erfassung"),
+  `standard`, `usage` ("Einsatz"); `description` is the "Ausführung" (migration 0017, additive).
+  `GET|POST /v1/admin/training/exercise-categories`; the list is sorted by code, search matches
+  name or code. The 49 catalogue exercises were imported through the API (idempotent by code/name).
+- The client plan has ONE period on `client_plans` (`starts_on`, `ends_on`); items are only
+  exercise + coach note + order (`client_plan_items.scheduled_on` is legacy and now null).
+  `PUT …/plan` takes `{ startsOn, endsOn, items: [{ exerciseId, note }] }`.
+- PlanEditor: plan (period, rows with code, category, Standard · Erfassung, coach note) on the
+  left, library on the right as a category accordion — drag one exercise or a whole category
+  (already planned exercises are skipped), or use +. Portal groups the plan by category.

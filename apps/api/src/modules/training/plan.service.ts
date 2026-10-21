@@ -1,6 +1,6 @@
 import type { ClientPlan, SaveClientPlanRequest } from '@vitruv/contracts';
 import { schema, type DbExecutor } from '@vitruv/db';
-import { and, asc, eq, inArray, max, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type { Principal } from '../../auth/principal';
 import { AppError } from '../../lib/errors';
 import { recordEvent } from '../auth/auth.service';
@@ -8,15 +8,22 @@ import { clientAccessible } from '../management/management.service';
 import type { TrainingDeps } from './exercises.service';
 
 /**
- * Dated client plan (owner request 2026-10-19): a flat list of exercises with a period (from – to)
- * and a note
- * the client sees. The coach saves the WHOLE list at once (replace in one transaction).
+ * Client training plan (owner requests 2026-10-19 … 2026-10-21): ONE plan per client with a
+ * period (start – end, on client_plans) and an ordered list of exercises from the library, each
+ * with a coach note the client sees. The coach saves the WHOLE plan at once (one transaction).
  *
  * OBJECT SCOPE: coach/admin access goes through clientAccessible() in SQL (ADMIN: all clients;
  * COACH: actively assigned clients); out of scope = the same 404 as a missing client. The client
  * reads only their own plan (self context — the id never comes from the request).
  */
-const { clientPlanItems: P, exercises: E, mediaAssets: M, users } = schema;
+const {
+  clientPlanItems: P,
+  clientPlans: CP,
+  exercises: E,
+  exerciseCategories: C,
+  mediaAssets: M,
+  users,
+} = schema;
 
 const notFound = () => AppError.notFound('Not found.');
 
@@ -30,28 +37,38 @@ async function requireClient(db: DbExecutor, actor: Principal, clientId: string)
 }
 
 async function readPlan(deps: TrainingDeps, clientId: string): Promise<ClientPlan> {
+  const [plan] = await deps.db.select().from(CP).where(eq(CP.clientUserId, clientId)).limit(1);
   const rows = await deps.db
-    .select({ item: P, exercise: E, asset: M })
+    .select({ item: P, exercise: E, asset: M, category: { id: C.id, name: C.name } })
     .from(P)
     .innerJoin(E, eq(E.id, P.exerciseId))
     .leftJoin(M, eq(M.id, E.mediaAssetId))
+    .leftJoin(C, eq(C.id, E.categoryId))
     .where(eq(P.clientUserId, clientId))
-    .orderBy(asc(P.scheduledOn), asc(P.sortOrder));
-  const [last] = await deps.db
-    .select({ at: max(P.updatedAt) })
-    .from(P)
-    .where(eq(P.clientUserId, clientId));
+    .orderBy(asc(P.sortOrder));
+  const lastItem = rows.reduce<Date | null>(
+    (latest, { item }) => (!latest || item.updatedAt > latest ? item.updatedAt : latest),
+    null,
+  );
+  const updated = [plan?.updatedAt ?? null, lastItem]
+    .filter((d): d is Date => d !== null)
+    .sort((a, b) => b.getTime() - a.getTime())[0];
   return {
-    items: rows.map(({ item, exercise, asset }) => ({
+    startsOn: plan?.startsOn ?? null,
+    endsOn: plan?.endsOn ?? null,
+    items: rows.map(({ item, exercise, asset, category }) => ({
       id: item.id,
-      scheduledOn: item.scheduledOn,
-      endsOn: item.endsOn,
       note: item.note,
       exercise: {
         id: exercise.id,
         name: exercise.name,
         description: exercise.description,
         active: exercise.active,
+        category: category?.id ? { id: category.id, name: category.name } : null,
+        code: exercise.code,
+        captureType: exercise.captureType,
+        standard: exercise.standard,
+        usage: exercise.usage,
         media:
           asset && (asset.kind === 'IMAGE' || asset.kind === 'VIDEO')
             ? {
@@ -63,7 +80,7 @@ async function readPlan(deps: TrainingDeps, clientId: string): Promise<ClientPla
             : null,
       },
     })),
-    updatedAt: last?.at ? last.at.toISOString() : null,
+    updatedAt: updated ? updated.toISOString() : null,
   };
 }
 
@@ -74,9 +91,9 @@ export async function clientPlan(deps: TrainingDeps, actor: Principal, clientId:
 }
 
 /**
- * Coach/Admin: replaces the client's plan with `input.items` (list order = order within a day).
- * Every exercise must exist; an exercise that is inactive may stay if it was already planned,
- * but cannot be newly added.
+ * Coach/Admin: replaces the client's plan — period + ordered exercises with notes. Every exercise
+ * must exist; an exercise that is inactive may stay if it was already planned, but cannot be
+ * newly added.
  */
 export async function saveClientPlan(
   deps: TrainingDeps,
@@ -111,15 +128,32 @@ export async function saveClientPlan(
     });
     if (details.length > 0) throw AppError.validation(details, 'Plan enthält ungültige Übungen.');
 
+    await tx
+      .insert(CP)
+      .values({
+        clientUserId: clientId,
+        startsOn: input.startsOn,
+        endsOn: input.endsOn,
+        updatedByUserId: actor.userId,
+      })
+      .onConflictDoUpdate({
+        target: CP.clientUserId,
+        set: {
+          startsOn: input.startsOn,
+          endsOn: input.endsOn,
+          updatedByUserId: actor.userId,
+          updatedAt: new Date(),
+        },
+      });
     await tx.delete(P).where(eq(P.clientUserId, clientId));
     if (input.items.length > 0) {
       await tx.insert(P).values(
         input.items.map((item, index) => ({
           clientUserId: clientId,
           exerciseId: item.exerciseId,
-          scheduledOn: item.scheduledOn,
-          // a period that ends on its first day is stored as a single day
-          endsOn: item.endsOn && item.endsOn !== item.scheduledOn ? item.endsOn : null,
+          // the period lives on the plan (client_plans) since 2026-10-21
+          scheduledOn: null,
+          endsOn: null,
           note: item.note?.trim() ? item.note.trim() : null,
           sortOrder: index,
           createdByUserId: actor.userId,

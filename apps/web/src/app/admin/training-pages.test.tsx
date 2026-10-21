@@ -55,7 +55,13 @@ const exercise = (n: number, name: string, extra = {}) => ({
   description: null,
   active: true,
   media: null,
+  category: null,
+  code: null,
+  captureType: null,
+  standard: null,
+  usage: null,
   usageCount: 0,
+  planCount: 0,
   createdAt: '2026-10-16T10:00:00.000Z',
   updatedAt: '2026-10-16T10:00:00.000Z',
   ...extra,
@@ -96,12 +102,24 @@ const html = async (node: Promise<React.ReactElement> | React.ReactElement) =>
   renderToStaticMarkup(await node);
 
 describe('exercise library pages', () => {
-  it('lists exercises with status + media presence and forwards search/status to the API', async () => {
+  it('lists exercises by category with code, Erfassung/Standard, status + media and forwards search/status', async () => {
     routes({
+      '/v1/admin/training/exercise-categories': () =>
+        reply(200, {
+          items: [
+            { id: uuid(801), name: 'Unterkörper · Hauptteil', sortOrder: 10, exerciseCount: 1 },
+          ],
+        }),
       '/v1/admin/training/exercises': () =>
         reply(200, {
           items: [
-            exercise(1, 'Goblet Squat', { usageCount: 3 }),
+            exercise(1, 'Goblet Squat', {
+              usageCount: 3,
+              category: { id: uuid(801), name: 'Unterkörper · Hauptteil' },
+              code: 'UK-02',
+              captureType: 'Wdh. + kg',
+              standard: '4 Sätze · Pause 3 Min.',
+            }),
             exercise(2, 'Plank', {
               active: false,
               media: {
@@ -124,10 +142,14 @@ describe('exercise library pages', () => {
     expect(call).toContain('q=pla');
     expect(call).toContain('status=all');
     expect(markup).toContain('Goblet Squat');
-    expect(markup).toContain('3 Verwendungen');
+    expect(markup).toContain('UK-02');
+    expect(markup).toContain('Wdh. + kg · 4 Sätze · Pause 3 Min.');
+    // grouped: the category heading first, uncategorised exercises after it
+    expect(markup.indexOf('Unterkörper · Hauptteil')).toBeLessThan(
+      markup.indexOf('Ohne Kategorie'),
+    );
     expect(markup).toContain('Inaktiv');
     expect(markup).toContain('Video');
-    expect(markup).toContain('Kein Medium');
     expect(markup).toMatch(/<form[^>]*role="search"/);
     expect(markup).toContain('href="/admin/training/uebungen/neu"');
   });
@@ -140,15 +162,15 @@ describe('exercise library pages', () => {
 });
 
 describe('client training tab', () => {
-  it('shows the dated plan editor with the exercise library — no program screens', async () => {
+  it('shows the plan editor (period + exercises with coach notes) — no program screens', async () => {
     routes({
       [`/v1/admin/training/clients/${uuid(900)}/plan`]: () =>
         reply(200, {
+          startsOn: '2026-11-02',
+          endsOn: '2026-12-13',
           items: [
             {
               id: uuid(301),
-              scheduledOn: '2026-11-02',
-              endsOn: '2026-11-08',
               note: 'Langsam runter',
               exercise: {
                 id: uuid(401),
@@ -156,19 +178,27 @@ describe('client training tab', () => {
                 description: null,
                 active: true,
                 media: null,
+                category: { id: uuid(801), name: 'Unterkörper · Hauptteil' },
+                code: 'UK-01',
+                captureType: 'Wdh. + kg',
+                standard: '4 Sätze · Pause 3 Min.',
+                usage: null,
               },
             },
           ],
-          updatedAt: '2026-10-19T10:00:00.000Z',
+          updatedAt: '2026-10-21T10:00:00.000Z',
         }),
       '/v1/admin/training/exercises': () => reply(200, { items: [] }),
     });
     const { default: Page } = await import('./(shell)/kunden/[id]/training/page');
     const markup = await html(Page({ params: Promise.resolve({ id: uuid(900) }) }));
-    expect(markup).toContain('Trainingsplan mit Datum');
+    expect(markup).toContain('Trainingsplan');
+    expect(markup).toContain('Übungsbibliothek');
+    expect(markup).toContain('UK-01');
     expect(markup).toContain('Kniebeuge');
     expect(markup).toContain('Langsam runter');
     expect(markup).toContain('2026-11-02');
+    expect(markup).toContain('2026-12-13');
     expect(markup).not.toContain('Entwürfe');
     expect(markup).not.toContain('Neuer Trainingsplan');
     // no earlier sessions → no history block
@@ -210,7 +240,7 @@ describe('client training tab', () => {
           ],
         }),
       [`/v1/admin/training/clients/${uuid(900)}/plan`]: () =>
-        reply(200, { items: [], updatedAt: null }),
+        reply(200, { startsOn: null, endsOn: null, items: [], updatedAt: null }),
     });
     const { default: Page } = await import('./(shell)/kunden/[id]/training/page');
     const markup = await html(Page({ params: Promise.resolve({ id: uuid(900) }) }));
