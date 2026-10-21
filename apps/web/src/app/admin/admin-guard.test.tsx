@@ -1,7 +1,13 @@
-import { renderToStaticMarkup } from 'react-dom/server';
+import { prerender } from 'react-dom/static';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
+// the account pages read the published CMS colours/logo through the data cache
+vi.mock('next/cache', () => ({
+  unstable_cache: (fn: (...args: unknown[]) => unknown) => fn,
+  revalidateTag: vi.fn(),
+  revalidatePath: vi.fn(),
+}));
 // next/font only works inside the Next.js compiler; the account pages (AuthShell) import it.
 vi.mock('next/font/google', () => {
   const font = () => ({ variable: '', className: '', style: { fontFamily: '' } });
@@ -54,8 +60,11 @@ afterEach(() => {
   fetchMock.mockReset();
 });
 
-const render = async () =>
-  renderToStaticMarkup(await AdminRootLayout({ children: <p>CMS-INHALT</p> }));
+/** Static render incl. async server components (the account shell loads CMS data). */
+const render = async () => {
+  const { prelude } = await prerender(await AdminRootLayout({ children: <p>CMS-INHALT</p> }));
+  return new Response(prelude).text();
+};
 
 describe('admin guard (server-side, identity from the API)', () => {
   it('sends anonymous visitors to the login', async () => {

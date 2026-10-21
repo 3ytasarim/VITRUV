@@ -176,6 +176,17 @@
     border-bottom-color: transparent;
     background: color-mix(in srgb, var(--color-bg) 35%, transparent);
   }
+  /* Desktop (owner request 2026-10-21): no top bar — the name is in the greeting and the
+     sidebar holds coach + logout; the content starts level with the floating sidebar. */
+  @media (min-width: 1024px) {
+    [data-glass] .vt-pshell__top {
+      display: none;
+    }
+    [data-glass] .vt-pshell__content {
+      padding-top: calc(var(--spacing) * 3);
+      padding-left: calc(var(--spacing) * 3);
+    }
+  }
   [data-glass] .vt-pkpi:first-child {
     /* the lead KPI is "lit" like the template's highlighted card */
     background: linear-gradient(

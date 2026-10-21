@@ -1,72 +1,61 @@
+import type { ResolvedMediaSlot } from '@vitruv/contracts';
 import { getImageProps } from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { HarmonyMotif } from '@/components/site/harmony-motif';
-import { publicFontVariables } from '@/lib/fonts';
-import type { ResolvedMediaSlot } from '@vitruv/contracts';
+import { GravityStars } from '@/components/site/effects/gravity-stars';
 import { buildNavigation } from '@/components/site/navigation';
+import { publicFontVariables } from '@/lib/fonts';
 import { getPublicHome } from '@/lib/public-site';
+import { pageTheme, themeCss } from '@/lib/theme';
 
 /**
- * Shared frame for every account page (login, activation, access denied, disabled account).
- * Same light 'Greek Harmony' surface as the public site so the hand-over from website to panel
- * feels like one brand: desktop is a split (calm visual panel | form), phones get a short accent
- * band above the form. The visual panel shows the brand logo from the CMS (page settings → Logo,
- * used unchanged, never redrawn); without a CMS logo it falls back to the decorative geometry.
+ * Shared frame for every account page (login, activation, access denied, disabled account) —
+ * one centred card on the website's own background (CMS colours "Farben & Design", starfield),
+ * like a classic product sign-in: logo on top (CMS logo, used unchanged; on dark backgrounds the
+ * theme inverts it to white), then the page content, then a small footer line.
  */
-export function AuthShell({
+export async function AuthShell({
   children,
-  eyebrow = 'VITRUV Coaching',
-  statement,
-  logo = null,
+  logo,
 }: {
   children: ReactNode;
-  eyebrow?: string;
-  /** Short line on the visual panel; the emphasised part is set in gold Bodoni italic. */
-  statement?: { before: string; em: string };
-  /** CMS logo for the visual panel (from authLogo); null → decorative geometry. */
+  /** Overrides the CMS logo (tests). */
   logo?: ResolvedMediaSlot | null;
 }) {
-  const line = statement ?? { before: 'Struktur für deinen ', em: 'Weg.' };
-  // Large display size (≈ the former motif, up to 520 px) → request a sharp source.
-  const logoImg = logo
+  const home = await getPublicHome();
+  const theme = themeCss(home.ok ? pageTheme(home.page) : null);
+  const brand = logo !== undefined ? logo : home.ok ? buildNavigation(home.page).logo : null;
+  const logoImg = brand
     ? getImageProps({
-        src: logo.desktop.url,
-        alt: '',
-        width: 1040,
+        src: brand.desktop.url,
+        alt: 'VITRUV – zur Startseite',
+        width: 240,
         height:
-          logo.desktop.width && logo.desktop.height
-            ? Math.round((1040 * logo.desktop.height) / logo.desktop.width)
-            : 1040,
+          brand.desktop.width && brand.desktop.height
+            ? Math.round((240 * brand.desktop.height) / brand.desktop.width)
+            : 240,
         quality: 90,
         priority: true,
       }).props
     : null;
   return (
     <div className={`vt-site ${publicFontVariables}`} data-surface="public">
+      {theme && <style>{theme}</style>}
+      <GravityStars />
       <main id="main" className="vt-auth">
-        <aside aria-hidden className="vt-auth__visual">
-          {logoImg ? (
-            // eslint-disable-next-line jsx-a11y/alt-text -- decorative (aside is aria-hidden), alt=""
-            <img {...logoImg} className="vt-auth__motif vt-auth__logo" />
-          ) : (
-            <HarmonyMotif float className="vt-auth__motif" />
-          )}
-          <div className="vt-auth__visual-copy">
-            <p className="type-eyebrow text-accent-text">{eyebrow}</p>
-            <p className="vt-auth__statement">
-              {line.before}
-              <em className="vt-em">{line.em}</em>
-            </p>
-          </div>
-        </aside>
-        <div className="vt-auth__panel">
-          <Link href="/" className="vt-wordmark self-start" aria-label="VITRUV – zur Startseite">
-            VITRUV
+        <span aria-hidden className="vt-auth__glow" />
+        <div className="vt-auth__card vt-rise">
+          <Link href="/" className="vt-auth__brand">
+            {logoImg ? (
+              // eslint-disable-next-line jsx-a11y/alt-text -- alt is set via getImageProps
+              <img {...logoImg} className="vt-auth__logo" />
+            ) : (
+              <span className="vt-wordmark">VITRUV</span>
+            )}
           </Link>
-          <div className="vt-auth__content vt-rise">{children}</div>
-          <p className="type-caption text-fg-subtle">© VITRUV Coaching</p>
+          <div className="vt-auth__content">{children}</div>
         </div>
+        <p className="vt-auth__foot type-caption">© VITRUV Coaching</p>
       </main>
     </div>
   );

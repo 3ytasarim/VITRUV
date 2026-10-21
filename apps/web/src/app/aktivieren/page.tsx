@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { ActivationForm } from '@/components/auth/activation-form';
-import { AuthShell, authLogo } from '@/components/auth/auth-shell';
+import { AuthShell } from '@/components/auth/auth-shell';
 
 export const metadata: Metadata = {
   title: 'Konto aktivieren',
@@ -12,10 +12,7 @@ export const metadata: Metadata = {
 /** Public account activation (Coach and Client). Requires JavaScript to read the link fragment. */
 export default async function ActivationPage() {
   return (
-    <AuthShell
-      logo={await authLogo()}
-      statement={{ before: 'Dein Weg beginnt mit dem ', em: 'ersten Schritt.' }}
-    >
+    <AuthShell>
       <ActivationForm />
       <noscript>
         <p className="type-body-sm text-fg-muted">Für die Aktivierung wird JavaScript benötigt.</p>

@@ -6,7 +6,7 @@ import { AuthShell } from './auth-shell';
 /** Signed in, but the account has no access to this area. Offers only a logout. */
 export function AccessDenied() {
   return (
-    <AuthShell statement={{ before: 'Dieser Bereich ist ', em: 'geschützt.' }}>
+    <AuthShell>
       <div className="flex flex-col gap-4">
         <span className="grid size-12 place-items-center rounded-pill border border-border-subtle bg-surface">
           <ShieldX aria-hidden className="size-5 text-error" />

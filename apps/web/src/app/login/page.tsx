@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { AuthShell, authLogo } from '@/components/auth/auth-shell';
+import { AuthShell } from '@/components/auth/auth-shell';
 import { LoginForm } from '@/components/auth/login-form';
 import { safeLoginNext, safeNextPath, safePortalPath } from '@/lib/auth/cookies';
 import { getCurrentUser } from '@/lib/auth/session';
@@ -16,7 +16,8 @@ const NOTICES: Record<string, string> = {
 };
 
 /**
- * Login for Admin/Coach and clients ("Mein Training") (restrained by design: two fields, one action) in the shared AuthShell split. There is no
+ * Login for Admin/Coach and clients ("Mein Training") — restrained by design (two fields, one
+ * action) in the shared, centred AuthShell card. There is no
  * "forgot password" flow yet — no e-mail provider exists, and nothing fake is offered.
  */
 export default async function LoginPage({
@@ -32,12 +33,9 @@ export default async function LoginPage({
   const notice = typeof params.hinweis === 'string' ? NOTICES[params.hinweis] : undefined;
 
   return (
-    <AuthShell
-      logo={await authLogo()}
-      statement={{ before: 'Willkommen zurück im ', em: 'Coaching.' }}
-    >
-      <div className="flex flex-col gap-2">
-        <p className="type-eyebrow text-accent-text">VITRUV</p>
+    <AuthShell>
+      <div className="flex flex-col items-center gap-2 text-center">
+        <p className="type-eyebrow text-accent-text">Willkommen zurück</p>
         <h1 className="type-h2">Anmelden</h1>
         <p className="type-body-sm text-fg-muted">
           Für Kund:innen (Mein Training) sowie Coach und Administration.
@@ -52,8 +50,8 @@ export default async function LoginPage({
         </p>
       )}
       <LoginForm next={next} />
-      <p className="type-caption text-fg-subtle">
-        Passwort vergessen? Bitte wende dich an die Administration.
+      <p className="type-caption text-center text-fg-subtle">
+        Passwort vergessen? Bitte wende dich an deinen Coach.
       </p>
     </AuthShell>
   );
