@@ -1,12 +1,14 @@
 import { LogOut } from 'lucide-react';
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { logoutAction } from '@/app/admin/account-actions';
+import { PORTAL_THEME_COOKIE, parseAdminThemeMode } from '@/components/admin/admin-theme-mode';
+import { AdminThemeToggle } from '@/components/admin/admin-theme-toggle';
 import { AccessDenied } from '@/components/auth/access-denied';
 import { PortalNav } from '@/components/portal/portal-nav';
-import { GlassBackdrop } from '@/components/shared/glass-backdrop';
 import { buildNavigation } from '@/components/site/navigation';
 import { SiteLogo } from '@/components/site/site-header';
 import { Button } from '@/components/ui';
@@ -15,7 +17,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { publicFontVariables } from '@/lib/fonts';
 import { portalApi } from '@/lib/portal-api';
 import { getPublicHome } from '@/lib/public-site';
-import { pageTheme, themeCss } from '@/lib/theme';
+import { adminLightCss, pageTheme, themeCss } from '@/lib/theme';
 
 export const metadata: Metadata = {
   title: { default: 'Mein Training', template: '%s · Mein Training · VITRUV' },
@@ -40,6 +42,16 @@ export default async function PortalLayout({ children }: { children: ReactNode }
   const [home, profile] = await Promise.all([getPublicHome(), portalApi.me()]);
   const logo = home.ok ? buildNavigation(home.page).logo : null;
   const theme = themeCss(home.ok ? pageTheme(home.page) : null);
+  // light/dark switch (preference cookie; dark glass by default)
+  const mode = parseAdminThemeMode((await cookies()).get(PORTAL_THEME_COOKIE)?.value);
+  const themeSwitch = (
+    <AdminThemeToggle
+      initial={mode}
+      cookie={PORTAL_THEME_COOKIE}
+      path={PORTAL_PATH}
+      root=".vt-pshell[data-glass]"
+    />
+  );
   const name = profile.ok
     ? `${profile.data.firstName} ${profile.data.lastName}`.trim()
     : (user.displayName ?? '');
@@ -60,9 +72,14 @@ export default async function PortalLayout({ children }: { children: ReactNode }
   );
 
   return (
-    <div className={`vt-site vt-pshell ${publicFontVariables}`} data-surface="public" data-glass="">
+    <div
+      className={`vt-site vt-pshell ${publicFontVariables}`}
+      data-surface="public"
+      data-glass=""
+      data-admin-theme={mode === 'light' ? 'light' : undefined}
+    >
       {theme && <style>{theme}</style>}
-      <GlassBackdrop />
+      <style>{adminLightCss()}</style>
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:bg-accent focus:px-4 focus:py-2 focus:text-on-accent"
@@ -79,6 +96,7 @@ export default async function PortalLayout({ children }: { children: ReactNode }
               <span className="block font-semibold text-fg">{profile.data.coach.displayName}</span>
             </p>
           )}
+          {themeSwitch}
           <form action={logoutAction}>
             <Button type="submit" variant="ghost" icon={<LogOut aria-hidden />}>
               Abmelden
@@ -90,6 +108,7 @@ export default async function PortalLayout({ children }: { children: ReactNode }
         <header className="vt-pshell__top">
           <div className="vt-pshell__topbrand">{brand}</div>
           <div className="ml-auto flex items-center gap-3">
+            {themeSwitch}
             <span aria-hidden className="vt-pshell__avatar">
               {initials}
             </span>

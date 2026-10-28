@@ -1,8 +1,8 @@
 /*
  * Glass panels — admin shell and client area (owner decision 2026-10-19, template "glassy CRM
  * dashboard", monochrome). Colours come from the generated `:root [data-glass]` tokens; this file
- * only turns the shared primitives into frosted glass over the faceted backdrop
- * (components/shared/glass-backdrop.tsx). Tokens and color-mix() of tokens only.
+ * only turns the shared primitives into frosted glass on the plain page colour (owner
+ * 2026-10-28: no backdrop image; light/dark switch). Tokens and color-mix() of tokens only.
  */
 @layer components {
   [data-glass] {
@@ -30,59 +30,6 @@
   }
   [data-glass][data-admin-theme='light'] {
     color-scheme: light;
-  }
-
-  /* ---- Backdrop -------------------------------------------------------------------------------- */
-  .vt-glass-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    overflow: hidden;
-    pointer-events: none;
-    background:
-      radial-gradient(
-        70% 60% at 18% 8%,
-        color-mix(in srgb, var(--glass-hi) 7%, transparent),
-        transparent 70%
-      ),
-      radial-gradient(
-        60% 50% at 92% 100%,
-        color-mix(in srgb, var(--glass-hi) 4%, transparent),
-        transparent 70%
-      ),
-      var(--color-bg);
-  }
-  .vt-glass-backdrop svg {
-    width: 100%;
-    height: 100%;
-  }
-  .vt-glass-backdrop__facets path {
-    fill: var(--glass-hi);
-    stroke: color-mix(in srgb, var(--glass-hi) 2.5%, transparent);
-    stroke-width: 1;
-  }
-  .vt-glass-backdrop__edges path {
-    fill: none;
-    stroke: color-mix(in srgb, var(--glass-hi) 55%, transparent);
-    stroke-width: 1.4;
-    stroke-linecap: round;
-    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--glass-hi) 40%, transparent));
-    stroke-dasharray: 60 900;
-    animation: vt-glass-glint 9s linear infinite;
-  }
-  .vt-glass-backdrop__edges path:nth-child(2n) {
-    animation-delay: -3s;
-  }
-  .vt-glass-backdrop__edges path:nth-child(3n) {
-    animation-delay: -6s;
-  }
-  @keyframes vt-glass-glint {
-    from {
-      stroke-dashoffset: 960;
-    }
-    to {
-      stroke-dashoffset: 0;
-    }
   }
 
   /* ---- Glass primitives ------------------------------------------------------------------------ */
@@ -202,14 +149,6 @@
       color-mix(in srgb, var(--glass-hi) 24%, transparent),
       color-mix(in srgb, var(--glass-hi) 6%, transparent) 70%
     );
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .vt-glass-backdrop__edges path {
-      animation: none;
-      stroke-dasharray: none;
-      stroke: color-mix(in srgb, var(--glass-hi) 18%, transparent);
-    }
   }
 }
 @layer components {

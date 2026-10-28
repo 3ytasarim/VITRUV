@@ -9,7 +9,7 @@
  */
 @layer components {
   /* ---- Surface: fonts + type roles of the reference (also used by Impressum, Kontakt …) ------ */
-  .vt-site[data-surface='public'] {
+  .vt-site[data-surface='public']:not(.vt-pshell) {
     --vt-header-h: 64px;
     --vf-gutter: var(--gutter);
     /* reference: 1240 px of content between the gutters */
@@ -47,7 +47,7 @@
 
   /* Light reference ('Funktional Hell'): cards and the footer bar are a faint grey tint of the
      page, not white. */
-  .vt-site[data-surface='public'][data-theme='light'] {
+  .vt-site[data-surface='public']:not(.vt-pshell)[data-theme='light'] {
     --vf-card: color-mix(in srgb, var(--color-fg) 4%, var(--color-bg));
   }
   .vt-site[data-theme='light'] .vf-footer__bar {

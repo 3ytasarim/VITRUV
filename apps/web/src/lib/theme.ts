@@ -157,9 +157,14 @@ export function adminLightCss(): string {
   vars.push(
     `--glass-hi:${glassLightTints.hi}`,
     `--glass-lo:${glassLightTints.lo}`,
+    // the client area also carries the public CMS theme: heading colour + logo/art inversion
+    `--color-heading:${toCss(colorsGlassLight.fg)}`,
+    '--vt-logo-filter:none',
+    '--vt-art-filter:none',
     'color-scheme:light',
   );
-  return `[data-surface='admin'][data-glass][data-admin-theme='light']{${vars.join(';')}}`;
+  // admin shell + client area ("Mein Training"); outranks the glass tokens and the CMS theme
+  return `[data-surface='admin'][data-glass][data-admin-theme='light'],.vt-pshell[data-glass][data-admin-theme='light']{${vars.join(';')}}`;
 }
 
 export function pageTheme(page: PublicWebsitePage | null): ThemeContent | null {

@@ -2,6 +2,7 @@ import { tokens } from '@vitruv/design-tokens';
 import type { Metadata, Viewport } from 'next';
 import { connection } from 'next/server';
 import type { ReactNode } from 'react';
+import { TranslationGuard } from '@/components/shared/translation-guard';
 import { isIndexingEnabled, publicSiteUrl } from '@/lib/env';
 import { fontVariables, publicFontVariables } from '@/lib/fonts';
 import '@/styles/globals.css';
@@ -38,7 +39,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       data-surface="public"
       className={`${fontVariables} ${publicFontVariables}`}
     >
-      <body className="bg-bg text-fg">{children}</body>
+      <body className="bg-bg text-fg">
+        {/* keeps pages working when the browser auto-translates them */}
+        <TranslationGuard />
+        {children}
+      </body>
     </html>
   );
 }

@@ -6,7 +6,7 @@
  * `referencePalette` in lib/theme.ts); the light file maps each dark value one-to-one.
  */
 @layer components {
-  .vt-site[data-surface='public'] {
+  .vt-site[data-surface='public']:not(.vt-pshell) {
     --vt-header-h: 64px;
     --r-ease: cubic-bezier(0.22, 1, 0.36, 1);
     --r-side: 44px;
@@ -25,7 +25,7 @@
       scroll-behavior: auto;
     }
   }
-  .vt-site[data-surface='public'] ::selection {
+  .vt-site[data-surface='public']:not(.vt-pshell) ::selection {
     background: var(--r-accent);
     color: var(--r-on-accent);
   }

@@ -10,25 +10,33 @@ const YEAR = 60 * 60 * 24 * 365;
  * the OTHER mode). Sets `data-admin-theme` on the admin shell root and remembers the choice in a
  * preference cookie, so the server renders the chosen mode directly.
  */
-export function AdminThemeToggle({ initial }: { initial: AdminThemeMode }) {
+export function AdminThemeToggle({
+  initial,
+  cookie = ADMIN_THEME_COOKIE,
+  path = '/admin',
+  root = "[data-surface='admin'][data-glass]",
+  className = 'vt-admin-theme',
+}: {
+  initial: AdminThemeMode;
+  /** Preference cookie (admin and client area remember their choice separately). */
+  cookie?: string;
+  path?: string;
+  /** Selector of the glass shell root that carries data-admin-theme. */
+  root?: string;
+  className?: string;
+}) {
   const [mode, setMode] = useState<AdminThemeMode>(initial);
   const toggle = () => {
     const next: AdminThemeMode = mode === 'light' ? 'dark' : 'light';
     setMode(next);
-    const root = document.querySelector<HTMLElement>("[data-surface='admin'][data-glass]");
-    if (next === 'light') root?.setAttribute('data-admin-theme', 'light');
-    else root?.removeAttribute('data-admin-theme');
-    document.cookie = `${ADMIN_THEME_COOKIE}=${next}; path=/admin; max-age=${YEAR}; samesite=lax`;
+    const shell = document.querySelector<HTMLElement>(root);
+    if (next === 'light') shell?.setAttribute('data-admin-theme', 'light');
+    else shell?.removeAttribute('data-admin-theme');
+    document.cookie = `${cookie}=${next}; path=${path}; max-age=${YEAR}; samesite=lax`;
   };
   const label = mode === 'light' ? 'Zur dunklen Ansicht' : 'Zur hellen Ansicht';
   return (
-    <button
-      type="button"
-      className="vt-admin-theme"
-      onClick={toggle}
-      aria-label={label}
-      title={label}
-    >
+    <button type="button" className={className} onClick={toggle} aria-label={label} title={label}>
       <svg
         aria-hidden
         width="14"
