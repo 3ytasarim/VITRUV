@@ -8,6 +8,7 @@ import {
   linkItemSchema,
   optionalText,
   plainText,
+  safeHrefSchema,
   uniqueIds,
 } from './primitives';
 
@@ -327,6 +328,133 @@ function defineSectionSchemas<Slot extends z.ZodType>(slot: Slot) {
     logo: media.optional(),
   });
 
+  /**
+   * The reference homepage `Website Funktional.dc.html` 1:1 as ONE section (owner decision
+   * 2026-10-28): every text block and every image/video slot of the prototype, in its order.
+   * Lists carry stable ids (media roles and editor keys).
+   */
+  const idList = <T extends z.ZodRawShape>(shape: T, max: number) =>
+    z
+      .array(z.object({ id: itemIdSchema, ...shape }))
+      .max(max)
+      .superRefine((items, ctx) => uniqueIds(items as { id: string }[], ctx));
+  const home = z.object({
+    hero: z.object({
+      eyebrow: optionalText(80),
+      /** Headline lines; the last one is set in the glowing accent colour. */
+      lines: z.array(plainText(60)).min(1, 'Mindestens eine Zeile.').max(4),
+      body: optionalText(400),
+      primary: ctaSchema,
+      secondary: ctaSchema.optional(),
+      note: optionalText(400),
+      media,
+    }),
+    intro: z.object({ caption: optionalText(160), media }),
+    results: z.object({
+      eyebrow: optionalText(60),
+      title: plainText(120),
+      videos: idList({ quote: plainText(300), who: plainText(60), media }, 4),
+      swipeHint: optionalText(40),
+      gallery: idList({ who: plainText(60), media }, 24),
+    }),
+    journey: z.object({
+      eyebrow: optionalText(60),
+      title: plainText(120),
+      stages: idList(
+        { name: plainText(40), title: plainText(120), text: plainText(600), media },
+        8,
+      ).refine((s) => s.length > 0, { message: 'Mindestens eine Etappe.' }),
+    }),
+    voices: z.object({
+      eyebrow: optionalText(60),
+      items: idList({ quote: plainText(600), who: plainText(60) }, 12),
+    }),
+    doubts: z.object({
+      eyebrow: optionalText(60),
+      title: plainText(160),
+      items: idList({ text: plainText(200) }, 12),
+      outro: optionalText(800),
+      /** Part of the outro set in the accent colour (must occur in it). */
+      outroHighlight: optionalText(60),
+    }),
+    included: z.object({
+      eyebrow: optionalText(60),
+      title: plainText(120),
+      lead: optionalText(400),
+      items: idList({ title: plainText(80), text: plainText(400) }, 12),
+    }),
+    packages: z.object({
+      eyebrow: optionalText(60),
+      title: plainText(120),
+      lead: optionalText(400),
+      items: idList(
+        {
+          name: plainText(60),
+          /** Small label at the top right ("6 Wochen"); the featured package shows it as badge. */
+          label: optionalText(40),
+          featured: z.boolean(),
+          text: optionalText(400),
+          features: z.array(plainText(160)).max(20),
+          note: optionalText(160),
+          cta: ctaSchema,
+        },
+        4,
+      ),
+    }),
+    steps: z.object({
+      eyebrow: optionalText(60),
+      title: plainText(120),
+      items: idList({ title: plainText(80), text: plainText(400) }, 12),
+    }),
+    training: z.object({
+      eyebrow: optionalText(60),
+      title: plainText(120),
+      lead: optionalText(400),
+      items: idList({ label: plainText(40), text: plainText(160), media }, 8),
+    }),
+    coach: z.object({
+      eyebrow: optionalText(60),
+      name: plainText(80),
+      facts: z.array(plainText(80)).max(6),
+      paragraphs: z.array(plainText(1200)).max(8),
+      /** Last line, set in the full text colour. */
+      closing: optionalText(400),
+      media,
+    }),
+    faq: z.object({
+      eyebrow: optionalText(60),
+      title: plainText(120),
+      items: idList({ question: plainText(200), answer: plainText(2000) }, 40),
+    }),
+    cta: z.object({
+      eyebrow: optionalText(60),
+      title: plainText(160),
+      body: optionalText(400),
+      action: ctaSchema,
+      media,
+    }),
+    apply: z.object({
+      eyebrow: optionalText(60),
+      title: plainText(120),
+      lead: optionalText(400),
+      channels: idList(
+        {
+          /** Short tag in the square, e.g. "IG", "WA", "@". */
+          tag: plainText(4),
+          title: plainText(40),
+          text: optionalText(300),
+          cta: plainText(40),
+          href: safeHrefSchema,
+        },
+        6,
+      ),
+    }),
+    /** Glass button in the header centre (appears after the intro video). */
+    headerCta: ctaSchema,
+    /** Phone menu (opened with the logo). */
+    menu: z.array(linkItemSchema).max(5).superRefine(uniqueIds),
+  });
+
   return {
     hero,
     results,
@@ -341,6 +469,7 @@ function defineSectionSchemas<Slot extends z.ZodType>(slot: Slot) {
     situations,
     steps,
     gallery,
+    home,
     theme,
     seo,
   } satisfies Record<WebsiteSectionType, z.ZodType>;
@@ -381,6 +510,7 @@ export const SECTION_MEDIA_KINDS: Readonly<
   situations: ['IMAGE'],
   steps: ['IMAGE'],
   gallery: ['IMAGE'],
+  home: ['IMAGE', 'VIDEO'],
   theme: [],
   seo: ['IMAGE'],
 };

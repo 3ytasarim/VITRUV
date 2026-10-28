@@ -115,6 +115,7 @@ export const publicWebsiteSectionSchema = z.discriminatedUnion('type', [
   publicSection('situations'),
   publicSection('gallery'),
   publicSection('steps'),
+  publicSection('home'),
   publicSection('theme'),
   publicSection('seo'),
 ]);

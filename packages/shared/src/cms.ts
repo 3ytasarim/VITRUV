@@ -19,6 +19,9 @@ export const WEBSITE_SECTION_TYPES = [
   'situations', // "Lebenssituationen" — icon grid of typical starting points
   'steps', // "Neun Stufen" — three pillars × three steps, icon cards
   'gallery', // Photo carousel (hanging polaroids), 2026-10-19
+  // The reference homepage 'Website Funktional' 1:1 as ONE section (owner decision 2026-10-28):
+  // all copy + every image/video slot of the prototype page.
+  'home',
   'theme', // Website colours (admin-editable design settings, 2026-10-18)
   // Page settings (SEO / sharing): versioned like a section, never rendered as page content.
   'seo',

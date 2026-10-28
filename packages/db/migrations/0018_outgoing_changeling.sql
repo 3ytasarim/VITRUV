@@ -1,0 +1,1 @@
+ALTER TYPE "public"."website_section_type" ADD VALUE 'home' BEFORE 'theme';

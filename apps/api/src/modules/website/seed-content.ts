@@ -1,5 +1,6 @@
 import type { SectionContent } from '@vitruv/contracts';
 import type { WebsiteSectionType } from '@vitruv/shared';
+import { HOME_REFERENCE } from './seed-home';
 
 /**
  * Initial homepage content for development — neutral VITRUV copy only.
@@ -35,6 +36,8 @@ export const HOME_SECTIONS: readonly {
   { key: 'pillars', type: 'pillars', sortOrder: 35 },
   { key: 'steps', type: 'steps', sortOrder: 45 },
   { key: 'theme', type: 'theme', sortOrder: 990 },
+  // The reference homepage (2026-10-28) — first on the page; the public site renders only this.
+  { key: 'home', type: 'home', sortOrder: 1 },
 ];
 
 const hero: SectionContent<'hero'> = {
@@ -274,6 +277,7 @@ export const HOME_SEED_CONTENT: { [K in WebsiteSectionType]: SectionContent<K> }
   situations,
   steps,
   gallery,
+  home: HOME_REFERENCE,
   theme,
   seo,
 };

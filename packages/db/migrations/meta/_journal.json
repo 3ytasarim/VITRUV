@@ -127,6 +127,13 @@
       "when": 1792584852096,
       "tag": "0017_exercise_catalog_and_plan_period",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793185665344,
+      "tag": "0018_outgoing_changeling",
+      "breakpoints": true
     }
   ]
 }
