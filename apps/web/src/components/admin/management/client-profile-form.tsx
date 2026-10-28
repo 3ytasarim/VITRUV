@@ -99,9 +99,9 @@ export function ClientProfileForm({
         )}
       </FormField>
       <FormField
-        label="Interne Notiz"
+        label="Notiz für die Kund:in"
         error={error('internalNotes')}
-        hint={`Nur für Coach und Administration sichtbar, nie für die Kund:in. Reiner Text, höchstens ${INTERNAL_NOTES_MAX_LENGTH} Zeichen. Bitte keine Gesundheitsdaten.`}
+        hint={`Erscheint im Kundenkonto direkt unter der Begrüßung. Reiner Text, höchstens ${INTERNAL_NOTES_MAX_LENGTH} Zeichen. Bitte keine Gesundheitsdaten.`}
       >
         {({ id, describedBy, invalid }) => (
           <textarea

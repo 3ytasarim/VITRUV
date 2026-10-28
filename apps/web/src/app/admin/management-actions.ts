@@ -116,6 +116,7 @@ export async function createClientAction(
     password: text(form, 'password') ?? '',
     phone: optional('phone'),
     coachingStatus: text(form, 'coachingStatus') || undefined,
+    internalNotes: text(form, 'internalNotes') ?? null,
     ...(coach === undefined ? {} : { coachId: coach === '' ? null : coach }),
   });
   if (!parsed.success) {

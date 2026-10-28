@@ -260,6 +260,20 @@ describe('client area pages', () => {
     notesCount: 2,
   };
 
+  it('dashboard: the coach note from the profile shows directly under the greeting', async () => {
+    routes({
+      '/v1/client/me': () => reply(200, { ...profile, note: 'Trink genug Wasser.\nBis Montag!' }),
+      '/v1/client/training/active': () => reply(200, { program }),
+      '/v1/client/workouts/current': () => reply(200, { session: null }),
+      '/v1/client/workouts?': () => reply(200, { items: [] }),
+    });
+    const { default: Page } = await import('./page');
+    const markup = await html(Page());
+    expect(markup).toMatch(/vt-greet__title[\s\S]*class="vt-pnote" role="note"/);
+    expect(markup).toContain('Trink genug Wasser.');
+    expect(markup.indexOf('vt-pnote')).toBeLessThan(markup.indexOf('Als Nächstes'));
+  });
+
   it('dashboard: greeting with full name, next training with its exercises and start button', async () => {
     routes({
       '/v1/client/me': () => reply(200, profile),
@@ -273,6 +287,8 @@ describe('client area pages', () => {
     expect(markup).toContain('👋');
     expect(markup).toContain('Mara Beispiel');
     expect(markup).toContain('Coach Test');
+    // no coach note → no note box
+    expect(markup).not.toContain('vt-pnote');
     expect(markup).toContain('Nächstes Training');
     expect(markup).toContain('Oberkörper A');
     expect(markup).toContain('Klimmzüge');

@@ -402,6 +402,8 @@ export async function createClient(
     phone?: string | null;
     coachId?: string | null;
     coachingStatus: CoachingStatus;
+    /** Note for the client (shown in the client account). */
+    internalNotes?: string | null;
   },
 ): Promise<CreateClientResponse> {
   const email = input.email ? normalizeEmail(input.email) : null;
@@ -432,6 +434,7 @@ export async function createClient(
       lastName: input.lastName,
       phone: input.phone ?? null,
       coachingStatus: input.coachingStatus,
+      internalNotes: input.internalNotes ?? null,
       createdByUserId: actor.userId,
     });
     if (coachId) {
@@ -811,5 +814,6 @@ export async function clientSelfProfile(
     email: row.user.email,
     coachingStatus: row.profile.coachingStatus,
     coach: row.coachName ? { displayName: row.coachName } : null,
+    note: row.profile.internalNotes,
   };
 }

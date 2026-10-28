@@ -37,7 +37,7 @@ export const coachProfiles = pgTable(
 
 /**
  * Client profile. Deliberately NO medical fields (diagnoses, conditions, medication, health
- * history): VITRUV is a coaching product, not a medical record. `internal_notes` is Coach/Admin
+ * history): VITRUV is a coaching product, not a medical record. `internal_notes` (owner decision 2026-10-28: the coach's note FOR the client, shown in the client account) was Coach/Admin
  * only — plain text, never in client-facing DTOs, never logged.
  */
 export const clientProfiles = pgTable(

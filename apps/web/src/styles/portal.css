@@ -270,6 +270,17 @@
   }
 
   /* greeting card */
+  /* coach's note for the client, directly under the greeting */
+  .vt-pnote {
+    display: flex;
+    max-width: 40rem;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 1);
+    padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
+    border-left: 2px solid var(--color-accent-text);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-sunken);
+  }
   .vt-pgreet {
     position: relative;
     isolation: isolate;

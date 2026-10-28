@@ -36,7 +36,11 @@ const phoneSchema = z
   .regex(/^[+0-9 ()/.-]*$/, 'Nur Ziffern, Leerzeichen und + ( ) / - . erlaubt.')
   .transform((value) => (value === '' ? null : value));
 
-/** Plain-text internal note (Coach/Admin only); line breaks allowed. Empty string clears it. */
+/**
+ * Plain-text note of the coach FOR the client (owner decision 2026-10-28: the profile note is
+ * shown in the client's account under the greeting). Line breaks allowed; empty string clears it.
+ * Stored in client_profiles.internal_notes (no health data).
+ */
 // eslint-disable-next-line no-control-regex -- rejecting control characters is the point
 const NOTE_CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
 const internalNotesSchema = z
@@ -102,6 +106,8 @@ export const createClientRequestSchema = z.object({
   /** ADMIN: target coach or null (unassigned). COACH: ignored — always the creating coach. */
   coachId: z.uuid().nullable().optional(),
   coachingStatus: coachingStatusSchema.default('ACTIVE'),
+  /** Note for the client (shown in the client account under the greeting). */
+  internalNotes: internalNotesSchema.nullable().optional(),
 });
 export type CreateClientRequest = z.input<typeof createClientRequestSchema>;
 
@@ -154,7 +160,7 @@ export type AdminClientList = z.infer<typeof adminClientListSchema>;
 
 export const adminClientDetailSchema = adminClientListItemSchema.extend({
   phone: z.string().nullable(),
-  /** Coach/Admin only — never part of any client-facing DTO. */
+  /** The coach's note for the client (also delivered to the client as `note`). */
   internalNotes: z.string().nullable(),
   assignedAt: isoDate.nullable(),
   assignments: z.array(
@@ -236,8 +242,9 @@ export type ActivateResponse = z.infer<typeof activateResponseSchema>;
 // ---------------------------------------------------------------- client self-profile (Flutter)
 
 /**
- * GET /v1/client/me — the signed-in CLIENT's own profile for the future app. Deliberately small:
- * no internal notes, no account/activation internals, coach reduced to the display name.
+ * GET /v1/client/me — the signed-in CLIENT's own profile. Deliberately small: no account /
+ * activation internals, coach reduced to the display name; `note` = the coach's note for the
+ * client (profile note, shown under the greeting).
  */
 export const clientSelfProfileSchema = z.object({
   id: z.uuid(),
@@ -246,5 +253,7 @@ export const clientSelfProfileSchema = z.object({
   email: z.string().nullable(),
   coachingStatus: coachingStatusSchema,
   coach: z.object({ displayName: z.string() }).nullable(),
+  /** Optional on the wire so an older API (without the field) still parses. */
+  note: z.string().nullable().optional(),
 });
 export type ClientSelfProfile = z.infer<typeof clientSelfProfileSchema>;

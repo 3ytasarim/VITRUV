@@ -143,6 +143,12 @@ export default async function PortalDashboardPage() {
         </span>
         <div className="relative z-10 flex min-w-0 flex-col gap-3">
           <Greeting name={name} />
+          {profile.ok && profile.data.note && (
+            <div className="vt-pnote" role="note" aria-label="Notiz von deinem Coach">
+              <p className="type-caption text-fg-subtle">Notiz von deinem Coach</p>
+              <p className="type-body whitespace-pre-line text-fg">{profile.data.note}</p>
+            </div>
+          )}
           <p className="type-body max-w-xl text-fg-muted">{subtitle}</p>
           {profile.ok && profile.data.coach && (
             <p className="type-body-sm text-fg-subtle">

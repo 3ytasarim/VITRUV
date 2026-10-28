@@ -1,6 +1,11 @@
 'use client';
 
-import { COACHING_STATUSES, PASSWORD_MIN_LENGTH, usernameFromName } from '@vitruv/shared';
+import {
+  COACHING_STATUSES,
+  INTERNAL_NOTES_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  usernameFromName,
+} from '@vitruv/shared';
 import { KeyRound } from 'lucide-react';
 import { useActionState, useEffect, useRef, useState } from 'react';
 import {
@@ -232,6 +237,23 @@ export function ClientCreateForm({
               </option>
             ))}
           </select>
+        )}
+      </FormField>
+      <FormField
+        label="Notiz für die Kund:in"
+        error={error('internalNotes')}
+        hint={`Erscheint im Kundenkonto direkt unter der Begrüßung; später im Profil änderbar. Höchstens ${INTERNAL_NOTES_MAX_LENGTH} Zeichen.`}
+      >
+        {({ id, describedBy, invalid }) => (
+          <textarea
+            id={id}
+            name="internalNotes"
+            rows={4}
+            maxLength={INTERNAL_NOTES_MAX_LENGTH}
+            aria-describedby={describedBy}
+            aria-invalid={invalid}
+            className="vt-input type-body"
+          />
         )}
       </FormField>
       <p className="type-caption text-fg-subtle">

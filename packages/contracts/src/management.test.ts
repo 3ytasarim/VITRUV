@@ -63,12 +63,14 @@ describe('management contracts', () => {
     expect(updateClientRequestSchema.safeParse({ phone: '<script>' }).success).toBe(false);
   });
 
-  it('keeps internal notes and account internals out of list items and the client self-profile', () => {
+  it('keeps account internals out of list items and the client self-profile; the note is shared', () => {
     expect(Object.keys(adminClientListItemSchema.shape)).not.toContain('internalNotes');
     const self = Object.keys(clientSelfProfileSchema.shape);
     for (const key of ['internalNotes', 'account', 'phone', 'assignments']) {
       expect(self).not.toContain(key);
     }
+    // the coach's profile note reaches the client only as `note`
+    expect(self).toContain('note');
   });
 
   it('activation links point to the fixed web path and carry an opaque token only', () => {
