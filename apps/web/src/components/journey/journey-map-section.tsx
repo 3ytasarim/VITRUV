@@ -1,4 +1,5 @@
-import { Eyebrow, MediaFrame, Section, SectionIntro, cx } from '@/components/ui';
+import { Container, MediaFrame, cx } from '@/components/ui';
+import { FxIntro, nn } from '@/components/site/fx';
 import { JourneyMapMount } from './journey-map-mount';
 import type { JourneyContent } from './journey-types';
 
@@ -20,15 +21,21 @@ export function JourneyMapSection({
   id?: string;
 }) {
   const titleId = `${id}-title`;
-  const total = String(content.stages.length).padStart(2, '0');
+  const total = nn(content.stages.length);
   return (
-    <Section id={id} labelledBy={titleId} divider className="vt-weg-section">
-      <SectionIntro
-        eyebrow={content.eyebrow}
-        title={content.title}
-        lead={content.lead}
-        titleId={titleId}
-      />
+    <section
+      id={id}
+      aria-labelledby={titleId}
+      className="vf-section vf-section--rule vt-weg-section"
+    >
+      <Container>
+        <FxIntro
+          eyebrow={content.eyebrow}
+          title={content.title}
+          lead={content.lead}
+          titleId={titleId}
+        />
+      </Container>
       <JourneyMapMount className="vt-weg">
         <svg data-weg-svg="" aria-hidden className="vt-weg__svg" preserveAspectRatio="none">
           <path data-weg-ghost="" d="" fill="none" className="vt-weg__ghost" />
@@ -58,16 +65,16 @@ export function JourneyMapSection({
                 />
               </div>
               <div data-weg-txt="" className="vt-weg__txt">
-                <Eyebrow>
-                  {String(i + 1).padStart(2, '0')} / {total} · {stage.name}
-                </Eyebrow>
-                <h3 className="type-h3 text-balance">{stage.title}</h3>
-                <p className="type-body text-fg-muted">{stage.description}</p>
+                <p className="vf-eyebrow">
+                  {nn(i + 1)} / {total} · {stage.name}
+                </p>
+                <h3 className="vf-weg__title">{stage.title}</h3>
+                <p className="vf-weg__text">{stage.description}</p>
               </div>
             </li>
           ))}
         </ol>
       </JourneyMapMount>
-    </Section>
+    </section>
   );
 }

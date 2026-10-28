@@ -42,8 +42,8 @@ const GROUPS: {
     permission: 'website.content.read',
     items: [
       { href: '/admin/website', label: 'Übersicht', icon: LayoutDashboard, exact: true },
-      { href: '/admin/website/inhalte', label: 'Inhalte', icon: FileText },
-      { href: '/admin/website/medien', label: 'Medien', icon: Images },
+      { href: '/admin/website/inhalte', label: 'Startseite', icon: FileText },
+      { href: '/admin/website/medien', label: 'Medien & Galerie', icon: Images },
       { href: '/admin/website/einstellungen', label: 'Einstellungen', icon: Settings2 },
     ],
   },

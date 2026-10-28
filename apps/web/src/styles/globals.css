@@ -9,6 +9,8 @@
 @import './public-sections.css';
 @import './public-chrome.css';
 @import './public-motion.css';
+@import './public-functional.css';
+@import './public-reference.css';
 @import './portal.css';
 @import './admin.css';
 @import './glass.css';

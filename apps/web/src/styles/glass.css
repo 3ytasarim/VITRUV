@@ -6,22 +6,30 @@
  */
 @layer components {
   [data-glass] {
+    /* tint colours of all glass effects (white/black; inverted by the admin light mode) */
+    --glass-hi: white;
+    --glass-lo: black;
     --glass-fill: linear-gradient(
       150deg,
-      color-mix(in srgb, white 11%, transparent),
-      color-mix(in srgb, white 3%, transparent) 60%
+      color-mix(in srgb, var(--glass-hi) 11%, transparent),
+      color-mix(in srgb, var(--glass-hi) 3%, transparent) 60%
     );
     --glass-blur: blur(22px) saturate(135%);
-    --glass-edge: inset 0 1px 0 color-mix(in srgb, white 16%, transparent);
-    --glass-shadow: var(--glass-edge), 0 24px 60px -32px color-mix(in srgb, black 90%, transparent);
+    --glass-edge: inset 0 1px 0 color-mix(in srgb, var(--glass-hi) 16%, transparent);
+    --glass-shadow:
+      var(--glass-edge), 0 24px 60px -32px color-mix(in srgb, var(--glass-lo) 90%, transparent);
     --shadow-soft: var(--glass-shadow);
-    --shadow-lift: var(--glass-edge), 0 30px 70px -30px color-mix(in srgb, black 95%, transparent);
+    --shadow-lift:
+      var(--glass-edge), 0 30px 70px -30px color-mix(in srgb, var(--glass-lo) 95%, transparent);
     position: relative;
     isolation: isolate;
     min-height: 100dvh;
     background: var(--color-bg);
     color: var(--color-fg);
     color-scheme: dark;
+  }
+  [data-glass][data-admin-theme='light'] {
+    color-scheme: light;
   }
 
   /* ---- Backdrop -------------------------------------------------------------------------------- */
@@ -34,12 +42,12 @@
     background:
       radial-gradient(
         70% 60% at 18% 8%,
-        color-mix(in srgb, white 7%, transparent),
+        color-mix(in srgb, var(--glass-hi) 7%, transparent),
         transparent 70%
       ),
       radial-gradient(
         60% 50% at 92% 100%,
-        color-mix(in srgb, white 4%, transparent),
+        color-mix(in srgb, var(--glass-hi) 4%, transparent),
         transparent 70%
       ),
       var(--color-bg);
@@ -49,16 +57,16 @@
     height: 100%;
   }
   .vt-glass-backdrop__facets path {
-    fill: white;
-    stroke: color-mix(in srgb, white 2.5%, transparent);
+    fill: var(--glass-hi);
+    stroke: color-mix(in srgb, var(--glass-hi) 2.5%, transparent);
     stroke-width: 1;
   }
   .vt-glass-backdrop__edges path {
     fill: none;
-    stroke: color-mix(in srgb, white 55%, transparent);
+    stroke: color-mix(in srgb, var(--glass-hi) 55%, transparent);
     stroke-width: 1.4;
     stroke-linecap: round;
-    filter: drop-shadow(0 0 6px color-mix(in srgb, white 40%, transparent));
+    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--glass-hi) 40%, transparent));
     stroke-dasharray: 60 900;
     animation: vt-glass-glint 9s linear infinite;
   }
@@ -81,25 +89,25 @@
   [data-glass] .vt-card,
   [data-glass] .vt-glass {
     --vt-fill: transparent;
-    --vt-border: color-mix(in srgb, white 13%, transparent);
+    --vt-border: color-mix(in srgb, var(--glass-hi) 13%, transparent);
     background: var(--glass-fill);
     -webkit-backdrop-filter: var(--glass-blur);
     backdrop-filter: var(--glass-blur);
     box-shadow: var(--glass-shadow);
   }
   [data-glass] .vt-glass {
-    border: var(--border-hairline) solid color-mix(in srgb, white 13%, transparent);
+    border: var(--border-hairline) solid color-mix(in srgb, var(--glass-hi) 13%, transparent);
     border-radius: var(--radius-xl);
   }
   [data-glass] .vt-card--sunken {
-    background: color-mix(in srgb, white 3%, transparent);
+    background: color-mix(in srgb, var(--glass-hi) 3%, transparent);
   }
   [data-glass] .vt-card--accent {
-    --vt-border: color-mix(in srgb, white 45%, transparent);
+    --vt-border: color-mix(in srgb, var(--glass-hi) 45%, transparent);
   }
   [data-glass] .vt-input {
-    border-color: color-mix(in srgb, white 14%, transparent);
-    background: color-mix(in srgb, white 5%, transparent);
+    border-color: color-mix(in srgb, var(--glass-hi) 14%, transparent);
+    background: color-mix(in srgb, var(--glass-hi) 5%, transparent);
     color: var(--color-fg);
   }
   [data-glass] .vt-input::placeholder {
@@ -110,21 +118,21 @@
   }
   [data-glass] .vt-btn--primary {
     box-shadow:
-      0 0 0 1px color-mix(in srgb, white 30%, transparent),
-      0 10px 30px -12px color-mix(in srgb, white 35%, transparent);
+      0 0 0 1px color-mix(in srgb, var(--glass-hi) 30%, transparent),
+      0 10px 30px -12px color-mix(in srgb, var(--glass-hi) 35%, transparent);
   }
   [data-glass] .vt-btn--secondary {
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
   }
   [data-glass] .vt-badge {
-    --vt-fill: color-mix(in srgb, white 6%, transparent);
+    --vt-fill: color-mix(in srgb, var(--glass-hi) 6%, transparent);
   }
   [data-glass] dialog {
     color: var(--color-fg);
   }
   [data-glass] ::selection {
-    background: color-mix(in srgb, white 85%, transparent);
+    background: color-mix(in srgb, var(--glass-hi) 85%, transparent);
     color: var(--color-bg);
   }
 
@@ -133,7 +141,7 @@
     margin: calc(var(--spacing) * 3);
     height: calc(100dvh - var(--spacing) * 6);
     top: calc(var(--spacing) * 3);
-    border: var(--border-hairline) solid color-mix(in srgb, white 12%, transparent);
+    border: var(--border-hairline) solid color-mix(in srgb, var(--glass-hi) 12%, transparent);
     border-radius: var(--radius-xl);
     background: var(--glass-fill);
     -webkit-backdrop-filter: var(--glass-blur);
@@ -155,8 +163,8 @@
   /* ---- Client area (portal) -------------------------------------------------------------------- */
   [data-glass] .vt-pshell {
     --p-card: transparent;
-    --p-line: color-mix(in srgb, white 12%, transparent);
-    --p-tint: color-mix(in srgb, white 10%, transparent);
+    --p-line: color-mix(in srgb, var(--glass-hi) 12%, transparent);
+    --p-tint: color-mix(in srgb, var(--glass-hi) 10%, transparent);
     background: transparent;
   }
   [data-glass] :is(.vt-pcard, .vt-pkpi, .vt-pgreet, .vt-pmeal, .vt-pshell__side) {
@@ -191,8 +199,8 @@
     /* the lead KPI is "lit" like the template's highlighted card */
     background: linear-gradient(
       150deg,
-      color-mix(in srgb, white 24%, transparent),
-      color-mix(in srgb, white 6%, transparent) 70%
+      color-mix(in srgb, var(--glass-hi) 24%, transparent),
+      color-mix(in srgb, var(--glass-hi) 6%, transparent) 70%
     );
   }
 
@@ -200,7 +208,7 @@
     .vt-glass-backdrop__edges path {
       animation: none;
       stroke-dasharray: none;
-      stroke: color-mix(in srgb, white 18%, transparent);
+      stroke: color-mix(in srgb, var(--glass-hi) 18%, transparent);
     }
   }
 }
@@ -212,7 +220,7 @@
     place-items: center;
     border: var(--border-hairline) solid var(--color-border-strong);
     border-radius: var(--radius-pill);
-    background: color-mix(in srgb, white 10%, transparent);
+    background: color-mix(in srgb, var(--glass-hi) 10%, transparent);
     color: var(--color-fg);
     font-size: var(--text-body-sm);
     font-weight: 600;
@@ -265,13 +273,13 @@
   .vt-dkpi:first-child {
     background: linear-gradient(
       150deg,
-      color-mix(in srgb, white 26%, transparent),
-      color-mix(in srgb, white 7%, transparent) 70%
+      color-mix(in srgb, var(--glass-hi) 26%, transparent),
+      color-mix(in srgb, var(--glass-hi) 7%, transparent) 70%
     );
   }
   .vt-dkpi:hover {
     transform: translateY(-2px);
-    border-color: color-mix(in srgb, white 30%, transparent);
+    border-color: color-mix(in srgb, var(--glass-hi) 30%, transparent);
   }
   .vt-dkpi:focus-visible {
     outline: 2px solid var(--color-focus-ring);
@@ -283,9 +291,9 @@
     height: calc(var(--spacing) * 9);
     flex-shrink: 0;
     place-items: center;
-    border: var(--border-hairline) solid color-mix(in srgb, white 22%, transparent);
+    border: var(--border-hairline) solid color-mix(in srgb, var(--glass-hi) 22%, transparent);
     border-radius: var(--radius-pill);
-    background: color-mix(in srgb, white 8%, transparent);
+    background: color-mix(in srgb, var(--glass-hi) 8%, transparent);
   }
   .vt-dkpi:first-child .vt-dkpi__go {
     background: var(--color-fg);
@@ -302,7 +310,7 @@
     align-items: center;
     gap: 2px;
     padding: 2px calc(var(--spacing) * 2);
-    border: var(--border-hairline) solid color-mix(in srgb, white 22%, transparent);
+    border: var(--border-hairline) solid color-mix(in srgb, var(--glass-hi) 22%, transparent);
     border-radius: var(--radius-pill);
     color: var(--color-fg-muted);
     font-size: 0.75rem;
@@ -311,7 +319,7 @@
   }
   .vt-dtrend[data-up] {
     color: var(--color-fg);
-    background: color-mix(in srgb, white 10%, transparent);
+    background: color-mix(in srgb, var(--glass-hi) 10%, transparent);
   }
 
   .vt-dash__charts,
@@ -355,7 +363,7 @@
     padding-top: calc(var(--spacing) * 6);
     background: repeating-linear-gradient(
       to top,
-      color-mix(in srgb, white 6%, transparent) 0 1px,
+      color-mix(in srgb, var(--glass-hi) 6%, transparent) 0 1px,
       transparent 1px 25%
     );
   }
@@ -374,10 +382,10 @@
     border-radius: var(--radius-pill);
     background: linear-gradient(
       to top,
-      color-mix(in srgb, white 14%, transparent),
-      color-mix(in srgb, white 46%, transparent)
+      color-mix(in srgb, var(--glass-hi) 14%, transparent),
+      color-mix(in srgb, var(--glass-hi) 46%, transparent)
     );
-    box-shadow: inset 0 1px 0 color-mix(in srgb, white 50%, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--glass-hi) 50%, transparent);
     transform-origin: bottom;
     animation: vt-bar-in var(--duration-long) var(--ease-out) both;
     animation-delay: calc(var(--i, 0) * 60ms + 150ms);
@@ -385,10 +393,10 @@
   .vt-dbars > li[data-now] .vt-dbars__bar {
     background: linear-gradient(
       to top,
-      color-mix(in srgb, white 55%, transparent),
+      color-mix(in srgb, var(--glass-hi) 55%, transparent),
       var(--color-fg)
     );
-    box-shadow: 0 0 24px color-mix(in srgb, white 30%, transparent);
+    box-shadow: 0 0 24px color-mix(in srgb, var(--glass-hi) 30%, transparent);
   }
   .vt-dbars__value {
     color: var(--color-fg-muted);
@@ -416,7 +424,7 @@
     height: calc(var(--spacing) * 44);
     place-items: center;
     border-radius: 50%;
-    background: color-mix(in srgb, white 8%, transparent);
+    background: color-mix(in srgb, var(--glass-hi) 8%, transparent);
     -webkit-mask: radial-gradient(circle, transparent 58%, black 59%);
     mask: radial-gradient(circle, transparent 58%, black 59%);
   }
@@ -458,7 +466,7 @@
     flex-direction: column;
   }
   .vt-dlist > li + li {
-    border-top: var(--border-hairline) solid color-mix(in srgb, white 8%, transparent);
+    border-top: var(--border-hairline) solid color-mix(in srgb, var(--glass-hi) 8%, transparent);
   }
   .vt-dlist__row {
     display: flex;
@@ -470,7 +478,7 @@
     transition: background-color var(--duration-micro) var(--ease-out);
   }
   .vt-dlist__row:hover {
-    background: color-mix(in srgb, white 5%, transparent);
+    background: color-mix(in srgb, var(--glass-hi) 5%, transparent);
   }
   .vt-dlist__row:focus-visible {
     outline: 2px solid var(--color-focus-ring);
@@ -483,7 +491,7 @@
     flex-shrink: 0;
     place-items: center;
     border-radius: var(--radius-pill);
-    background: color-mix(in srgb, white 12%, transparent);
+    background: color-mix(in srgb, var(--glass-hi) 12%, transparent);
     font-size: var(--text-body-sm);
     font-weight: 600;
   }

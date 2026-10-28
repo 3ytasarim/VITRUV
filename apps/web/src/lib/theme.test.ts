@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { tokens } from '@vitruv/design-tokens';
-import { themeCss } from './theme';
+import { referenceThemeCss, themeCss } from './theme';
 
 const base = {
   background: '#f2efe9',
@@ -67,5 +67,22 @@ describe('VITRUV Blau preset', () => {
     expect(css).toContain('--vt-media-accent:#4d8dff');
     expect(css).toContain('--vt-media-on-accent:#050505');
     expect(themeCss(base)).not.toContain('--vt-media-accent');
+  });
+});
+
+describe('referenceThemeCss (reference design, dark + light)', () => {
+  it('uses the prototype colours exactly; light mode outranks dark on the site root', () => {
+    const css = referenceThemeCss();
+    const [dark, light] = css.split(".vt-site[data-surface='public'][data-theme='light']{");
+    expect(dark).toContain(`--r-bg:${tokens.referencePalette.dark.bg}`);
+    expect(dark).toContain('--r-bg:#050505');
+    expect(dark).toContain('--r-fg:#f2f2ee');
+    expect(dark).toContain('--r-accent-text:#5b9dff');
+    expect(dark).toContain('--r-logo-filter:invert(1)');
+    expect(light).toContain('--r-bg:#f6f6f3');
+    expect(light).toContain('--r-fg:#0e1014');
+    expect(light).toContain('--r-accent:#1f5fe0');
+    expect(light).toContain('--r-logo-filter:none');
+    expect(light).toContain('color-scheme:light');
   });
 });

@@ -17,6 +17,9 @@ export const chakraPetch = Chakra_Petch({
   subsets: ['latin'],
   variable: '--font-chakra-petch',
   display: 'swap',
+  // reference CSS: font-family: '<Family>', sans-serif — no generated fallback face
+  fallback: ['sans-serif'],
+  adjustFontFallback: false,
 });
 
 export const barlowCondensed = Barlow_Condensed({
@@ -25,6 +28,9 @@ export const barlowCondensed = Barlow_Condensed({
   subsets: ['latin'],
   variable: '--font-barlow-condensed',
   display: 'swap',
+  // reference CSS: font-family: '<Family>', sans-serif — no generated fallback face
+  fallback: ['sans-serif'],
+  adjustFontFallback: false,
 });
 
 export const barlow = Barlow({
@@ -33,6 +39,9 @@ export const barlow = Barlow({
   subsets: ['latin'],
   variable: '--font-barlow',
   display: 'swap',
+  // reference CSS: font-family: '<Family>', sans-serif — no generated fallback face
+  fallback: ['sans-serif'],
+  adjustFontFallback: false,
 });
 
 export const fontVariables = [chakraPetch.variable, barlowCondensed.variable, barlow.variable].join(

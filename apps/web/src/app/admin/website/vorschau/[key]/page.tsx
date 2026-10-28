@@ -9,10 +9,7 @@ import { Badge, ButtonLink, Container } from '@/components/ui';
 import { adminApi } from '@/lib/admin-api';
 import { requirePagePermission } from '@/lib/auth/session';
 import { publicFontVariables } from '@/lib/fonts';
-import { PublicSection } from '@/components/site/section-registry';
-import { placementOf } from '@/components/site/placement';
-import { getPublicHome } from '@/lib/public-site';
-import { themeCss } from '@/lib/theme';
+import { referenceThemeCss } from '@/lib/theme';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
@@ -41,14 +38,11 @@ export default async function SectionPreviewPage({ params }: { params: Promise<{
   }
 
   const { section, source, updatedAt, content } = preview.data;
-  // Colours: preview the whole published homepage with the DRAFT colours applied.
-  const isTheme = section.type === 'theme';
-  const home = isTheme ? await getPublicHome() : null;
-  const draftTheme = isTheme ? themeCss(content as Parameters<typeof themeCss>[0]) : null;
-  // Same surface + fonts as the public site, so the draft looks exactly like the live page.
+  // Same surface, fonts and reference colours as the public site, so the draft looks exactly
+  // like the live page.
   return (
     <div className={`vt-site ${publicFontVariables}`} data-surface="public">
-      {draftTheme && <style>{draftTheme}</style>}
+      <style>{referenceThemeCss()}</style>
       <div className="sticky top-0 z-50 border-b border-warning bg-surface-sunken">
         <Container className="flex flex-wrap items-center justify-between gap-3 py-2">
           <div className="flex flex-wrap items-center gap-2">
@@ -70,17 +64,11 @@ export default async function SectionPreviewPage({ params }: { params: Promise<{
         </Container>
       </div>
       <main id="main">
-        {/* The hero preview renders its own h1; other sections start at h2. */}
-        {section.type !== 'hero' && (
+        {/* The hero and the homepage render their own h1; other sections start at h2. */}
+        {section.type !== 'hero' && section.type !== 'home' && (
           <h1 className="sr-only">Vorschau: {SECTION_LABELS[section.type]}</h1>
         )}
-        {isTheme && home?.ok ? (
-          home.page.sections
-            .filter((s) => placementOf(s.type) !== 'meta')
-            .map((s) => <PublicSection key={s.key} section={s} />)
-        ) : (
-          <SectionPreview type={section.type} sectionKey={section.key} content={content} />
-        )}
+        <SectionPreview type={section.type} sectionKey={section.key} content={content} />
       </main>
     </div>
   );

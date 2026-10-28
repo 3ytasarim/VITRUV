@@ -1,6 +1,5 @@
-import { ArrowUp, ArrowUpRight } from 'lucide-react';
-import { RevealGroup } from '@/components/ui';
 import type { ResolvedMediaSlot } from '@vitruv/contracts';
+import { Container } from '@/components/ui';
 import type { SectionProps } from '../section-props';
 import { SiteLogo } from '../site-header';
 
@@ -17,11 +16,10 @@ const PLATFORM_NAME = {
 const isExternal = (href: string) => href.startsWith('https://');
 
 /**
- * Footer — the Bleibsichtbar redesign footer (efferd/footer-section layout) in VITRUV colours,
- * entirely from published CMS content: inside the same wide frame as the next-step CTA card above,
- * a rounded-top shell with a soft gold light and a glowing line on its top edge; brand, display
- * line and copyright on the left; Seiten / Rechtliches / Kontakt columns on the right. Columns
- * fade in once. Empty groups are omitted; nothing is invented.
+ * Footer — reference 'Website Funktional': when the CMS has contact data, a row of contact
+ * cards (social profiles, e-mail, phone) under the CMS tagline; then the black bottom bar with
+ * logo + © year on the left and the small uppercase links (social, e-mail, navigation, legal)
+ * on the right. Entirely from published CMS content; empty groups are omitted, nothing invented.
  */
 export function SiteFooter({
   content,
@@ -29,104 +27,87 @@ export function SiteFooter({
   logo = null,
 }: SectionProps<'footer'> & { logo?: ResolvedMediaSlot | null }) {
   const { email, phone, location } = content.contact;
-  const hasContact = Boolean(email || phone || location || content.social.length > 0);
   const year = new Date().getFullYear();
+  const cards = [
+    ...content.social.map((profile) => ({
+      key: profile.id,
+      tag: PLATFORM_NAME[profile.platform].slice(0, 2).toUpperCase(),
+      title: PLATFORM_NAME[profile.platform],
+      href: profile.href,
+      text: null as string | null,
+    })),
+    ...(email
+      ? [{ key: 'email', tag: '@', title: 'E-Mail', href: `mailto:${email}`, text: email }]
+      : []),
+    ...(phone
+      ? [
+          {
+            key: 'phone',
+            tag: 'TEL',
+            title: 'Telefon',
+            href: `tel:${phone.replace(/[^\d+]/g, '')}`,
+            text: phone,
+          },
+        ]
+      : []),
+  ];
+  const links = [...content.navigation, ...content.legal];
   return (
-    <div className="vt-wide">
-      <footer id={id} className="vt-footer">
-        <span aria-hidden className="vt-footer__line" />
-        <div aria-hidden className="vt-footer__glow">
-          <span />
-          <span />
-          <span />
-        </div>
-        <RevealGroup className="vt-footer__grid">
-          <div className="vt-footer__brand">
-            <a href="#main" className="vt-footer__logo" aria-label="VITRUV – nach oben">
-              {logo && <SiteLogo logo={logo} className="h-12 w-auto" />}
-              <span className="vt-wordmark text-fg">VITRUV</span>
-            </a>
-            {content.tagline && <p className="vt-footer__statement">{content.tagline}</p>}
-          </div>
-
-          <div className="vt-footer__cols">
-            {content.navigation.length > 0 && (
-              <nav aria-label="Footer-Navigation" className="vt-footer__col">
-                <h4 className="vt-footer__label">Seiten</h4>
-                <ul>
-                  {content.navigation.map((link) => (
-                    <li key={link.id}>
-                      <a href={link.href} className="vt-footer__link">
-                        {link.label}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-            )}
-            {content.legal.length > 0 && (
-              <div className="vt-footer__col">
-                <h4 className="vt-footer__label">Rechtliches</h4>
-                <ul>
-                  {content.legal.map((link) => (
-                    <li key={link.id}>
-                      <a
-                        href={link.href}
-                        className="vt-footer__link"
-                        {...(isExternal(link.href) ? { rel: 'noopener noreferrer' } : {})}
-                      >
-                        {link.label}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {hasContact && (
-              <div className="vt-footer__col">
-                <h4 className="vt-footer__label">Kontakt</h4>
-                <ul>
-                  {email && (
-                    <li>
-                      <a href={`mailto:${email}`} className="vt-footer__link">
-                        {email}
-                      </a>
-                    </li>
-                  )}
-                  {phone && (
-                    <li>
-                      <a href={`tel:${phone.replace(/[^\d+]/g, '')}`} className="vt-footer__link">
-                        {phone}
-                      </a>
-                    </li>
-                  )}
-                  {location && <li className="vt-footer__link">{location}</li>}
-                  {content.social.map((profile) => (
-                    <li key={profile.id}>
-                      <a
-                        href={profile.href}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                        className="vt-footer__link inline-flex items-center gap-1"
-                      >
-                        {PLATFORM_NAME[profile.platform]}
-                        <ArrowUpRight aria-hidden className="size-3.5" strokeWidth={1.6} />
-                        <span className="sr-only"> (öffnet in neuem Tab)</span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </RevealGroup>
-        <div className="vt-footer__bar">
-          <p>© VITRUV {year} · Alle Rechte vorbehalten</p>
-          <a href="#main" className="vt-footer__top">
-            Nach oben <ArrowUp aria-hidden className="size-3.5" strokeWidth={1.6} />
+    <footer id={id} className="vf-footer">
+      {(cards.length > 0 || location) && (
+        <Container className="vf-footer__contact">
+          {content.tagline && <p className="vf-footer__tagline">{content.tagline}</p>}
+          {cards.length > 0 && (
+            <ul className="vf-grid vf-grid--3">
+              {cards.map((card) => (
+                <li key={card.key}>
+                  <a
+                    href={card.href}
+                    className="vf-contact"
+                    {...(isExternal(card.href)
+                      ? { rel: 'noopener noreferrer', target: '_blank' }
+                      : {})}
+                  >
+                    <span aria-hidden className="vf-contact__tag">
+                      {card.tag}
+                    </span>
+                    <span className="vf-contact__title">{card.title}</span>
+                    {card.text && <span className="vf-contact__text">{card.text}</span>}
+                    {isExternal(card.href) && (
+                      <span className="sr-only"> (öffnet in neuem Tab)</span>
+                    )}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+          {location && <p className="vf-meta">{location}</p>}
+        </Container>
+      )}
+      <div className="vf-footer__bar">
+        <Container className="vf-footer__inner">
+          <a href="#main" className="vf-footer__brand" aria-label="VITRUV – nach oben">
+            {logo && <SiteLogo logo={logo} className="vf-footer__logo" />}
+            <span>© {year} VITRUV</span>
           </a>
-        </div>
-      </footer>
-    </div>
+          {links.length > 0 && (
+            <nav aria-label="Footer-Navigation">
+              <ul className="vf-footer__links">
+                {links.map((link) => (
+                  <li key={link.id}>
+                    <a
+                      href={link.href}
+                      {...(isExternal(link.href) ? { rel: 'noopener noreferrer' } : {})}
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          )}
+        </Container>
+      </div>
+    </footer>
   );
 }

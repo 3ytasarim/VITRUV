@@ -28,6 +28,7 @@ import { ResultsEditor } from './results-editor';
 import { SeoEditor } from './seo-editor';
 import { SituationsEditor } from './situations-editor';
 import { GalleryEditor } from './gallery-editor';
+import { HomeEditor } from './home-editor';
 import { StepsEditor } from './steps-editor';
 import { DEFAULT_THEME, ThemeEditor } from './theme-editor';
 
@@ -57,6 +58,7 @@ const EDITORS: Record<WebsiteSectionType, AnyEditor> = {
   situations: SituationsEditor as AnyEditor,
   steps: StepsEditor as AnyEditor,
   gallery: GalleryEditor as AnyEditor,
+  home: HomeEditor as AnyEditor,
   theme: ThemeEditor as AnyEditor,
   seo: SeoEditor as AnyEditor,
 };
@@ -83,6 +85,27 @@ const EMPTY: Record<WebsiteSectionType, Record<string, unknown>> = {
   situations: { title: '', items: [] },
   steps: { title: '', items: [] },
   gallery: { title: '', items: [], autoplay: true },
+  home: {
+    hero: { lines: [''], primary: { label: '', href: '' }, media: null },
+    intro: { media: null },
+    results: { title: '', videos: [], gallery: [] },
+    journey: {
+      title: '',
+      stages: [{ id: 'etappe-1', name: '', title: '', text: '', media: null }],
+    },
+    voices: { items: [] },
+    doubts: { title: '', items: [] },
+    included: { title: '', items: [] },
+    packages: { title: '', items: [] },
+    steps: { title: '', items: [] },
+    training: { title: '', items: [] },
+    coach: { name: '', facts: [], paragraphs: [], media: null },
+    faq: { title: '', items: [] },
+    cta: { title: '', action: { label: '', href: '' }, media: null },
+    apply: { title: '', channels: [] },
+    headerCta: { label: '', href: '' },
+    menu: [],
+  },
   theme: { ...DEFAULT_THEME },
   seo: { title: '', description: '', siteName: '', ogImage: null, faqStructuredData: false },
 };

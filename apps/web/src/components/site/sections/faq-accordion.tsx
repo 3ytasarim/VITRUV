@@ -38,13 +38,13 @@ export function FaqAccordion({
     });
 
   return (
-    <ul className="vt-faq">
-      {items.map((item, index) => {
+    <ul className="vf-faq">
+      {items.map((item) => {
         const expanded = !enhanced || open.has(item.id);
         const buttonId = `${baseId}-${item.id}-q`;
         const panelId = `${baseId}-${item.id}-a`;
         return (
-          <li key={item.id} className="vt-faq__item" data-open={expanded || undefined}>
+          <li key={item.id} className="vf-faq__item" data-open={expanded || undefined}>
             <h3>
               <button
                 type="button"
@@ -52,13 +52,10 @@ export function FaqAccordion({
                 aria-expanded={expanded}
                 aria-controls={panelId}
                 onClick={() => toggle(item.id)}
-                className="vt-faq__question"
+                className="vf-faq__question"
               >
-                <span aria-hidden className="vt-faq__num">
-                  {String(index + 1).padStart(2, '0')}
-                </span>
-                <span className="vt-faq__text">{item.question}</span>
-                <span aria-hidden className="vt-faq__icon">
+                <span className="vf-faq__text">{item.question}</span>
+                <span aria-hidden className="vf-faq__icon">
                   <Plus className="size-4" strokeWidth={1.6} />
                 </span>
               </button>
@@ -68,7 +65,7 @@ export function FaqAccordion({
               role="region"
               aria-labelledby={buttonId}
               hidden={!expanded}
-              className="vt-faq__answer"
+              className="vf-faq__answer"
             >
               <p className="vt-reveal-words">
                 {/* Words (with their spacing) as inline spans: the text reads normally; CSS

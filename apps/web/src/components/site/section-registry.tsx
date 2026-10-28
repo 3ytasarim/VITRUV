@@ -2,6 +2,7 @@ import type { PublicWebsiteSection } from '@vitruv/contracts';
 import type { WebsiteSectionType } from '@vitruv/shared';
 import type { ComponentType } from 'react';
 import { JourneyMapSection } from '@/components/journey';
+import { ReferenceHome } from './reference/reference-home';
 import type { SectionProps } from './section-props';
 import { AboutSection } from './sections/about-section';
 import { CoachingSection } from './sections/coaching-section';
@@ -40,6 +41,8 @@ export const PUBLIC_SECTION_RENDERERS: {
   situations: SituationsSection,
   steps: StepsSection,
   gallery: GallerySection,
+  // The reference homepage (all copy + media slots of the prototype page).
+  home: ({ content }) => <ReferenceHome content={content} />,
   // Colours are applied by the site layout (CSS variables) — nothing to render here.
   theme: () => null,
   // Page settings (metadata + structured data) — nothing to render in the page body.

@@ -19,6 +19,7 @@ export const SECTION_PLACEMENT: Readonly<Record<WebsiteSectionType, SectionPlace
   pillars: 'main',
   situations: 'main',
   gallery: 'main',
+  home: 'main',
   steps: 'main',
   // Design settings (colours): applied by the site layout, never rendered as content.
   theme: 'meta',

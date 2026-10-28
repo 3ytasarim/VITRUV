@@ -112,7 +112,7 @@ export default async function AdminDashboardPage() {
   const donut = `conic-gradient(${segments
     .map(
       (s) =>
-        `color-mix(in srgb, white ${SHADE[s.status]}%, transparent) ${(s.from * 360).toFixed(1)}deg ${(s.to * 360).toFixed(1)}deg`,
+        `color-mix(in srgb, var(--glass-hi) ${SHADE[s.status]}%, transparent) ${(s.from * 360).toFixed(1)}deg ${(s.to * 360).toFixed(1)}deg`,
     )
     .join(', ')})`;
   const weekLabel = (iso: string) =>
@@ -213,7 +213,7 @@ export default async function AdminDashboardPage() {
                     aria-hidden
                     className="vt-ddonut__dot"
                     style={{
-                      background: `color-mix(in srgb, white ${SHADE[s.status]}%, transparent)`,
+                      background: `color-mix(in srgb, var(--glass-hi) ${SHADE[s.status]}%, transparent)`,
                     }}
                   />
                   <span className="flex-1">{STATUS_LABEL[s.status]}</span>

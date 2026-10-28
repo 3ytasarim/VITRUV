@@ -1,6 +1,7 @@
 'use client';
 
 import { type ReactNode, useEffect, useRef } from 'react';
+import { THEME_CHANGE_EVENT } from '@/components/site/theme-mode';
 import { mountJourneyMap } from './journey-map-engine';
 
 /**
@@ -18,7 +19,17 @@ export function JourneyMapMount({
   useEffect(() => {
     const root = ref.current;
     if (!root) return;
-    return mountJourneyMap(root);
+    let unmount = mountJourneyMap(root);
+    // light/dark switch: the engine reads its colours once — mount it again with the new ones
+    const remount = () => {
+      unmount();
+      unmount = mountJourneyMap(root);
+    };
+    window.addEventListener(THEME_CHANGE_EVENT, remount);
+    return () => {
+      window.removeEventListener(THEME_CHANGE_EVENT, remount);
+      unmount();
+    };
   }, []);
   return (
     <div ref={ref} className={className} data-weg="">

@@ -64,11 +64,16 @@ describe('web uses design tokens only', () => {
 
   it('keeps clip-path inside the component layer (chamfer system)', () => {
     const offenders = files
-      // public.css adapts the chamfer system per surface (it only switches clip-path OFF).
+      // public.css adapts the chamfer system per surface (it only switches clip-path OFF);
+      // public-functional.css is the public site's reference design (chamfered buttons/cards).
       .filter(
         (f) =>
-          !['styles/components.css', 'styles/public.css'].includes(f.rel) &&
-          /clip-path|clipPath/.test(f.text),
+          ![
+            'styles/components.css',
+            'styles/public.css',
+            'styles/public-functional.css',
+            'styles/public-reference.css',
+          ].includes(f.rel) && /clip-path|clipPath/.test(f.text),
       )
       .map((f) => f.rel);
     expect(offenders).toEqual([]);

@@ -245,7 +245,99 @@ export const colorsGlass: Record<ColorRole, ColorValue> = {
   error: c(palette.red400),
 };
 
+/**
+ * Glass surface, LIGHT mode (admin header switch, owner decision 2026-10-28): the same panels with
+ * the tints inverted onto the reference light paper (like 'Website Funktional Hell'). Applied with
+ * data-admin-theme="light" on the admin shell (lib/theme.ts adminLightCss); dark stays the
+ * default glass above. Surfaces are translucent ink — contrast is checked composited over bg.
+ */
+export const colorsGlassLight: Record<ColorRole, ColorValue> = {
+  bg: c(palette.paper100),
+  surface: c(palette.inkCool, 0.04),
+  surfaceSunken: c(palette.inkCool, 0.03),
+  surfaceHover: c(palette.inkCool, 0.06),
+  overlay: c(palette.paper100, 0.86),
+  fg: c(palette.inkCool),
+  fgMuted: c(palette.inkCool, 0.74),
+  fgSubtle: c(palette.inkCool, 0.62),
+  fgDisabled: c(palette.inkCool, 0.36),
+  accent: c(palette.inkCool),
+  accentHover: c(palette.inkCool, 0.86),
+  accentText: c(palette.inkCool, 0.8),
+  onAccent: c(palette.white),
+  border: c(palette.inkCool, 0.14),
+  borderSubtle: c(palette.inkCool, 0.08),
+  borderStrong: c(palette.inkCool, 0.26),
+  focusRing: c(palette.inkCool),
+  success: c(palette.green700),
+  warning: c(palette.amber700),
+  error: c(palette.red700),
+};
+
+/** Glass tints in light mode: highlights become ink, shadows a soft cool grey. */
+export const glassLightTints = {
+  hi: palette.inkCool,
+  lo: '#8a909c',
+} as const;
+
 /** Decorative public colours (no text use below 24 px): gold accents, Journey route. */
+/**
+ * Public website — the reference design 1:1 (owner decision 2026-10-28): every colour of
+ * `Website Funktional.dc.html` (dark, default) and `Website Funktional Hell.dc.html` (light,
+ * header switch), exactly as in the prototype. Colours are fixed here (the CMS colour editor is
+ * retired for the public site). `*Rgb` values are "r, g, b" triplets for the prototype's many
+ * rgba() tints; the light file maps every dark value one-to-one (white lines → black lines,
+ * page tints 5,5,5 → 246,246,243, blue glows 91,157,255 → 31,95,224, …).
+ */
+export const referencePalette = {
+  dark: {
+    bg: '#050505', // page
+    fg: '#f2f2ee', // text, headings
+    accent: '#4d8dff', // button fill, route, featured border
+    accentText: '#5b9dff', // eyebrows, links, quote marks, FAQ +
+    onAccent: '#050505', // label on the blue button
+    card: '#0e0e0e', // media slots, image cards
+    cardPackage: '#0c0c0c', // package cards
+    heroBg: '#0a0a0a', // hero behind the video
+    footer: '#000000',
+    bgRgb: '5, 5, 5',
+    fgRgb: '242, 242, 238',
+    lineRgb: '255, 255, 255', // hairlines, glass tints
+    glowRgb: '91, 157, 255', // blue glows
+    btnGlowRgb: '70, 140, 255',
+    btnGlowAlpha: '0.35',
+    textGlowAlpha: '0.45', // headline accent glow
+    haloRgb: '160, 205, 255',
+    glitchRgb: '255, 60, 170',
+    logoFilter: 'invert(1)',
+    glass: '#ffffff', // white glass buttons (header CTA, phone menu CTA)
+    tagRgb: '91, 157, 255', // channel tag tint (the light file keeps the dark blue here)
+  },
+  light: {
+    bg: '#f6f6f3',
+    fg: '#0e1014',
+    accent: '#1f5fe0',
+    accentText: '#1f5fe0',
+    onAccent: '#ffffff',
+    card: '#ecece8',
+    cardPackage: '#ffffff',
+    heroBg: '#e4e4df',
+    footer: '#ecece8',
+    bgRgb: '246, 246, 243',
+    fgRgb: '14, 16, 20',
+    lineRgb: '0, 0, 0',
+    glowRgb: '31, 95, 224',
+    btnGlowRgb: '37, 99, 235',
+    btnGlowAlpha: '0.3',
+    textGlowAlpha: '0.25',
+    haloRgb: '160, 205, 255',
+    glitchRgb: '220, 40, 120',
+    logoFilter: 'none',
+    glass: '#ffffff',
+    tagRgb: '91, 157, 255',
+  },
+} as const;
+
 /**
  * Ready-made website palettes for the CMS theme editor ("Farben & Design"). Only the roles that
  * differ from the current theme are set; background/text stay whatever the owner chose.
@@ -649,6 +741,9 @@ export const tokens = {
   adminTypeTracking,
   decorativeColors,
   themePresets,
+  referencePalette,
+  colorsGlassLight,
+  glassLightTints,
   publicFontFamilies,
   publicFontFaces,
   publicTypeScale,

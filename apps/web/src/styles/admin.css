@@ -235,6 +235,59 @@
   }
 
   /* Square icon button (menu, collapse, close) — 48px tap target. */
+  /* Startseite editor: one collapsible block per page area (reference page order) */
+  .vt-home-block {
+    border: var(--border-hairline) solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    padding: calc(var(--spacing) * 4) calc(var(--spacing) * 5);
+  }
+  .vt-home-block[open] {
+    padding-bottom: calc(var(--spacing) * 6);
+  }
+  .vt-home-block__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: calc(var(--spacing) * 2) calc(var(--spacing) * 4);
+    min-height: calc(var(--spacing) * 10);
+    cursor: pointer;
+    list-style: none;
+  }
+  .vt-home-block__head::-webkit-details-marker {
+    display: none;
+  }
+  .vt-home-block__head::before {
+    content: '+';
+    width: 1em;
+    color: var(--color-fg-subtle);
+    font-size: 1.125rem;
+    transition: transform var(--duration-micro) var(--ease-out);
+  }
+  .vt-home-block[open] > .vt-home-block__head::before {
+    transform: rotate(45deg);
+  }
+
+  /* light/dark switch in the top bar (same look as the website header switch) */
+  .vt-admin-theme {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: calc(var(--spacing) * 12);
+    padding: 0 calc(var(--spacing) * 3);
+    border-radius: var(--radius-md);
+    font-family: var(--font-label);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-fg);
+    cursor: pointer;
+    transition: background-color var(--duration-micro) var(--ease-out);
+  }
+  .vt-admin-theme:hover {
+    background: var(--color-surface-hover);
+  }
   .vt-icon-btn {
     display: inline-grid;
     width: calc(var(--spacing) * 12);

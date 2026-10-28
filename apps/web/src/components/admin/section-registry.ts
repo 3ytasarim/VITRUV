@@ -16,9 +16,22 @@ export const SECTION_LABELS: Readonly<Record<WebsiteSectionType, string>> = {
   situations: 'Lebenssituationen',
   steps: 'Neun Stufen',
   gallery: 'Galerie (Foto-Reel)',
+  home: 'Startseite',
   theme: 'Farben & Design',
   seo: 'SEO & Link-Vorschau',
 };
+
+/**
+ * Content the admin edits (owner decision 2026-10-28): the reference homepage as ONE section.
+ * The earlier section types (hero, results, … and the colour settings "Farben & Design") are
+ * retired — kept in the database (nothing deleted), no longer listed or editable. SEO lives
+ * under Einstellungen.
+ */
+export const EDITABLE_CONTENT_TYPES: readonly WebsiteSectionType[] = ['home'];
+
+export function isEditableContent(type: WebsiteSectionType): boolean {
+  return EDITABLE_CONTENT_TYPES.includes(type);
+}
 
 export type SectionStatusTone = 'success' | 'warning' | 'neutral' | 'accent';
 

@@ -1,4 +1,5 @@
 import type { PublicWebsitePage } from '@vitruv/contracts';
+import { colorsGlassLight, glassLightTints, referencePalette, toCss } from '@vitruv/design-tokens';
 
 type ThemeContent = Extract<PublicWebsitePage['sections'][number], { type: 'theme' }>['content'];
 
@@ -66,6 +67,99 @@ export function themeCss(theme: ThemeContent | null | undefined): string | null 
     .map(([name, value]) => `${name}:${value}`)
     .join(';');
   return body ? `[data-surface='public']{${body}}` : null;
+}
+
+type ReferenceMode = (typeof referencePalette)['dark'] | (typeof referencePalette)['light'];
+
+/** CSS variables of one reference mode: `--r-*` for the site + the shared roles (sub-pages, map). */
+function referenceVars(p: ReferenceMode, scheme: 'dark' | 'light'): string {
+  const fgA = (a: number) => `rgba(${p.fgRgb}, ${a})`;
+  const lineA = (a: number) => `rgba(${p.lineRgb}, ${a})`;
+  const vars: [string, string][] = [
+    ['--r-bg', p.bg],
+    ['--r-fg', p.fg],
+    ['--r-accent', p.accent],
+    ['--r-accent-text', p.accentText],
+    ['--r-on-accent', p.onAccent],
+    ['--r-card', p.card],
+    ['--r-card-package', p.cardPackage],
+    ['--r-hero-bg', p.heroBg],
+    ['--r-footer', p.footer],
+    ['--r-bg-rgb', p.bgRgb],
+    ['--r-fg-rgb', p.fgRgb],
+    ['--r-line-rgb', p.lineRgb],
+    ['--r-glow-rgb', p.glowRgb],
+    ['--r-btn-glow', `rgba(${p.btnGlowRgb}, ${p.btnGlowAlpha})`],
+    ['--r-text-glow', `rgba(${p.btnGlowRgb}, ${p.textGlowAlpha})`],
+    ['--r-halo-rgb', p.haloRgb],
+    ['--r-glitch-rgb', p.glitchRgb],
+    ['--r-logo-filter', p.logoFilter],
+    ['--r-glass', p.glass],
+    ['--r-tag-rgb', p.tagRgb],
+    // shared roles: Impressum / Kontakt / Datenschutz and the Journey map engine
+    ['--color-bg', p.bg],
+    ['--color-surface', p.card],
+    ['--color-surface-sunken', p.card],
+    ['--color-surface-hover', lineA(0.03)],
+    ['--color-overlay', `rgba(${p.bgRgb}, 0.86)`],
+    ['--color-fg', p.fg],
+    ['--color-heading', p.fg],
+    ['--color-fg-muted', fgA(0.66)],
+    ['--color-fg-subtle', fgA(0.55)],
+    ['--color-accent', p.accent],
+    ['--color-accent-hover', p.accentText],
+    ['--color-accent-text', p.accentText],
+    ['--color-on-accent', p.onAccent],
+    ['--color-focus-ring', p.accentText],
+    ['--color-border', lineA(0.1)],
+    ['--color-border-subtle', lineA(0.07)],
+    ['--color-border-strong', lineA(0.22)],
+    ['--color-brand-gold', p.accent],
+    ['--color-route', p.accent],
+    ['--vt-ink', p.fg],
+    ['--vt-paper', p.bg],
+    ['--vt-logo-filter', p.logoFilter],
+    ['--vt-art-filter', p.logoFilter],
+    ['color-scheme', scheme],
+  ];
+  return vars.map(([n, v]) => `${n}:${v}`).join(';');
+}
+
+/**
+ * Colours of the public site — the reference design 1:1 (owner decision 2026-10-28):
+ * `Website Funktional` (dark, default) and `Funktional Hell` (light, header switch sets
+ * `data-theme="light"` on the site root). Values come only from `referencePalette`.
+ */
+export function referenceThemeCss(): string {
+  const root = ".vt-site[data-surface='public']";
+  return (
+    `${root}{${referenceVars(referencePalette.dark, 'dark')}}` +
+    `${root}[data-theme='light']{${referenceVars(referencePalette.light, 'light')}}` +
+    // page behind the site (overscroll) — the prototype sets it on html/body
+    `body:has(${root}){background:${referencePalette.dark.bg}}` +
+    `body:has(${root}[data-theme='light']){background:${referencePalette.light.bg}}`
+  );
+}
+
+/** CSS variable name of a colour role (`fgMuted` → `--color-fg-muted`). */
+const roleVar = (role: string) => `--color-${role.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)}`;
+
+/**
+ * Light mode of the admin panel (header switch "Hell", owner decision 2026-10-28): the light
+ * glass colours from the design tokens, set with `data-admin-theme="light"` on the admin shell.
+ * The glass tints (--glass-hi / --glass-lo, white/black by default) turn to ink / soft grey, so
+ * every panel, border and glow follows. Dark stays the default glass. No values are typed here.
+ */
+export function adminLightCss(): string {
+  const vars = Object.entries(colorsGlassLight).map(
+    ([role, value]) => `${roleVar(role)}:${toCss(value)}`,
+  );
+  vars.push(
+    `--glass-hi:${glassLightTints.hi}`,
+    `--glass-lo:${glassLightTints.lo}`,
+    'color-scheme:light',
+  );
+  return `[data-surface='admin'][data-glass][data-admin-theme='light']{${vars.join(';')}}`;
 }
 
 export function pageTheme(page: PublicWebsitePage | null): ThemeContent | null {

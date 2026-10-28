@@ -110,26 +110,24 @@ describe('content overview', () => {
     );
   });
 
-  it('lists sections in page order with edit links — every section has an editor', () => {
+  it('lists only the homepage (reference design) — retired sections and colours are hidden', () => {
     const page: AdminWebsitePage = {
       slug: 'home',
       title: 'Startseite',
       contentRevision: 3,
       lastPublishedAt: null,
       sections: [
-        summary({ key: 'hero', type: 'hero', hasDraft: true }),
-        summary({ key: 'results', type: 'results' }),
-        summary({ key: 'faq', type: 'faq', hasPublished: false }),
+        summary({ key: 'home', type: 'home', hasDraft: true }),
+        summary({ key: 'hero', type: 'hero' }),
+        summary({ key: 'theme', type: 'theme' }),
       ],
     };
     const markup = html(<ContentOverview page={page} />);
-    expect(markup.indexOf('Hero')).toBeLessThan(markup.indexOf('Ergebnisse'));
-    expect(markup).toContain('href="/admin/website/inhalte/hero"');
+    expect(markup).toContain('href="/admin/website/inhalte/home"');
+    expect(markup).toContain('Startseite');
     expect(markup).toContain('Entwurf mit Änderungen');
-    expect(markup).not.toContain('Editor folgt');
-    expect(markup).toContain('href="/admin/website/inhalte/results"');
-    expect(markup).toContain('Kein Entwurf'); // results: published, no draft
-    expect(markup).toContain('Noch nicht veröffentlicht');
+    expect(markup).not.toContain('href="/admin/website/inhalte/hero"');
+    expect(markup).not.toContain('Farben');
   });
 
   it('shows an explicit empty state', () => {
@@ -406,7 +404,7 @@ describe('admin navigation', () => {
 
   it('marks the current page and links the training library', () => {
     const markup = html(<AdminNav permissions={ADMIN} />);
-    expect(markup).toMatch(/aria-current="page"[^>]*>.*?Inhalte/s);
+    expect(markup).toMatch(/aria-current="page"[^>]*>.*?Startseite/s);
     expect(markup).toContain('href="/admin/training/uebungen"');
   });
 

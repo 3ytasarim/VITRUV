@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
 import { AdminPageHeader, ErrorState } from '@/components/admin/states';
-import { formatDateTime } from '@/components/admin/section-registry';
+import { formatDateTime, isEditableContent } from '@/components/admin/section-registry';
 import { ButtonLink, Card } from '@/components/ui';
-import { placementOf } from '@/components/site/placement';
 import { adminApi } from '@/lib/admin-api';
 
 export const metadata: Metadata = { title: 'Website' };
@@ -28,7 +27,7 @@ export default async function WebsiteOverviewPage() {
       </>
     );
   }
-  const sections = page.data.sections.filter((s) => placementOf(s.type) !== 'meta');
+  const sections = page.data.sections.filter((s) => isEditableContent(s.type));
   const drafts = sections.filter((s) => s.hasDraft).length;
   const published = sections.filter((s) => s.hasPublished).length;
   const empty = sections.filter((s) => !s.hasPublished && !s.hasDraft).length;
@@ -40,7 +39,7 @@ export default async function WebsiteOverviewPage() {
         description="Inhalte und Medien der öffentlichen Website. Änderungen werden erst nach „Veröffentlichen“ sichtbar."
         actions={
           <>
-            <ButtonLink href="/admin/website/inhalte">Inhalte bearbeiten</ButtonLink>
+            <ButtonLink href="/admin/website/inhalte/home">Startseite bearbeiten</ButtonLink>
             <ButtonLink variant="secondary" href="/admin/website/medien">
               Medien
             </ButtonLink>

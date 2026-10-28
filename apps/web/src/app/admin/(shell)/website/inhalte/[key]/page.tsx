@@ -3,7 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { SectionEditor } from '@/components/admin/editor/section-editor';
-import { SECTION_LABELS } from '@/components/admin/section-registry';
+import { SECTION_LABELS, isEditableContent } from '@/components/admin/section-registry';
 import { AdminPageHeader, ErrorState } from '@/components/admin/states';
 import { ButtonLink } from '@/components/ui';
 import { adminApi } from '@/lib/admin-api';
@@ -33,6 +33,7 @@ export default async function SectionEditorPage({ params }: { params: Promise<{ 
   }
 
   const { section, draft, published } = detail.data;
+  if (!isEditableContent(section.type)) notFound();
   const label = SECTION_LABELS[section.type];
 
   if (!media.ok) {

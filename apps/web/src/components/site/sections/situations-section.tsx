@@ -1,38 +1,45 @@
-import { RevealGroup, RevealWords, Section, SectionIntro } from '@/components/ui';
-import { HighlightedTitle } from '../highlighted-title';
+import { CmsMedia } from '@/components/cms/cms-media';
+import { Container } from '@/components/ui';
+import { FxIntro, FxTitle } from '../fx';
 import type { SectionProps } from '../section-props';
-import { SituationsExplorer } from './situations-explorer';
 
 /**
- * "Lebenssituationen" — typical starting points as an interactive list → stage explorer
- * (SituationsExplorer), with the CMS closing line as an invitation underneath.
+ * "Lebenssituationen" — reference 'Wo die meisten starten': each starting point as a rounded
+ * quote card (accent quote mark or the owner's CMS line icon, the situation in italics, the
+ * description below), three per row; the CMS closing line follows the grid.
  */
 export function SituationsSection({ content, id }: SectionProps<'situations'>) {
   const titleId = `${id}-title`;
   return (
-    <Section id={id} labelledBy={titleId} className="vt-situations">
-      <SectionIntro
-        eyebrow={content.eyebrow}
-        title={<HighlightedTitle title={content.title} highlight={content.highlight} />}
-        lead={content.intro}
-        titleId={titleId}
-      />
-      {content.items.length > 0 && (
-        <div className="mt-14 md:mt-20">
-          <SituationsExplorer items={content.items} />
-        </div>
-      )}
-      {content.outro && (
-        <RevealGroup className="vt-outro">
-          <span aria-hidden className="vt-outro__mark">
-            “
-          </span>
-          <p className="vt-outro__text">
-            <RevealWords text={content.outro} />
-          </p>
-          <span aria-hidden className="vt-outro__rule" />
-        </RevealGroup>
-      )}
-    </Section>
+    <section id={id} aria-labelledby={titleId} className="vf-section vf-section--rule">
+      <Container>
+        <FxIntro
+          eyebrow={content.eyebrow}
+          title={<FxTitle title={content.title} highlight={content.highlight} />}
+          lead={content.intro}
+          titleId={titleId}
+        />
+        {content.items.length > 0 && (
+          <ul className="vf-grid vf-grid--3 vf-mt">
+            {content.items.map((item) => (
+              <li key={item.id} className="vf-quote">
+                {item.icon ? (
+                  <span aria-hidden className="vf-quote__icon">
+                    <CmsMedia slot={item.icon} sizes="40px" />
+                  </span>
+                ) : (
+                  <span aria-hidden className="vf-quote__mark">
+                    ”
+                  </span>
+                )}
+                <h3 className="vf-quote__title">{item.title}</h3>
+                {item.description && <p className="vf-quote__text">{item.description}</p>}
+              </li>
+            ))}
+          </ul>
+        )}
+        {content.outro && <p className="vf-outro">{content.outro}</p>}
+      </Container>
+    </section>
   );
 }

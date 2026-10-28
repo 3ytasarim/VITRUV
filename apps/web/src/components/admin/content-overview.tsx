@@ -1,14 +1,18 @@
 import type { AdminWebsitePage } from '@vitruv/contracts';
 import { ChevronRight } from 'lucide-react';
 import { Badge, CardLink } from '@/components/ui';
-import { SECTION_LABELS, formatDateTime, sectionStatuses } from './section-registry';
-import { placementOf } from '@/components/site/placement';
+import {
+  SECTION_LABELS,
+  formatDateTime,
+  isEditableContent,
+  sectionStatuses,
+} from './section-registry';
 import { EmptyState } from './states';
 
 /** Homepage sections with their real publication state (from the API). */
 export function ContentOverview({ page }: { page: AdminWebsitePage }) {
-  // Page settings (SEO) live under Einstellungen, not in the content list.
-  const sections = page.sections.filter((s) => placementOf(s.type) !== 'meta');
+  // Only the content the admin edits (the homepage); SEO lives under Einstellungen.
+  const sections = page.sections.filter((s) => isEditableContent(s.type));
   if (sections.length === 0) {
     return (
       <EmptyState title="Diese Seite hat noch keine Bereiche">

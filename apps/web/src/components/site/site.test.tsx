@@ -167,6 +167,104 @@ const CONTENT: { [T in (typeof WEBSITE_SECTION_TYPES)[number]]: PublicSectionCon
     accentSecondary: '#cc5533',
     dark: '#111111',
   },
+  home: {
+    hero: {
+      eyebrow: 'Home-Eyebrow-T',
+      lines: ['Zeile-A', 'Zeile-B'],
+      body: 'Home-Text-T',
+      primary: { label: 'Home-CTA-T', href: '#bewerben' },
+      secondary: { label: 'Home-CTA-Zwei', href: '#pakete' },
+      note: 'Home-Hinweis-T',
+      media: null,
+    },
+    intro: { caption: 'Video-Unterschrift-T', media: null },
+    results: {
+      eyebrow: 'Ergebnis-Eyebrow-T',
+      title: 'Ergebnis-Titel-T',
+      videos: [{ id: 'video-1', quote: 'Video-Zitat-T', who: 'Person-T', media: null }],
+      swipeHint: 'Wischen-T',
+      gallery: [{ id: 'ergebnis-1', who: 'Galerie-T', media: null }],
+    },
+    journey: {
+      title: 'Weg-Titel-T',
+      stages: [
+        { id: 'a', name: 'Etappe-A', title: 'Etappe-Titel-A', text: 'Etappe-Text-A', media: null },
+        { id: 'b', name: 'Etappe-B', title: 'Etappe-Titel-B', text: 'Etappe-Text-B', media: null },
+      ],
+    },
+    voices: { eyebrow: 'Stimmen-T', items: [{ id: 's-1', quote: 'Stimme-T', who: 'Wer-T' }] },
+    doubts: {
+      title: 'Zweifel-Titel-T',
+      items: [{ id: 'z-1', text: 'Zweifel-Satz-T' }],
+      outro: 'Ein normaler Startpunkt-T für alle.',
+      outroHighlight: 'Startpunkt-T',
+    },
+    included: {
+      title: 'Leistung-Titel-T',
+      items: [{ id: 'l-1', title: 'Leistung-T', text: 'Leistung-Text-T' }],
+    },
+    packages: {
+      title: 'Paket-Titel-T',
+      items: [
+        {
+          id: 'p-1',
+          name: 'Paket-A',
+          label: 'Label-A',
+          featured: false,
+          features: ['Merkmal-A'],
+          cta: { label: 'Bewerben-A', href: '#bewerben' },
+        },
+        {
+          id: 'p-2',
+          name: 'Paket-B',
+          label: 'Beliebt-T',
+          featured: true,
+          features: ['Merkmal-B'],
+          note: 'Hinweis-B',
+          cta: { label: 'Bewerben-B', href: '#bewerben' },
+        },
+      ],
+    },
+    steps: { title: 'Ablauf-Titel-T', items: [{ id: 'st-1', title: 'Schritt-T', text: 'Text-T' }] },
+    training: {
+      title: 'Training-Titel-T',
+      items: [{ id: 't-1', label: 'Kraft-T', text: 'Karte-T', media: null }],
+    },
+    coach: {
+      name: 'Coach-Name-T',
+      facts: ['Fakt-T'],
+      paragraphs: ['Absatz-Coach-T'],
+      closing: 'Schluss-T',
+      media: null,
+    },
+    faq: {
+      title: 'FAQ-Titel-T',
+      items: [
+        { id: 'f-1', question: 'Frage-Home-1', answer: 'Antwort-Home-1' },
+        { id: 'f-2', question: 'Frage-Home-2', answer: 'Antwort-Home-2' },
+      ],
+    },
+    cta: {
+      title: 'CTA-Home-Titel-T',
+      body: 'CTA-Home-Text-T',
+      action: { label: 'CTA-Home-Button', href: '#bewerben' },
+      media: null,
+    },
+    apply: {
+      title: 'Bewerben-Titel-T',
+      channels: [
+        {
+          id: 'instagram',
+          tag: 'IG',
+          title: 'Instagram',
+          cta: 'Zu Instagram',
+          href: 'https://instagram.com/demo',
+        },
+      ],
+    },
+    headerCta: { label: 'Header-CTA-T', href: '/#bewerben' },
+    menu: [{ id: 'faq', label: 'FAQ', href: '/#faq' }],
+  },
   seo: {
     title: 'SEO-Titel',
     description: 'SEO-Beschreibung',
@@ -189,6 +287,8 @@ describe('public section registry', () => {
       const markup = render(section(type));
       if (type === 'seo' || type === 'theme')
         expect(markup).toBe(''); // page/design settings never render as content
+      // the reference homepage is a whole page: its anchors are the prototype ones (#top …)
+      else if (type === 'home') expect(markup).toContain('id="top"');
       else expect(markup, type).toContain(`id="${type}"`);
     }
     expect(render(section('faq', 'haeufige-fragen'))).toContain('id="haeufige-fragen"');
@@ -205,14 +305,14 @@ describe('public section registry', () => {
 });
 
 describe('section renderers', () => {
-  it('hero: the h1 with the gold accent phrase, CTAs and the calm fallback without media', () => {
+  it('hero: the h1 with the accent phrase, two chamfered CTAs, no media without a medium', () => {
     const markup = render(section('hero'));
     expect(markup).toMatch(
-      /<h1 id="hero-title"[^>]*>.*Titel.*mit.*<em class="vt-em">.*Akzent.*<\/em><span aria-hidden="true" class="vt-ptitle"><canvas[^>]*><\/canvas><\/span><\/h1>/,
+      /<h1 id="hero-title"[^>]*>[^<]*Titel[^<]*mit[^<]*<span class="vf-hl vf-hl--glow">Akzent<\/span>[^<]*<\/h1>/,
     );
     expect(markup).toContain('href="#cta"');
     expect(markup).toContain('CTA-Zwei');
-    expect(markup).toContain('vt-hero-aurora');
+    expect(markup.match(/class="vf-btn /g)).toHaveLength(2);
     expect(markup).not.toContain('data-hero-media');
     expect(markup).not.toContain('<img');
     expect(splitHighlight('Ohne Treffer', 'xyz')).toEqual({
@@ -255,11 +355,11 @@ describe('section renderers', () => {
     expect(markup).not.toContain('autoPlay');
   });
 
-  it('results: voices with CMS media only where assigned (twice: visible + looped copy)', () => {
+  it('results: voices with CMS media only where assigned', () => {
     const markup = render(section('results'));
     expect(markup).toContain('D-2');
-    // One item has media; the column renders it once visibly and once in the aria-hidden copy.
-    expect(markup.match(/<img/g)).toHaveLength(2);
+    expect(markup.match(/<img/g)).toHaveLength(1);
+    expect(markup).toContain('<blockquote class="vf-voice__text">');
   });
 
   it('results: no items → only the introduction, no empty list', () => {
@@ -321,53 +421,43 @@ describe('section renderers', () => {
       content: { ...CONTENT.hero, media: { desktop: img() } },
     } as PublicWebsiteSection);
     expect(markup).toContain('data-hero-media=""');
-    expect(markup).toContain('vt-on-media');
+    expect(markup).toContain('vf-hero__shade');
     expect(markup).toContain('<img');
     expect(markup).toMatch(/<h1 id="hero-title"/);
   });
 
-  it('situations: explorer rows are real buttons; descriptions readable without JS', () => {
+  it('situations: quote cards with the CMS situation, description and closing line', () => {
     const markup = render(section('situations'));
     expect(markup).toMatch(/<h2 id="situations-title"/);
-    expect(markup).toMatch(/<button type="button" class="vt-sx__btn" aria-expanded="true"/);
-    expect(markup).toContain('Situation-T');
+    expect(markup).toMatch(/<h3 class="vf-quote__title">Situation-T<\/h3>/);
     expect(markup).toContain('Satz-T');
     expect(markup).toContain('Outro-T');
-    expect(markup).not.toMatch(/role="region"[^>]*hidden/);
   });
 
-  it('results: testimonial columns loop with an aria-hidden copy', () => {
-    const markup = render(section('results'));
-    expect(markup).toContain('class="vt-tcols');
-    expect(markup).toMatch(/<li class="vt-tcol__card" aria-hidden="true">/);
-  });
-
-  it('pillars: expanding panels — real buttons, facets as a definition list, readable SSR', () => {
+  it('pillars: one card per pillar, facets as a definition list', () => {
     const markup = render(section('pillars'));
-    expect(markup).toMatch(/<article id="pillars-k" class="vt-xpanel" data-open="true"/);
-    expect(markup).toMatch(/<button type="button"[^>]*aria-expanded="true"/);
+    expect(markup).toMatch(/<li class="vf-card vf-pillar">/);
     expect(markup).toContain('<dt>Facette-T</dt>');
-    // Before hydration no body is hidden (content readable without JavaScript).
-    expect(markup).not.toMatch(/role="region"[^>]*hidden/);
   });
 
-  it('steps: grouped by pillar label in CMS order, numbered across groups', () => {
+  it('steps: one row per step in CMS order, numbered across groups, group label kept', () => {
     const markup = render(section('steps'));
-    expect(markup.match(/class="vt-panel vt-on-media"/g)).toHaveLength(2);
     expect(markup.indexOf('Gruppe-A')).toBeLessThan(markup.indexOf('Gruppe-B'));
     expect(markup).toContain('>03<');
+    expect(markup.match(/<li class="vf-step">/g)?.length).toBeGreaterThanOrEqual(3);
   });
 
-  it('cta: single CMS action and the Vitruvian geometry without media', () => {
+  it('cta: single CMS action, no media without an assigned medium', () => {
     const markup = render(section('cta'));
     expect(markup).toContain('href="#faq"');
-    expect(markup).toContain('vt-harmony');
+    expect(markup).not.toContain('vf-cta__media');
     expect(markup.match(/<a /g)).toHaveLength(1);
   });
 
   it('footer: CMS groups only; empty contact/social are omitted, nothing invented', () => {
     const markup = render(section('footer'));
-    expect(markup).toContain('Footer-Zeile');
+    // the tagline heads the contact cards — without contact data there is no contact block
+    expect(markup).not.toContain('Footer-Zeile');
     expect(markup).toContain('Nav-Pakete');
     expect(markup).not.toContain('Kontakt');
     expect(markup).not.toContain('mailto:');
@@ -381,6 +471,7 @@ describe('section renderers', () => {
         social: [{ id: 's', platform: 'youtube', href: 'https://youtube.com/@demo' }],
       },
     });
+    expect(withContact).toContain('Footer-Zeile');
     expect(withContact).toContain('href="mailto:kontakt@example.com"');
     expect(withContact).toContain('href="tel:+4930123"');
     expect(withContact).toContain('rel="noopener noreferrer"');
@@ -426,7 +517,7 @@ describe('navigation from CMS content', () => {
 describe('homepage composition', () => {
   const render = async () => html(await HomePage());
 
-  it('renders sections in API (database) order, not registry order', async () => {
+  it('renders the reference page structure in prototype order with one h1', async () => {
     publicSite.getPublicHome.mockResolvedValue({
       ok: true,
       page: {
@@ -434,19 +525,58 @@ describe('homepage composition', () => {
         title: 'Startseite',
         contentRevision: 3,
         publishedAt: null,
-        sections: [section('cta'), section('hero'), section('faq'), section('footer')],
+        sections: [section('home'), section('hero'), section('faq'), section('footer')],
       },
     });
     const markup = await render();
-    const order = ['id="cta"', 'id="hero"', 'id="faq"'].map((needle) => markup.indexOf(needle));
+    expect(markup).toContain('Home-Eyebrow-T');
+    expect(markup).toContain('Startpunkt-T');
+    // an external channel opens in a new tab without referrer
+    expect(markup).toMatch(/href="https:\/\/instagram.com\/demo"[^>]*rel="noopener noreferrer"/);
+    const order = [
+      'id="top"',
+      'data-video-sec',
+      'id="ergebnisse"',
+      'data-weg=""',
+      'id="leistung"',
+      'id="pakete"',
+      'id="ablauf"',
+      'id="coach"',
+      'id="faq"',
+      'id="bewerben"',
+    ].map((needle) => markup.indexOf(needle));
     expect(order.every((index) => index >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     // The footer is rendered by the layout, not inside <main>.
     expect(markup).not.toContain('<footer');
     expect(markup.match(/<h1/g)).toHaveLength(1);
+    // FAQ as native disclosures (readable and operable without JavaScript)
+    expect(markup.match(/<details>/g)).toHaveLength(2);
   });
 
-  it('keeps exactly one h1 when the hero is disabled', async () => {
+  it('takes the hero video from the CMS; empty slots render only their frame', async () => {
+    publicSite.getPublicHome.mockResolvedValue({
+      ok: true,
+      page: {
+        slug: 'home',
+        title: 'Startseite',
+        contentRevision: 3,
+        publishedAt: null,
+        sections: [
+          {
+            key: 'home',
+            type: 'home',
+            content: { ...CONTENT.home, hero: { ...CONTENT.home.hero, media: { desktop: img() } } },
+          } as PublicWebsiteSection,
+        ],
+      },
+    });
+    const markup = await render();
+    expect(markup.match(/<img/g)).toHaveLength(1);
+    expect(markup).toContain('class="r-hero__video"');
+  });
+
+  it('without a published home section the calm failure state shows (no invented copy)', async () => {
     publicSite.getPublicHome.mockResolvedValue({
       ok: true,
       page: {
@@ -457,9 +587,7 @@ describe('homepage composition', () => {
         sections: [section('faq')],
       },
     });
-    const markup = await render();
-    expect(markup).toMatch(/<h1 class="sr-only">Startseite<\/h1>/);
-    expect(markup.match(/<h1/g)).toHaveLength(1);
+    expect(await render()).toContain('nicht erreichbar');
   });
 
   it('shows a calm temporary failure state — never hardcoded marketing content', async () => {

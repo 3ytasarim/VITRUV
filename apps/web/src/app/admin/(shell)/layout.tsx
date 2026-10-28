@@ -1,11 +1,15 @@
 import { ExternalLink, LogOut } from 'lucide-react';
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import type { ReactNode } from 'react';
 import { logoutAction } from '@/app/admin/account-actions';
 import { AdminShell } from '@/components/admin/admin-shell';
+import { ADMIN_THEME_COOKIE, parseAdminThemeMode } from '@/components/admin/admin-theme-mode';
+import { AdminThemeToggle } from '@/components/admin/admin-theme-toggle';
 import { Button } from '@/components/ui';
 import { requireAdminUser } from '@/lib/auth/session';
 import { publicFontVariables } from '@/lib/fonts';
+import { adminLightCss } from '@/lib/theme';
 
 const ROLE_LABEL = { ADMIN: 'Admin', COACH: 'Coach', CLIENT: 'Kund:in' } as const;
 
@@ -18,12 +22,21 @@ const ROLE_LABEL = { ADMIN: 'Admin', COACH: 'Coach', CLIENT: 'Kund:in' } as cons
 export default async function AdminShellLayout({ children }: { children: ReactNode }) {
   const { user } = await requireAdminUser();
   const name = user.displayName ?? user.email ?? 'Konto';
+  // Light/dark switch in the top bar (preference cookie; dark glass by default).
+  const mode = parseAdminThemeMode((await cookies()).get(ADMIN_THEME_COOKIE)?.value);
   return (
-    <div className={publicFontVariables} data-surface="admin" data-glass="">
+    <div
+      className={publicFontVariables}
+      data-surface="admin"
+      data-glass=""
+      data-admin-theme={mode === 'light' ? 'light' : undefined}
+    >
+      <style>{adminLightCss()}</style>
       <AdminShell
         permissions={user.permissions}
         headerEnd={
           <>
+            <AdminThemeToggle initial={mode} />
             <span className="type-body-sm hidden text-fg-muted lg:inline">
               {new Intl.DateTimeFormat('de-DE', {
                 weekday: 'long',
