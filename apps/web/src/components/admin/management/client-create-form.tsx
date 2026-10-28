@@ -257,8 +257,8 @@ export function ClientCreateForm({
         )}
       </FormField>
       <p className="type-caption text-fg-subtle">
-        Bitte keine Gesundheitsdaten erfassen. Es wird keine E-Mail verschickt – die Person meldet
-        sich mit Benutzername (oder E-Mail) und Passwort an.
+        Es wird keine E-Mail verschickt – die Person meldet sich mit Benutzername (oder E-Mail) und
+        Passwort an.
       </p>
       <Button type="submit" variant="primary" loading={pending} className="self-start">
         Kund:in anlegen

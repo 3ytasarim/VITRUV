@@ -251,7 +251,7 @@ describe('activation actions', () => {
       { status: 'idle' },
       form({ token: TOKEN, password: 'kurz', confirm: 'kurz' }),
     );
-    expect(weak).toMatchObject({ fieldErrors: { password: expect.stringContaining('12') } });
+    expect(weak).toMatchObject({ fieldErrors: { password: expect.stringContaining('8') } });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

@@ -101,7 +101,7 @@ export function ClientProfileForm({
       <FormField
         label="Notiz für die Kund:in"
         error={error('internalNotes')}
-        hint={`Erscheint im Kundenkonto direkt unter der Begrüßung. Reiner Text, höchstens ${INTERNAL_NOTES_MAX_LENGTH} Zeichen. Bitte keine Gesundheitsdaten.`}
+        hint={`Erscheint im Kundenkonto direkt unter der Begrüßung. Reiner Text, höchstens ${INTERNAL_NOTES_MAX_LENGTH} Zeichen.`}
       >
         {({ id, describedBy, invalid }) => (
           <textarea

@@ -2,7 +2,6 @@
 
 import {
   Gauge,
-  Activity,
   Dumbbell,
   FileText,
   Images,
@@ -70,11 +69,8 @@ const GROUPS: {
     ],
   },
   {
-    label: 'System',
-    items: [
-      { href: '/admin/system', label: 'Systemstatus', icon: Activity },
-      { href: '/admin/konto', label: 'Konto & Sicherheit', icon: ShieldCheck },
-    ],
+    label: 'Konto',
+    items: [{ href: '/admin/konto', label: 'Konto & Sicherheit', icon: ShieldCheck }],
   },
 ];
 

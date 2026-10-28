@@ -60,7 +60,7 @@ export type AuthEventType = (typeof AUTH_EVENT_TYPES)[number];
  * Password policy (NIST SP 800-63B style): length only, no composition rules, spaces and any
  * Unicode allowed, never trimmed or truncated. The maximum bounds hashing cost per request.
  */
-export const PASSWORD_MIN_LENGTH = 12;
+export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 256;
 
 /** The one e-mail normalisation policy: trim + lowercase the whole address. No alias rules. */

@@ -282,6 +282,6 @@ describe('login and account forms (markup)', async () => {
     expect(tag(html, 'currentPassword')).toContain('autoComplete="current-password"');
     expect(tag(html, 'newPassword')).toContain('autoComplete="new-password"');
     expect(tag(html, 'confirmPassword')).toContain('autoComplete="new-password"');
-    expect(html).toContain('Mindestens 12 Zeichen');
+    expect(html).toContain('Mindestens 8 Zeichen');
   });
 });

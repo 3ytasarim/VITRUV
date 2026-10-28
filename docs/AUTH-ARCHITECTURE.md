@@ -9,7 +9,7 @@ database.
 
 | Piece         | What                                                                | Stored as                                    |
 | ------------- | ------------------------------------------------------------------- | -------------------------------------------- |
-| Password      | user-chosen, policy = length only (12–256 chars, spaces/Unicode ok) | Argon2id PHC string in `users.password_hash` |
+| Password      | user-chosen, policy = length only (8–256 chars, spaces/Unicode ok) | Argon2id PHC string in `users.password_hash` |
 | Access token  | 256-bit CSPRNG, base64url (43 chars), **15 min**                    | SHA-256 hex in `auth_sessions`               |
 | Refresh token | 256-bit CSPRNG, base64url, rotated on every use                     | SHA-256 hex in `auth_sessions`               |
 | Session       | one row per login: user, client type, expiries, revocation          | `auth_sessions`                              |

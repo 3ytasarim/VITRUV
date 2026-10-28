@@ -199,7 +199,7 @@ under `/v1/client/*`.
 Clients no longer get an activation link. The coach creates the client **with a password** and
 tells the client the login data in person:
 
-- `POST /v1/admin/clients` takes `password` (policy as everywhere: ≥ 12 characters, never equal to
+- `POST /v1/admin/clients` takes `password` (policy as everywhere: ≥ 8 characters, never equal to
   username/e-mail) and optional `email`, `phone`, `username`. Without a username the API derives
   one from the name (`usernameFromName` in `@vitruv/shared`: "Rauf Onur Çullu" → `raufonurcullu`,
   then `raufonurcullu2` … under an advisory lock). No activation token is issued; the response

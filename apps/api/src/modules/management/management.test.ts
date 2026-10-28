@@ -100,7 +100,7 @@ describe('public activation endpoints', () => {
       json('POST', { token: 'A'.repeat(43), password: 'kurz' }),
     );
     expect(weak.status).toBe(400);
-    expect(await weak.text()).toContain('Mindestens 12 Zeichen');
+    expect(await weak.text()).toContain('Mindestens 8 Zeichen');
   });
 
   it('are rate-limited per client IP', async () => {

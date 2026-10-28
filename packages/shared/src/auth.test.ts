@@ -9,7 +9,7 @@ describe('auth vocabulary', () => {
   });
 
   it('uses a length-only password policy with a sane maximum', () => {
-    expect(PASSWORD_MIN_LENGTH).toBeGreaterThanOrEqual(12);
+    expect(PASSWORD_MIN_LENGTH).toBeGreaterThanOrEqual(8);
     expect(PASSWORD_MAX_LENGTH).toBeGreaterThanOrEqual(128);
   });
 
