@@ -88,6 +88,18 @@
     letter-spacing: 0.32em;
     text-transform: uppercase;
   }
+  /* collapsed sidebar: the round CMS logo instead of the wordmark (light ink on dark glass) */
+  .vt-admin__logo {
+    display: block;
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    filter: var(--vt-logo-filter, invert(1));
+  }
+  .vt-admin__mark {
+    letter-spacing: 0;
+    font-size: 1rem;
+  }
   .vt-admin__scroll {
     min-height: 0;
     flex: 1;

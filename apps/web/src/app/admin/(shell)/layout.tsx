@@ -1,6 +1,7 @@
 import { ExternalLink, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
+import { getImageProps } from 'next/image';
 import type { ReactNode } from 'react';
 import { logoutAction } from '@/app/admin/account-actions';
 import { AdminShell } from '@/components/admin/admin-shell';
@@ -9,6 +10,7 @@ import { AdminThemeToggle } from '@/components/admin/admin-theme-toggle';
 import { Button } from '@/components/ui';
 import { requireAdminUser } from '@/lib/auth/session';
 import { publicFontVariables } from '@/lib/fonts';
+import { getPublicHome } from '@/lib/public-site';
 import { adminLightCss } from '@/lib/theme';
 
 const ROLE_LABEL = { ADMIN: 'Admin', COACH: 'Coach', CLIENT: 'Kund:in' } as const;
@@ -24,6 +26,14 @@ export default async function AdminShellLayout({ children }: { children: ReactNo
   const name = user.displayName ?? user.email ?? 'Konto';
   // Light/dark switch in the top bar (preference cookie; dark glass by default).
   const mode = parseAdminThemeMode((await cookies()).get(ADMIN_THEME_COOKIE)?.value);
+  // round logo from the CMS page settings for the collapsed sidebar
+  const home = await getPublicHome();
+  const seo = home.ok ? home.page.sections.find((s) => s.type === 'seo') : undefined;
+  const logo = seo?.type === 'seo' ? seo.content.logo : null;
+  const logoSrc = logo
+    ? getImageProps({ src: logo.desktop.url, alt: '', width: 64, height: 64, quality: 90 }).props
+        .src
+    : null;
   return (
     <div
       className={publicFontVariables}
@@ -34,6 +44,7 @@ export default async function AdminShellLayout({ children }: { children: ReactNo
       <style>{adminLightCss()}</style>
       <AdminShell
         permissions={user.permissions}
+        logoSrc={logoSrc}
         headerEnd={
           <>
             <AdminThemeToggle initial={mode} />

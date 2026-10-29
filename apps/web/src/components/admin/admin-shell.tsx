@@ -47,12 +47,15 @@ function subscribe(listener: () => void) {
  */
 export function AdminShell({
   permissions,
+  logoSrc = null,
   account,
   logout,
   headerEnd,
   children,
 }: {
   permissions: readonly Permission[];
+  /** CMS logo (round mark) shown instead of the wordmark when the sidebar is collapsed. */
+  logoSrc?: string | null;
   /** Signed-in account (link to "Konto & Sicherheit"); rendered by the server layout. */
   account: ReactNode;
   /** Logout form (server action); rendered by the server layout. */
@@ -97,8 +100,20 @@ export function AdminShell({
       <aside className="vt-admin__sidebar" aria-label="Seitenleiste">
         <div className="vt-admin__brand">
           <Link href="/admin" className="vt-admin__wordmark" aria-label="VITRUV Admin – Start">
-            <span>VITRUV</span>
-            <span className={cx('text-accent-text', collapsed && 'sr-only')}>Admin</span>
+            {collapsed ? (
+              logoSrc ? (
+                <img src={logoSrc} alt="" width={32} height={32} className="vt-admin__logo" />
+              ) : (
+                <span aria-hidden className="vt-admin__mark">
+                  V
+                </span>
+              )
+            ) : (
+              <>
+                <span>VITRUV</span>
+                <span className="text-accent-text">Admin</span>
+              </>
+            )}
           </Link>
         </div>
         <div className="vt-admin__scroll">
