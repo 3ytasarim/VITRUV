@@ -3,12 +3,25 @@ import type { ReactNode } from 'react';
 import { CmsMedia } from '@/components/cms/cms-media';
 import { JourneyMapMount } from '@/components/journey/journey-map-mount';
 import { cx } from '@/components/ui';
+import { ArrowUpRight, Dumbbell } from 'lucide-react';
 import { splitHighlight } from '../highlighted-title';
+import { BorderBeam } from './border-beam';
+import { CtaShader } from './cta-shader';
+import { IncludedIcon } from './included-icon';
+import { Marquee } from './marquee';
+import { StepTimeline } from './step-timeline';
+import { VerticalMarquee } from './vertical-marquee';
 
 /** Published content of the `home` section (copy + resolved media of every slot). */
 export type HomeContent = PublicSectionContent<'home'>;
 
 type Slot = ResolvedMediaSlot | null;
+
+/**
+ * "Das sagen Teilnehmer" (quotes under the route map) is archived for now (owner 2026-11-10):
+ * hidden, not deleted — content stays in the CMS; set to true to show it again.
+ */
+const SHOW_VOICES = false;
 
 const nn = (i: number) => String(i + 1).padStart(2, '0');
 
@@ -61,14 +74,11 @@ function Head({
   );
 }
 
-const external = (href: string) =>
-  href.startsWith('https://') ? { rel: 'noopener noreferrer', target: '_blank' } : {};
-
 /**
  * The homepage of the reference design (`Website Funktional.dc.html`) 1:1: Hero, intro video,
  * Ergebnisse (video voices, before/after row, Dein Weg route map, Das sagen Teilnehmer),
- * Wo die meisten starten, Was drin ist, Pakete, So läuft es ab, Im Training, Coach, FAQ, CTA,
- * Bewerben. Everything — copy and every image/video slot — comes from the CMS `home` section.
+ * Wo die meisten starten, Was drin ist, Pakete, So läuft es ab, Im Training, Coach, FAQ, CTA
+ * ("Bewerben" lives in the footer, see reference-footer.tsx). Everything — copy and every image/video slot — comes from the CMS `home` section.
  */
 export function ReferenceHome({ content: c }: { content: HomeContent }) {
   const lastLine = c.hero.lines.length - 1;
@@ -219,25 +229,35 @@ export function ReferenceHome({ content: c }: { content: HomeContent }) {
             ))}
           </JourneyMapMount>
 
-          {c.voices.items.length > 0 && (
-            <>
+          {SHOW_VOICES && c.voices.items.length > 0 && (
+            <div className="tm">
               {c.voices.eyebrow && (
                 <div className="r-voices-head">
                   <span className="r-eyebrow">{c.voices.eyebrow}</span>
                 </div>
               )}
-              <div className="r-voices">
-                {c.voices.items.map((v) => (
-                  <figure key={v.id} className="r-voice r-cut-16">
-                    <span aria-hidden className="r-voice__mark">
-                      “
-                    </span>
-                    <blockquote>{v.quote}</blockquote>
-                    <figcaption className="r-who">{v.who}</figcaption>
-                  </figure>
-                ))}
+              <div className="tm-row">
+                <Marquee className="tm-marquee" seconds={40}>
+                  {[0, 1].flatMap((set) =>
+                    c.voices.items.map((v) => (
+                      <figure key={`${set}-${v.id}`} className="tm-card">
+                        <figcaption className="tm-card__author">
+                          <span aria-hidden className="tm-card__avatar">
+                            {v.who.trim().charAt(0).toUpperCase()}
+                          </span>
+                          <span className="tm-card__who">
+                            <span className="tm-card__name">{v.who}</span>
+                          </span>
+                        </figcaption>
+                        <blockquote className="tm-card__text">{v.quote}</blockquote>
+                      </figure>
+                    )),
+                  )}
+                </Marquee>
+                <div aria-hidden className="tm-fade tm-fade--left" />
+                <div aria-hidden className="tm-fade tm-fade--right" />
               </div>
-            </>
+            </div>
           )}
         </div>
       </section>
@@ -245,29 +265,44 @@ export function ReferenceHome({ content: c }: { content: HomeContent }) {
       {/* ---- Wo die meisten starten ---- */}
       <section className="r-sec r-sec--rule" aria-labelledby="start-title">
         <div className="r-wrap r-doubts__inner">
-          <Head
-            eyebrow={c.doubts.eyebrow}
-            title={c.doubts.title}
-            id="start-title"
-            narrow={false}
-            className="r-doubts__head"
-          />
-          <div className="r-doubts__grid">
-            {c.doubts.items.map((d) => (
-              <div key={d.id} className="r-doubt">
-                <span aria-hidden className="r-doubt__mark">
-                  „
-                </span>
-                <p>{d.text}</p>
-              </div>
-            ))}
+          <div className="r-doubts__copy">
+            <Head
+              eyebrow={c.doubts.eyebrow}
+              title={c.doubts.title}
+              id="start-title"
+              narrow={false}
+              className="r-doubts__head"
+            />
+            {c.doubts.outro && (
+              <p className="r-doubts__outro">
+                {outro.before}
+                {outro.highlight && <span className="r-glow-text">{outro.highlight}</span>}
+                {outro.after}
+              </p>
+            )}
+            <div className="r-doubts__actions">
+              <a
+                href={c.hero.primary.href}
+                className="r-btn r-btn--primary"
+                data-track="cta_click"
+                data-track-section="doubts"
+              >
+                {c.hero.primary.label}
+              </a>
+              {c.hero.secondary && (
+                <a
+                  href={c.hero.secondary.href}
+                  className="r-btn r-btn--glass"
+                  data-track="cta_click"
+                  data-track-section="doubts"
+                >
+                  {c.hero.secondary.label}
+                </a>
+              )}
+            </div>
           </div>
-          {c.doubts.outro && (
-            <p className="r-doubts__outro">
-              {outro.before}
-              {outro.highlight && <span className="r-glow-text">{outro.highlight}</span>}
-              {outro.after}
-            </p>
+          {c.doubts.items.length > 0 && (
+            <VerticalMarquee items={c.doubts.items} className="r-doubts__lines" />
           )}
         </div>
       </section>
@@ -280,18 +315,22 @@ export function ReferenceHome({ content: c }: { content: HomeContent }) {
             title={c.included.title}
             lead={c.included.lead}
             id="leistung-title"
+            className="r-head--center"
           />
-          <div className="r-included">
+          <ul className="fg-grid">
             {c.included.items.map((item, i) => (
-              <div key={item.id} className="r-included__item">
-                <span className="r-included__num">{nn(i)}</span>
-                <div className="r-included__body">
-                  <h3>{item.title}</h3>
-                  <p>{item.text}</p>
+              <li key={item.id} className="fg-card">
+                <BorderBeam seconds={10} delay={i * 1.7} />
+                <span className="fg-card__icon">
+                  <IncludedIcon title={item.title} index={i} />
+                </span>
+                <div>
+                  <h3 className="fg-card__title">{item.title}</h3>
+                  <p className="fg-card__text">{item.text}</p>
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </section>
 
@@ -342,46 +381,47 @@ export function ReferenceHome({ content: c }: { content: HomeContent }) {
       </section>
 
       {/* ---- So läuft es ab ---- */}
-      <section id="ablauf" className="r-sec r-sec--rule" aria-labelledby="ablauf-title">
-        <div className="r-wrap r-ablauf__inner">
-          <Head eyebrow={c.steps.eyebrow} title={c.steps.title} id="ablauf-title" narrow={false} />
-          <ol className="r-steps">
-            {c.steps.items.map((s, i) => (
-              <li key={s.id} className="r-step">
-                <span className="r-step__num">{nn(i)}</span>
-                <div className="r-step__body">
-                  <h3>{s.title}</h3>
-                  <p>{s.text}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
+      <StepTimeline
+        title={c.steps.title}
+        eyebrow={c.steps.eyebrow}
+        steps={c.steps.items}
+        titleId="ablauf-title"
+      />
 
       {/* ---- Im Training ---- */}
       <section id="training" className="r-sec r-sec--rule" aria-labelledby="training-title">
         <div className="r-wrap r-training__inner">
-          <Head
-            eyebrow={c.training.eyebrow}
-            title={c.training.title}
-            lead={c.training.lead}
-            id="training-title"
-          />
-          <div className="r-training__grid">
-            {c.training.items.map((t) => (
-              <MediaSlot
-                key={t.id}
-                slot={t.media}
-                sizes="(min-width: 1024px) 300px, 50vw"
-                className="r-training__card"
-              >
-                <div className="r-training__text">
-                  <span className="r-training__label">{t.label}</span>
-                  <p>{t.text}</p>
-                </div>
-              </MediaSlot>
-            ))}
+          <div className="tt-head">
+            <span aria-hidden className="tt-head__icon">
+              <Dumbbell size={24} strokeWidth={2} />
+            </span>
+            {c.training.eyebrow && <span className="r-eyebrow">{c.training.eyebrow}</span>}
+            <h2 id="training-title" className="r-h2">
+              {c.training.title}
+            </h2>
+            {c.training.lead && <p className="r-lead">{c.training.lead}</p>}
+          </div>
+          <div className="tt-row">
+            <Marquee className="tt-marquee" seconds={Math.max(24, c.training.items.length * 8)}>
+              {[0, 1].flatMap((set) =>
+                c.training.items.map((t) => (
+                  <div key={`${set}-${t.id}`} className="tt-card">
+                    <MediaSlot
+                      slot={t.media}
+                      sizes="256px"
+                      className="tt-card__media"
+                    >
+                      <div className="tt-card__caption">
+                        <h3>{t.label}</h3>
+                        <p>{t.text}</p>
+                      </div>
+                    </MediaSlot>
+                  </div>
+                )),
+              )}
+            </Marquee>
+            <div aria-hidden className="tm-fade tm-fade--left tt-fade" />
+            <div aria-hidden className="tm-fade tm-fade--right tt-fade" />
           </div>
         </div>
       </section>
@@ -395,41 +435,60 @@ export function ReferenceHome({ content: c }: { content: HomeContent }) {
               {c.coach.name}
             </h2>
           </div>
-          <div className="r-coach__grid">
-            <div className="r-coach__aside">
-              <MediaSlot slot={c.coach.media} sizes="320px" className="r-coach__portrait" />
-              {c.coach.facts.length > 0 && (
-                <div className="r-coach__facts">
-                  {c.coach.facts.map((f, i) => (
-                    <span key={i}>{f}</span>
-                  ))}
-                </div>
-              )}
+          <figure className="t2">
+            <div className="t2-portrait">
+              <span aria-hidden className="t2-line t2-line--v t2-line--left" />
+              <span aria-hidden className="t2-line t2-line--v t2-line--right" />
+              <span aria-hidden className="t2-line t2-line--h t2-line--top" />
+              <span aria-hidden className="t2-line t2-line--h t2-line--bottom" />
+              <MediaSlot slot={c.coach.media} sizes="320px" className="t2-portrait__img" />
             </div>
-            <div className="r-coach__text">
-              {c.coach.paragraphs.map((p, i) => (
-                <p key={i}>{p}</p>
-              ))}
-              {c.coach.closing && <p className="r-coach__closing">{c.coach.closing}</p>}
-            </div>
-          </div>
+            <figcaption className="t2-caption">
+              <blockquote className="t2-quote">
+                {c.coach.paragraphs.map((p, i) => (
+                  <p key={i}>
+                    {i === 0 ? '“' : ''}
+                    {p}
+                  </p>
+                ))}
+                {c.coach.closing && (
+                  <p className="t2-quote__strong">
+                    {c.coach.closing}
+                    {'”'}
+                  </p>
+                )}
+              </blockquote>
+              <div>
+                <cite className="t2-cite">{c.coach.name}</cite>
+                {c.coach.facts.length > 0 && (
+                  <div className="t2-role">{c.coach.facts.join(' · ')}</div>
+                )}
+              </div>
+            </figcaption>
+          </figure>
         </div>
       </section>
 
       {/* ---- FAQ ---- */}
       <section id="faq" className="r-boxsec r-faq" aria-labelledby="faq-title">
-        <div className="r-panel">
-          <div className="r-boxhead">
+        <div className="r-panel r-faq__panel">
+          <div className="r-boxhead r-faq__head">
             {c.faq.eyebrow && <span className="r-eyebrow">{c.faq.eyebrow}</span>}
             <h2 id="faq-title" className="r-h2">
               {c.faq.title}
             </h2>
+            <span aria-hidden className="r-faq__count">
+              {String(c.faq.items.length).padStart(2, '0')} Fragen
+            </span>
           </div>
           <div className="r-faq__list">
-            {c.faq.items.map((f) => (
+            {c.faq.items.map((f, i) => (
               <details key={f.id}>
                 <summary>
-                  <span>{f.question}</span>
+                  <span aria-hidden className="r-faq__no">
+                    {nn(i)}
+                  </span>
+                  <span className="r-faq__q">{f.question}</span>
                   <span aria-hidden className="r-faq__plus">
                     +
                   </span>
@@ -449,7 +508,7 @@ export function ReferenceHome({ content: c }: { content: HomeContent }) {
               <CmsMedia slot={c.cta.media} sizes="100vw" />
             </div>
           )}
-          <div aria-hidden className="r-cta__shade" />
+          <CtaShader className="r-cta__shader" />
           <div className="r-cta__inner">
             {c.cta.eyebrow && <span className="r-eyebrow">{c.cta.eyebrow}</span>}
             <h2 id="cta-title" className="r-cta__title">
@@ -463,42 +522,12 @@ export function ReferenceHome({ content: c }: { content: HomeContent }) {
               data-track-section="cta"
             >
               {c.cta.action.label}
+              <ArrowUpRight aria-hidden size={16} strokeWidth={2} className="r-btn__icon" />
             </a>
           </div>
         </div>
       </section>
 
-      {/* ---- Bewerben ---- */}
-      <section id="bewerben" className="r-apply" aria-labelledby="bewerben-title">
-        <div className="r-wrap r-apply__inner">
-          <Head
-            eyebrow={c.apply.eyebrow}
-            title={c.apply.title}
-            lead={c.apply.lead}
-            id="bewerben-title"
-          />
-          <div className="r-apply__grid">
-            {c.apply.channels.map((ch) => (
-              <a
-                key={ch.id}
-                href={ch.href}
-                className="r-channel"
-                {...external(ch.href)}
-                data-track="cta_click"
-                data-track-section="apply"
-                data-track-label={ch.id}
-              >
-                <span aria-hidden className="r-channel__tag">
-                  {ch.tag}
-                </span>
-                <h3>{ch.title}</h3>
-                {ch.text && <p>{ch.text}</p>}
-                <span className="r-channel__cta">{ch.cta}</span>
-              </a>
-            ))}
-          </div>
-        </div>
-      </section>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useId, useState, type MouseEvent } from 'react';
-import type { ThemeMode } from '../theme-mode';
+import { SHOW_THEME_TOGGLE, type ThemeMode } from '../theme-mode';
 import { ThemeToggle } from '../theme-toggle';
 
 export interface ReferenceLink {
@@ -15,8 +15,9 @@ const PHONE = 820;
 
 /**
  * Header of the reference design (`Website Funktional`): fixed glass bar with logo + wordmark,
- * the "Jetzt bewerben" glass button in the centre (it appears once the intro video section has
- * scrolled under the header; on pages without it, always) and the light/dark switch at the end.
+ * the section links in the centre and the light/dark switch at the end. The "Jetzt bewerben" CTA
+ * is a sticky blue tab on the right edge (owner request 2026-11-09); it slides in once the intro
+ * video section has scrolled under the header (on pages without it, always).
  * Below 820 px the logo opens the glitch menu (prototype behaviour); Escape or a link closes it.
  */
 export function ReferenceHeader({
@@ -42,7 +43,10 @@ export function ReferenceHeader({
   useEffect(() => {
     const update = () => {
       const sec = document.querySelector('[data-video-sec]');
-      setShowCta(sec ? sec.getBoundingClientRect().bottom < 80 : true);
+      // hidden again once the "Bewerben" section itself is on screen (it carries the channels)
+      const apply = document.getElementById('bewerben');
+      const atApply = apply ? apply.getBoundingClientRect().top < window.innerHeight * 0.6 : false;
+      setShowCta((sec ? sec.getBoundingClientRect().bottom < 80 : true) && !atApply);
     };
     update();
     const late = window.setTimeout(update, 100);
@@ -96,6 +100,7 @@ export function ReferenceHeader({
   };
 
   return (
+    <>
     <header className="r-header">
       <div className="r-header__bar">
         <Link
@@ -107,9 +112,10 @@ export function ReferenceHeader({
           className="r-brand"
         >
           {logoSrc && (
-            <img src={logoSrc} alt="VITRUV" className="r-brand__logo" width={32} height={32} />
+            <img src={logoSrc} alt="VITRUV" className="r-brand__logo" width={75} height={46} />
           )}
-          <span className="r-brand__word">VITRUV</span>
+          {/* the logo carries the wordmark; text only as fallback without a CMS logo */}
+          {!logoSrc && <span className="r-brand__word">VITRUV</span>}
         </Link>
         {links.length > 0 && (
           <nav className="r-links" aria-label="Hauptnavigation">
@@ -128,23 +134,7 @@ export function ReferenceHeader({
             ))}
           </nav>
         )}
-        <nav
-          className="r-nav"
-          data-show={showCta ? '1' : '0'}
-          data-beside={links.length > 0 ? '' : undefined}
-          aria-label="Bewerben"
-        >
-          <a
-            href={cta.href}
-            className="r-nav__cta"
-            tabIndex={showCta ? undefined : -1}
-            data-track="cta_click"
-            data-track-section="header"
-          >
-            {cta.label}
-          </a>
-        </nav>
-        <ThemeToggle initial={mode} className="r-theme" />
+        {SHOW_THEME_TOGGLE && <ThemeToggle initial={mode} className="r-theme" />}
       </div>
       {open && (
         <nav id={menuId} className="r-mmenu" aria-label="Hauptnavigation">
@@ -172,5 +162,31 @@ export function ReferenceHeader({
         </nav>
       )}
     </header>
+    {/* sticky tabs on the right edge ("Jetzt bewerben" blue, "Login" white below) — outside the
+        header, whose backdrop-filter would otherwise become the containing block of these fixed
+        elements */}
+    <div className="r-sticks" data-show={showCta ? '1' : '0'}>
+      <a
+        href={cta.href}
+        className="r-stick"
+        tabIndex={showCta ? undefined : -1}
+        aria-hidden={showCta ? undefined : true}
+        data-track="cta_click"
+        data-track-section="sticky"
+      >
+        {cta.label}
+      </a>
+      <Link
+        href="/login"
+        className="r-stick r-stick--light"
+        tabIndex={showCta ? undefined : -1}
+        aria-hidden={showCta ? undefined : true}
+        data-track="navigation_click"
+        data-track-section="sticky"
+      >
+        Login
+      </Link>
+    </div>
+    </>
   );
 }

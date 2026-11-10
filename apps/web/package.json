@@ -13,6 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@paper-design/shaders-react": "0.0.82",
     "@vitruv/contracts": "workspace:*",
     "@vitruv/design-tokens": "workspace:*",
     "@vitruv/shared": "workspace:*",

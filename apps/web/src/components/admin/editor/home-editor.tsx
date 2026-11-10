@@ -440,14 +440,24 @@ export function HomeEditor({ value: v, onChange, errors }: EditorProps<'home'>) 
           createItem={(existing) => ({ id: newItemId('satz', existing), text: '' })}
           itemLabel={(_item, i) => `Satz ${i + 1}`}
           renderItem={(item, i, update) => (
-            <TextField
-              label="Satz"
-              required
-              maxLength={200}
-              value={item.text}
-              error={e(`doubts.items.${i}`).text}
-              onChange={(text) => update({ text: text ?? '' })}
-            />
+            <>
+              <TextField
+                label="Satz"
+                required
+                maxLength={200}
+                value={item.text}
+                error={e(`doubts.items.${i}`).text}
+                onChange={(text) => update({ text: text ?? '' })}
+              />
+              <TextField
+                label="Leuchtende Wörter"
+                maxLength={120}
+                hint='Erscheinen blau leuchtend. Mehrere mit "/" trennen; jedes muss genau so im Satz vorkommen.'
+                value={item.highlight}
+                error={e(`doubts.items.${i}`).highlight}
+                onChange={(highlight) => update({ highlight })}
+              />
+            </>
           )}
         />
         <TextField

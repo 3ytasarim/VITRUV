@@ -18,6 +18,7 @@ const { PUBLIC_SECTION_RENDERERS, PublicSection } = await import('./section-regi
 const { buildNavigation, anchorOf, liveFooter } = await import('./navigation');
 const { splitHighlight } = await import('./sections/hero-section');
 const { default: HomePage } = await import('@/app/(site)/page');
+const { ReferenceFooter } = await import('./reference/reference-footer');
 
 const html = (node: React.ReactElement) => renderToStaticMarkup(node);
 const render = (section: PublicWebsiteSection) => html(<PublicSection section={section} />);
@@ -531,8 +532,6 @@ describe('homepage composition', () => {
     const markup = await render();
     expect(markup).toContain('Home-Eyebrow-T');
     expect(markup).toContain('Startpunkt-T');
-    // an external channel opens in a new tab without referrer
-    expect(markup).toMatch(/href="https:\/\/instagram.com\/demo"[^>]*rel="noopener noreferrer"/);
     const order = [
       'id="top"',
       'data-video-sec',
@@ -543,7 +542,6 @@ describe('homepage composition', () => {
       'id="ablauf"',
       'id="coach"',
       'id="faq"',
-      'id="bewerben"',
     ].map((needle) => markup.indexOf(needle));
     expect(order.every((index) => index >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
@@ -552,6 +550,16 @@ describe('homepage composition', () => {
     expect(markup.match(/<h1/g)).toHaveLength(1);
     // FAQ as native disclosures (readable and operable without JavaScript)
     expect(markup.match(/<details>/g)).toHaveLength(2);
+  });
+
+  it('renders the "Bewerben" channels in the footer (anchor #bewerben)', () => {
+    const markup = html(
+      <ReferenceFooter logoSrc={null} links={[]} apply={CONTENT.home.apply} />,
+    );
+    expect(markup).toContain('id="bewerben"');
+    // an external channel opens in a new tab without referrer
+    expect(markup).toMatch(/href="https:\/\/instagram.com\/demo"[^>]*rel="noopener noreferrer"/);
+    expect(markup.indexOf('id="bewerben"')).toBeLessThan(markup.indexOf('df-bottom'));
   });
 
   it('takes the hero video from the CMS; empty slots render only their frame', async () => {

@@ -16,20 +16,15 @@ export const dynamic = 'force-dynamic';
 /** CMS logo (page settings) as an optimised URL — shown unchanged (never redrawn). */
 function logoSrc(logo: ResolvedMediaSlot | null | undefined): string | null {
   if (!logo) return null;
-  return getImageProps({ src: logo.desktop.url, alt: '', width: 64, height: 64, quality: 90 }).props
+  return getImageProps({ src: logo.desktop.url, alt: '', width: 256, height: 158, quality: 90 }).props
     .src;
 }
 
 type Home = Extract<PublicWebsitePage['sections'][number], { type: 'home' }>['content'];
 
-/** Footer links of the reference: Instagram / E-Mail (the CMS "Bewerben" channels), legal, login. */
-function footerLinks(home: Home | null): ReferenceLink[] {
-  const channel = (id: string) => home?.apply.channels.find((c) => c.id === id)?.href;
-  const instagram = channel('instagram');
-  const email = channel('email');
+/** Footer legal/account links (the contact channels come from the CMS "Bewerben" block). */
+function footerLinks(): ReferenceLink[] {
   return [
-    ...(instagram?.startsWith('https://') ? [{ label: 'Instagram', href: instagram }] : []),
-    ...(email?.startsWith('mailto:') ? [{ label: 'E-Mail', href: email }] : []),
     { label: 'Impressum', href: '/impressum' },
     { label: 'Datenschutz', href: '/datenschutz' },
     { label: 'Login', href: '/login' },
@@ -88,7 +83,12 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
       <main id="main" tabIndex={-1} className="focus:outline-none">
         {children}
       </main>
-      <ReferenceFooter logoSrc={logo} links={footerLinks(home)} />
+      <ReferenceFooter
+        logoSrc={logo}
+        links={footerLinks()}
+        sections={headerLinks(home)}
+        apply={home?.apply ?? null}
+      />
       <AnalyticsBridge />
     </div>
   );

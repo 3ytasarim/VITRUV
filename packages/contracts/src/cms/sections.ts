@@ -372,7 +372,11 @@ function defineSectionSchemas<Slot extends z.ZodType>(slot: Slot) {
     doubts: z.object({
       eyebrow: optionalText(60),
       title: plainText(160),
-      items: idList({ text: plainText(200) }, 12),
+      /**
+       * `highlight`: words of the sentence set in the glowing site blue — several separated by
+       * "/", each must occur in the text exactly (additive 2026-11-10).
+       */
+      items: idList({ text: plainText(200), highlight: optionalText(120) }, 12),
       outro: optionalText(800),
       /** Part of the outro set in the accent colour (must occur in it). */
       outroHighlight: optionalText(60),

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-/** Browsers that ask for /favicon.ico directly get the CMS-logo icon (app/icon.tsx). */
+/** Browsers that ask for /favicon.ico directly get the brand icon (app/icon.png). */
 export function GET(request: NextRequest) {
-  return NextResponse.redirect(new URL('/icon', request.url), 308);
+  return NextResponse.redirect(new URL('/icon.png', request.url), 308);
 }
