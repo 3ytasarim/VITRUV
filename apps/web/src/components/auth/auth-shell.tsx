@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { GravityStars } from '@/components/site/effects/gravity-stars';
 import { buildNavigation } from '@/components/site/navigation';
 import { publicFontVariables } from '@/lib/fonts';
+import { BRAND_LOGO } from '@/lib/brand';
 import { getPublicHome } from '@/lib/public-site';
 import { pageTheme, themeCss } from '@/lib/theme';
 
@@ -24,7 +25,7 @@ export async function AuthShell({
 }) {
   const home = await getPublicHome();
   const theme = themeCss(home.ok ? pageTheme(home.page) : null);
-  const brand = logo !== undefined ? logo : home.ok ? buildNavigation(home.page).logo : null;
+  const brand = logo !== undefined ? logo : null;
   const logoImg = brand
     ? getImageProps({
         src: brand.desktop.url,
@@ -37,7 +38,17 @@ export async function AuthShell({
         quality: 90,
         priority: true,
       }).props
-    : null;
+    : logo === undefined
+      ? // bundled brand logo: shows right after a pull, independent of the CMS media storage
+        getImageProps({
+          src: BRAND_LOGO.src,
+          alt: 'VITRUV – zur Startseite',
+          width: 240,
+          height: Math.round((240 * BRAND_LOGO.height) / BRAND_LOGO.width),
+          quality: 90,
+          priority: true,
+        }).props
+      : null;
   return (
     <div className={`vt-site ${publicFontVariables}`} data-surface="public">
       {theme && <style>{theme}</style>}

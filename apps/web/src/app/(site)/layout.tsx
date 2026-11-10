@@ -1,24 +1,17 @@
-import type { PublicWebsitePage, ResolvedMediaSlot } from '@vitruv/contracts';
-import { getImageProps } from 'next/image';
+import type { PublicWebsitePage } from '@vitruv/contracts';
 import { cookies } from 'next/headers';
 import type { ReactNode } from 'react';
 import { AnalyticsBridge } from '@/components/site/analytics-bridge';
 import { ReferenceFooter } from '@/components/site/reference/reference-footer';
 import { ReferenceHeader, type ReferenceLink } from '@/components/site/reference/reference-header';
 import { THEME_COOKIE, parseThemeMode } from '@/components/site/theme-mode';
+import { BRAND_LOGO } from '@/lib/brand';
 import { publicFontVariables } from '@/lib/fonts';
 import { getPublicHome } from '@/lib/public-site';
 import { referenceThemeCss } from '@/lib/theme';
 
 // Header/footer depend on published CMS content: render per request (data itself is cached).
 export const dynamic = 'force-dynamic';
-
-/** CMS logo (page settings) as an optimised URL — shown unchanged (never redrawn). */
-function logoSrc(logo: ResolvedMediaSlot | null | undefined): string | null {
-  if (!logo) return null;
-  return getImageProps({ src: logo.desktop.url, alt: '', width: 256, height: 158, quality: 90 }).props
-    .src;
-}
 
 type Home = Extract<PublicWebsitePage['sections'][number], { type: 'home' }>['content'];
 
@@ -55,8 +48,8 @@ function headerLinks(home: Home | null): ReferenceLink[] {
 export default async function SiteLayout({ children }: { children: ReactNode }) {
   const result = await getPublicHome();
   const page = result.ok ? result.page : null;
-  const seo = page?.sections.find((s) => s.type === 'seo');
-  const logo = logoSrc(seo?.type === 'seo' ? seo.content.logo : null);
+  // bundled brand logo: shows on every checkout right after a pull (no CMS media needed)
+  const logo = BRAND_LOGO.src;
   const mode = parseThemeMode((await cookies()).get(THEME_COOKIE)?.value);
   const homeSection = page?.sections.find((s) => s.type === 'home');
   const home = homeSection?.type === 'home' ? homeSection.content : null;

@@ -1,6 +1,10 @@
-import { NextResponse, type NextRequest } from 'next/server';
-
-/** Browsers that ask for /favicon.ico directly get the brand icon (app/icon.png). */
-export function GET(request: NextRequest) {
-  return NextResponse.redirect(new URL('/icon.png', request.url), 308);
+/** Redirect favicon requests to the bundled brand icon (app/icon.png). */
+export function GET() {
+  return new Response(null, {
+    status: 308,
+    headers: {
+      Location: '/icon.png',
+      'Cache-Control': 'public, max-age=3600',
+    },
+  });
 }

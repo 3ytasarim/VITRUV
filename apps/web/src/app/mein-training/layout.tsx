@@ -9,13 +9,12 @@ import { PORTAL_THEME_COOKIE, parseAdminThemeMode } from '@/components/admin/adm
 import { AdminThemeToggle } from '@/components/admin/admin-theme-toggle';
 import { AccessDenied } from '@/components/auth/access-denied';
 import { PortalNav } from '@/components/portal/portal-nav';
-import { buildNavigation } from '@/components/site/navigation';
-import { SiteLogo } from '@/components/site/site-header';
 import { Button } from '@/components/ui';
 import { PORTAL_PATH } from '@/lib/auth/cookies';
 import { getCurrentUser } from '@/lib/auth/session';
 import { publicFontVariables } from '@/lib/fonts';
 import { portalApi } from '@/lib/portal-api';
+import { BRAND_LOGO } from '@/lib/brand';
 import { getPublicHome } from '@/lib/public-site';
 import { adminLightCss, pageTheme, themeCss } from '@/lib/theme';
 
@@ -40,7 +39,6 @@ export default async function PortalLayout({ children }: { children: ReactNode }
   if (!user.permissions.includes('training.self.read')) return <AccessDenied />;
 
   const [home, profile] = await Promise.all([getPublicHome(), portalApi.me()]);
-  const logo = home.ok ? buildNavigation(home.page).logo : null;
   const theme = themeCss(home.ok ? pageTheme(home.page) : null);
   // light/dark switch (preference cookie; dark glass by default)
   const mode = parseAdminThemeMode((await cookies()).get(PORTAL_THEME_COOKIE)?.value);
@@ -63,7 +61,13 @@ export default async function PortalLayout({ children }: { children: ReactNode }
 
   const brand = (
     <Link href={PORTAL_PATH} className="vt-pshell__brand" aria-label="Mein Training – Übersicht">
-      {logo && <SiteLogo logo={logo} className="vt-logo h-9 w-auto" />}
+      <img
+        src={BRAND_LOGO.src}
+        alt=""
+        width={BRAND_LOGO.width}
+        height={BRAND_LOGO.height}
+        className="vt-logo h-9 w-auto"
+      />
       <span className="flex flex-col leading-tight">
         <span className="vt-wordmark">VITRUV</span>
         <span className="type-caption text-fg-subtle">Mein Training</span>
