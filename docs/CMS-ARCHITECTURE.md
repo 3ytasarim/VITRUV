@@ -118,13 +118,25 @@ UI yet. Archived versions do not pin media — restoring one later must re-valid
 | delete          | `website.media.delete` | **409 CONFLICT with usage details** while any draft/published version references it                        |
 
 Upload safety: MIME allow-list (JPEG, PNG, WebP, AVIF, MP4, WebM — no SVG/HTML/QuickTime), the
-**bytes are sniffed** and must match the declared type, per-kind size limits (20 MB / 100 MB,
+**bytes are sniffed** and must match the declared type, per-kind size limits (20 MiB / 500 MiB,
 env-configurable), HEVC/H.265 MP4s are rejected with a hint to upload an H.264/WebM derivative,
 storage keys are generated server-side (`public/website/<yyyy>/<mm>/<uuid>.<ext>`), the client file
 name is only stored (sanitised) for display. Image dimensions (PNG/JPEG/WebP/AVIF) and MP4
 duration/dimensions are read from headers without external tools; WebM metadata stays unknown.
 `Philip.mp4` (HEVC) is **not** uploaded or transcoded — a browser-ready H.264/WebM derivative is
 still required.
+
+Streaming (bounded memory, videos up to 500 MiB): the web route `/admin/api/media` (and
+`/admin/api/training-media`) is excluded from `src/proxy.ts` — Next would buffer the body for
+the proxy — and pipes the request body to the API itself; it performs the same-origin check
+against `PUBLIC_SITE_URL` and the session refresh the proxy would otherwise do. The API
+(`modules/media/upload-receiver.ts`) parses the multipart stream with busboy, counts and limits
+the body while it flows (413 as soon as a limit is exceeded), and writes the file to a private
+temp file (`MEDIA_UPLOAD_TMP_DIR`). Validation reads only headers / MP4 metadata boxes from disk
+(the `moov` box may sit at the end of the file), then the file is streamed to storage
+(`putStream`: local = temp file + atomic rename; S3 = multipart upload, aborted on error). The
+`media_assets` row is inserted last; on any failure no object, row or temp file remains.
+Parallel uploads per API process are capped (`MEDIA_UPLOAD_CONCURRENCY`, else 429).
 
 **Delete protection:** the asset row is locked (`FOR UPDATE`) while usage is checked; the slot FK is
 `ON DELETE RESTRICT`, so the database itself refuses to delete referenced media (a concurrent draft

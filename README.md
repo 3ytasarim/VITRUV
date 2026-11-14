@@ -119,26 +119,28 @@ History is stored in `drizzle.__drizzle_migrations`. `drizzle-kit push` is delib
 
 See [`.env.example`](.env.example). Summary:
 
-| Variable                                     | Used by    | Notes                                                                                      |
-| -------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------ |
-| `DATABASE_URL`                               | api, db    | Required. Existing Neon DB. Never commit/print it.                                         |
-| `DATABASE_URL_DIRECT`                        | db scripts | Optional direct endpoint for migrations                                                    |
-| `API_PORT`, `API_HOST`, `LOG_LEVEL`          | api        | Defaults 4000 / 0.0.0.0 / info                                                             |
-| `CORS_ORIGINS`                               | api        | Comma-separated browser origins (allow-list, no credentials)                               |
-| `TRUSTED_PROXY_IPS`                          | api        | Peers whose X-Forwarded-For is trusted for login rate limits (default loopback)            |
-| `STORAGE_DRIVER`, `STORAGE_LOCAL_DIR`        | api        | `local` (dev only) or `s3`                                                                 |
-| `S3_*`, `PUBLIC_MEDIA_BASE_URL`              | api        | Required when `STORAGE_DRIVER=s3`                                                          |
-| `API_PUBLIC_URL`                             | api        | Base for local media URLs (default http://localhost:4000)                                  |
-| `MEDIA_MAX_IMAGE/VIDEO_BYTES`                | api        | Website upload limits (defaults 20 MB / 100 MB)                                            |
-| `DEV_AUTH`, `DEV_AUTH_TOKEN/EMAIL`           | api        | Development auth adapter for local API tooling; refused in production                      |
-| `BOOTSTRAP_ADMIN_PASSWORD`                   | api script | Optional non-interactive bootstrap password — unset after use, never commit                |
-| `TRUSTED_CLIENT_IP_HEADER`                   | web        | Header your hosting proxy sets to the browser IP (login rate limits); empty without one    |
-| `API_BASE_URL`                               | web        | Server-side API base URL                                                                   |
-| `PUBLIC_SITE_URL`, `SITE_INDEXING`           | web        | Canonical public base URL (https in production); `disabled` = noindex staging              |
-| `REVALIDATE_SECRET`, `WEB_REVALIDATE_URL`    | api, web   | Publish → web cache revalidation (server-to-server)                                        |
-| `CMS_MEDIA_ORIGINS`, `CMS_MEDIA_ALLOW_LOCAL` | web        | Media hosts for next/image + CSP; local optimisation (development only)                    |
-| `DESIGN_PREVIEW`                             | web        | `enabled` exposes the internal `/design` preview in production (always on in dev; noindex) |
-| `API_BASE_URL`, `APP_ENV` (dart-define)      | mobile     | Build-time, no secrets                                                                     |
+| Variable                                           | Used by    | Notes                                                                                       |
+| -------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                     | api, db    | Required. Existing Neon DB. Never commit/print it.                                          |
+| `DATABASE_URL_DIRECT`                              | db scripts | Optional direct endpoint for migrations                                                     |
+| `API_PORT`, `API_HOST`, `LOG_LEVEL`                | api        | Defaults 4000 / 0.0.0.0 / info                                                              |
+| `CORS_ORIGINS`                                     | api        | Comma-separated browser origins (allow-list, no credentials)                                |
+| `TRUSTED_PROXY_IPS`                                | api        | Peers whose X-Forwarded-For is trusted for login rate limits (default loopback)             |
+| `STORAGE_DRIVER`, `STORAGE_LOCAL_DIR`              | api        | `local` (dev only) or `s3`                                                                  |
+| `S3_*`, `PUBLIC_MEDIA_BASE_URL`                    | api        | Required when `STORAGE_DRIVER=s3`                                                           |
+| `API_PUBLIC_URL`                                   | api        | Base for local media URLs (default http://localhost:4000)                                   |
+| `MEDIA_MAX_IMAGE/VIDEO_BYTES`                      | api + web  | Website upload limits (defaults 20 MiB / 500 MiB); the web route reads the same values      |
+| `MEDIA_UPLOAD_TMP_DIR`, `MEDIA_UPLOAD_CONCURRENCY` | api        | Staging dir for streamed uploads (default `<tmp>/vitruv-uploads`), max parallel uploads (4) |
+| `API_REQUEST_TIMEOUT_MS`                           | api        | Max time to receive one request (default 30 min; Node's default 5 min is too short)         |
+| `DEV_AUTH`, `DEV_AUTH_TOKEN/EMAIL`                 | api        | Development auth adapter for local API tooling; refused in production                       |
+| `BOOTSTRAP_ADMIN_PASSWORD`                         | api script | Optional non-interactive bootstrap password — unset after use, never commit                 |
+| `TRUSTED_CLIENT_IP_HEADER`                         | web        | Header your hosting proxy sets to the browser IP (login rate limits); empty without one     |
+| `API_BASE_URL`                                     | web        | Server-side API base URL                                                                    |
+| `PUBLIC_SITE_URL`, `SITE_INDEXING`                 | web        | Canonical public base URL (https in production); `disabled` = noindex staging               |
+| `REVALIDATE_SECRET`, `WEB_REVALIDATE_URL`          | api, web   | Publish → web cache revalidation (server-to-server)                                         |
+| `CMS_MEDIA_ORIGINS`, `CMS_MEDIA_ALLOW_LOCAL`       | web        | Media hosts for next/image + CSP; local optimisation (development only)                     |
+| `DESIGN_PREVIEW`                                   | web        | `enabled` exposes the internal `/design` preview in production (always on in dev; noindex)  |
+| `API_BASE_URL`, `APP_ENV` (dart-define)            | mobile     | Build-time, no secrets                                                                      |
 
 ## Storage
 

@@ -1,3 +1,4 @@
+import type { Readable } from 'node:stream';
 import type { MediaVisibility } from '@vitruv/shared';
 
 /**
@@ -15,6 +16,21 @@ import type { MediaVisibility } from '@vitruv/shared';
 export interface PutObjectInput {
   key: string;
   body: Uint8Array;
+  contentType: string;
+  visibility: MediaVisibility;
+}
+
+/**
+ * Streaming write for large files (videos up to several hundred MiB). The object becomes
+ * visible under `key` only after the whole body was written successfully — a failed or
+ * interrupted write never leaves a partial object behind (local: temp file + rename;
+ * S3: multipart upload that is aborted on error).
+ */
+export interface PutObjectStreamInput {
+  key: string;
+  body: Readable;
+  /** Exact number of bytes the stream will deliver (verified by the driver). */
+  sizeBytes: number;
   contentType: string;
   visibility: MediaVisibility;
 }
@@ -55,6 +71,8 @@ export interface SignedUrlOptions {
 export interface ObjectStorage {
   readonly driver: 'local' | 's3';
   put(input: PutObjectInput): Promise<{ key: string; sizeBytes: number }>;
+  /** Bounded-memory streaming write with backpressure (see PutObjectStreamInput). */
+  putStream(input: PutObjectStreamInput): Promise<{ key: string; sizeBytes: number }>;
   /** Whole object in memory — only for small files (PDF documents, validation). */
   get(key: string, visibility: MediaVisibility): Promise<StoredObject | null>;
   head(key: string, visibility: MediaVisibility): Promise<ObjectHead | null>;

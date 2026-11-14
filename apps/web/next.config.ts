@@ -17,6 +17,9 @@ const WEB_ENV_KEYS = [
   'REVALIDATE_SECRET',
   'CMS_MEDIA_ORIGINS',
   'CMS_MEDIA_ALLOW_LOCAL',
+  // Same media upload limits as the API (non-secret).
+  'MEDIA_MAX_IMAGE_BYTES',
+  'MEDIA_MAX_VIDEO_BYTES',
 ];
 const rootEnv = resolve(process.cwd(), '..', '..', '.env');
 if (existsSync(rootEnv)) {
@@ -71,11 +74,11 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   experimental: {
-    // src/proxy.ts runs on /admin/api/* (session refresh + origin check), and Next buffers the
-    // request body for the proxy — by default only the first 10 MB, the rest is silently cut off.
-    // That broke every media/nutrition upload over 10 MB (truncated multipart → API error).
-    // Must cover the largest upload: video 100 MB (WEBSITE_MEDIA_MAX_BYTES) + 1 MB multipart overhead.
-    proxyClientMaxBodySize: 101 * 1024 * 1024,
+    // Next buffers the request body for src/proxy.ts and silently cuts it off at this size.
+    // The media uploads (images/videos, up to 500 MiB) are EXCLUDED from the proxy matcher and
+    // streamed by their route handlers — they never hit this buffer. What still passes the proxy
+    // with a file is the nutrition PDF upload: 25 MiB (NUTRITION_PDF_MAX_BYTES) + 1 MiB overhead.
+    proxyClientMaxBodySize: 26 * 1024 * 1024,
   },
   // Internal workspace packages are published as TypeScript source.
   transpilePackages: ['@vitruv/contracts', '@vitruv/design-tokens', '@vitruv/shared'],

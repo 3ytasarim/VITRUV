@@ -1,10 +1,12 @@
 import { mediaListQuerySchema, updateMediaRequestSchema } from '@vitruv/contracts';
+import { mediaUploadMaxBodyBytes } from '@vitruv/shared';
 import { Hono } from 'hono';
-import { bodyLimit } from 'hono/body-limit';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { z } from 'zod';
 import { requirePermission } from '../../auth/principal';
 import { assertSafeStorageKey, type ObjectStorage } from '../../infra/storage/index';
-import { AppError, errorBody } from '../../lib/errors';
+import { AppError } from '../../lib/errors';
 import { validate } from '../../lib/validation';
 import type { AppEnv } from '../../types';
 import type { Permission } from '@vitruv/shared';
@@ -13,15 +15,19 @@ import {
   getLibraryMedia,
   listLibraryMedia,
   updateLibraryMedia,
-  uploadLibraryMedia,
+  uploadStagedLibraryMedia,
   type MediaLibrary,
   type MediaServiceDeps,
 } from './media.service';
+import { receiveMultipartUpload } from './upload-receiver';
 
 const idParams = z.object({ id: z.uuid() });
 
-/** Multipart overhead allowance on top of the largest file. */
-const MULTIPART_OVERHEAD_BYTES = 1024 * 1024;
+/** Defaults when the app is built without explicit upload settings (tests, tooling). */
+export const DEFAULT_UPLOAD_SETTINGS = {
+  tmpDir: join(tmpdir(), 'vitruv-uploads'),
+  maxConcurrent: 4,
+} as const;
 
 /** Website media library API — mounted at /v1/admin/media (ADMIN: website.media.*). */
 export function adminMediaRoutes(deps: MediaServiceDeps) {
@@ -50,6 +56,8 @@ function mediaLibraryRoutes(
   permissions: { read: Permission; write: Permission; delete: Permission },
 ) {
   const routes = new Hono<AppEnv>();
+  const uploads = deps.uploads ?? DEFAULT_UPLOAD_SETTINGS;
+  let activeUploads = 0;
   routes.use('*', async (c, next) => {
     await next();
     c.header('Cache-Control', 'no-store');
@@ -69,30 +77,40 @@ function mediaLibraryRoutes(
   routes.post(
     '/',
     requirePermission(permissions.write),
-    // Upload-specific limit (the global API body limit is skipped for this route only).
-    bodyLimit({
-      maxSize: Math.max(deps.limits.IMAGE, deps.limits.VIDEO) + MULTIPART_OVERHEAD_BYTES,
-      onError: (c) =>
-        c.json(errorBody('PAYLOAD_TOO_LARGE', 'Datei zu groß.', c.get('requestId')), 413),
-    }),
+    // Streaming upload (the global API body limit is skipped for this route only): the body is
+    // counted and limited while it streams to a temp file — never buffered in memory.
     async (c) => {
       const principal = c.get('principal');
       if (!principal) throw AppError.unauthenticated();
-      if (!c.req.header('content-type')?.toLowerCase().startsWith('multipart/form-data')) {
-        throw AppError.badRequest('multipart/form-data erwartet.');
+      // Each upload holds a temp file + a storage stream: cap parallel uploads per process.
+      if (activeUploads >= uploads.maxConcurrent) {
+        throw new AppError(
+          429,
+          'RATE_LIMITED',
+          'Zu viele gleichzeitige Uploads. Bitte kurz warten und erneut versuchen.',
+        );
       }
-      const form = await c.req.parseBody();
-      const file = form.file;
-      if (!(file instanceof File)) throw AppError.badRequest('Feld "file" fehlt.');
-      const altText = typeof form.altText === 'string' ? form.altText.slice(0, 300) : null;
-      const asset = await uploadLibraryMedia(deps, library, {
-        bytes: new Uint8Array(await file.arrayBuffer()),
-        declaredType: file.type,
-        fileName: file.name,
-        altText,
-        userId: principal.userId,
-      });
-      return c.json(asset, 201);
+      activeUploads += 1;
+      try {
+        const staged = await receiveMultipartUpload(c.req.raw, {
+          tmpDir: uploads.tmpDir,
+          maxFileBytes: Math.max(deps.limits.IMAGE, deps.limits.VIDEO),
+          maxBodyBytes: mediaUploadMaxBodyBytes(deps.limits),
+          fieldNames: ['altText'],
+        });
+        try {
+          const asset = await uploadStagedLibraryMedia(deps, library, {
+            staged,
+            altText: staged.fields.altText?.slice(0, 300) ?? null,
+            userId: principal.userId,
+          });
+          return c.json(asset, 201);
+        } finally {
+          await staged.discard();
+        }
+      } finally {
+        activeUploads -= 1;
+      }
     },
   );
 

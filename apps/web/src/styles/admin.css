@@ -836,3 +836,32 @@
     list-style: none;
   }
 }
+
+/* ---- Media upload progress (streaming uploads up to 500 MiB) ---------------------------------- */
+.vt-upload-progress {
+  appearance: none;
+  inline-size: 100%;
+  block-size: 8px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-sunken);
+  overflow: hidden;
+}
+.vt-upload-progress::-webkit-progress-bar {
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-pill);
+}
+.vt-upload-progress::-webkit-progress-value {
+  background: var(--color-accent);
+  border-radius: var(--radius-pill);
+  transition: inline-size var(--duration-micro) var(--ease-out);
+}
+.vt-upload-progress::-moz-progress-bar {
+  background: var(--color-accent);
+  border-radius: var(--radius-pill);
+}
+@media (prefers-reduced-motion: reduce) {
+  .vt-upload-progress::-webkit-progress-value {
+    transition: none;
+  }
+}

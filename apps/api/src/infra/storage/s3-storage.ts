@@ -6,7 +6,9 @@ import {
   S3Client,
   type GetObjectCommandOutput,
 } from '@aws-sdk/client-s3';
+import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { Transform, type Readable } from 'node:stream';
 import type { MediaVisibility } from '@vitruv/shared';
 import {
   StorageUnavailableError,
@@ -45,10 +47,29 @@ export interface S3StorageConfig {
 type Send = (command: unknown) => Promise<unknown>;
 type Presign = (command: GetObjectCommand, expiresIn: number) => Promise<string>;
 
+/** Parameters of a streamed object upload (subset of PutObject). */
+export interface StreamUploadParams {
+  Bucket: string;
+  Key: string;
+  Body: Readable;
+  ContentType: string;
+  CacheControl: string;
+  ACL?: 'public-read';
+}
+type UploadStream = (params: StreamUploadParams) => Promise<void>;
+
+/**
+ * Multipart part size and parallelism for streamed uploads. Memory per upload is bounded by
+ * PART_SIZE × QUEUE_SIZE (32 MiB); small bodies are sent as a single PutObject by lib-storage.
+ */
+export const STREAM_PART_SIZE = 16 * 1024 * 1024;
+export const STREAM_QUEUE_SIZE = 2;
+
 export interface S3StorageDeps {
   /** Injected in tests; production builds a real S3Client from the config. */
   send?: Send;
   presign?: Presign;
+  uploadStream?: UploadStream;
 }
 
 export function createS3Client(config: S3StorageConfig): S3Client {
@@ -90,6 +111,19 @@ export function createS3Storage(config: S3StorageConfig, deps: S3StorageDeps = {
   const send: Send = deps.send ?? ((command) => real().send(command as never));
   const presign: Presign =
     deps.presign ?? ((command, expiresIn) => getSignedUrl(real(), command, { expiresIn }));
+  // Multipart upload: parts are retried by the SDK; on any failure lib-storage aborts the
+  // multipart upload (leavePartsOnError: false), so no incomplete object is ever created.
+  const uploadStream: UploadStream =
+    deps.uploadStream ??
+    (async (params) => {
+      await new Upload({
+        client: real(),
+        params,
+        partSize: STREAM_PART_SIZE,
+        queueSize: STREAM_QUEUE_SIZE,
+        leavePartsOnError: false,
+      }).done();
+    });
 
   const bucketFor = (visibility: MediaVisibility) =>
     visibility === 'PUBLIC' ? config.publicBucket : config.privateBucket;
@@ -140,6 +174,39 @@ export function createS3Storage(config: S3StorageConfig, deps: S3StorageDeps = {
           }),
         );
         return { key, sizeBytes: body.byteLength };
+      }),
+
+    putStream: ({ key, body, sizeBytes, contentType, visibility }) =>
+      guard('putStream', async () => {
+        // Count what actually flows to the provider: a short stream must fail, not publish.
+        let seen = 0;
+        const counted = body.pipe(
+          new Transform({
+            transform(chunk: Buffer, _encoding, done) {
+              seen += chunk.length;
+              done(null, chunk);
+            },
+            flush(done) {
+              done(
+                seen === sizeBytes
+                  ? null
+                  : new Error(`Incomplete stream (${seen} of ${sizeBytes} bytes).`),
+              );
+            },
+          }),
+        );
+        body.once('error', (error) => counted.destroy(error));
+        await uploadStream({
+          ...target(key, visibility),
+          Body: counted,
+          ContentType: contentType,
+          CacheControl:
+            visibility === 'PUBLIC' ? 'public, max-age=31536000, immutable' : 'private, no-store',
+          ...(visibility === 'PUBLIC' && config.publicObjectAcl
+            ? { ACL: config.publicObjectAcl }
+            : {}),
+        });
+        return { key, sizeBytes };
       }),
 
     get: (key, visibility) =>

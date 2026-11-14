@@ -1,6 +1,7 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { Readable } from 'node:stream';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createLocalStorage, localPathFor } from './local-storage';
 import { assertSafeStorageKey, buildStorageKey } from './storage-keys';
@@ -94,6 +95,52 @@ describe('local storage driver', () => {
     expect(await storage.getStream('public/none.mp4', 'PUBLIC')).toBeNull();
 
     expect(await storage.signedUrl(key, 'PUBLIC', { expiresInSeconds: 60 })).toBeNull();
+  });
+
+  it('putStream writes the whole stream and publishes it atomically (Range still works)', async () => {
+    const storage = createLocalStorage(dir);
+    const key = 'public/website/2026/11/s.mp4';
+    const body = Readable.from([Buffer.from([0, 1, 2]), Buffer.from([3, 4, 5, 6])]);
+    await storage.putStream({
+      key,
+      body,
+      sizeBytes: 7,
+      contentType: 'video/mp4',
+      visibility: 'PUBLIC',
+    });
+    expect(await storage.head(key, 'PUBLIC')).toEqual({ sizeBytes: 7, contentType: 'video/mp4' });
+    const part = await storage.getStream(key, 'PUBLIC', { start: 5, end: 6 });
+    expect([...new Uint8Array(await new Response(part?.body).arrayBuffer())]).toEqual([5, 6]);
+  });
+
+  it.each([
+    [
+      'a stream error',
+      () =>
+        Readable.from(
+          (async function* () {
+            yield Buffer.from([1, 2]);
+            throw new Error('connection reset');
+          })(),
+        ),
+      10,
+    ],
+    ['a short stream', () => Readable.from([Buffer.from([1, 2, 3])]), 10],
+  ])('putStream leaves no object and no partial file on %s', async (_label, makeBody, size) => {
+    const storage = createLocalStorage(dir);
+    const key = 'public/website/2026/11/broken.mp4';
+    await expect(
+      storage.putStream({
+        key,
+        body: makeBody(),
+        sizeBytes: size,
+        contentType: 'video/mp4',
+        visibility: 'PUBLIC',
+      }),
+    ).rejects.toThrow();
+    expect(await storage.exists(key, 'PUBLIC')).toBe(false);
+    const folder = dirname(localPathFor(dir, key, 'PUBLIC'));
+    expect(await readdir(folder).catch(() => [])).toEqual([]);
   });
 
   it('refuses path traversal', async () => {

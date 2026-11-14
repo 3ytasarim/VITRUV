@@ -58,3 +58,16 @@ export function precheckUpload(
   }
   return null;
 }
+
+const mb = (bytes: number) => `${Math.round(bytes / 1024 / 1024)} MB`;
+
+/** Allowed formats + size limits for the upload hint (from the shared limits). */
+export function uploadLimitHint(
+  kinds: readonly ('IMAGE' | 'VIDEO')[] = ['IMAGE', 'VIDEO'],
+): string {
+  const image = `JPEG, PNG, WebP oder AVIF, max. ${mb(WEBSITE_MEDIA_MAX_BYTES.IMAGE)}`;
+  const video = `MP4 (H.264) oder WebM, max. ${mb(WEBSITE_MEDIA_MAX_BYTES.VIDEO)}`;
+  if (kinds.includes('IMAGE') && kinds.includes('VIDEO'))
+    return `Bilder: ${image} · Videos: ${video}`;
+  return kinds.includes('VIDEO') ? video : image;
+}

@@ -112,7 +112,11 @@ export const config = {
   matcher: [
     {
       // Pages only — not API routes, static chunks, optimised images, robots/sitemap or favicon.
-      source: '/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)',
+      // Also not the streaming media uploads: the proxy would buffer their body (up to 500 MiB).
+      // Their route handlers do the origin check and session refresh themselves
+      // (lib/media-upload-proxy.ts).
+      source:
+        '/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|admin/api/media|admin/api/training-media).*)',
       missing: [
         { type: 'header', key: 'next-router-prefetch' },
         { type: 'header', key: 'purpose', value: 'prefetch' },

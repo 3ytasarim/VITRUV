@@ -4,7 +4,42 @@ import { adminMediaAssetSchema, apiErrorSchema, type AdminMediaAsset } from '@vi
 import { FileUp, Upload } from 'lucide-react';
 import { useId, useRef, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui';
-import { acceptAttribute, precheckUpload } from './media-format';
+import { acceptAttribute, formatBytes, precheckUpload, uploadLimitHint } from './media-format';
+
+type UploadResult = { status: number; body: unknown };
+
+/**
+ * POST with upload progress. fetch() has no upload progress events, XMLHttpRequest does.
+ * Same-origin request: the browser sends the HttpOnly session cookie and the Origin header.
+ */
+function postWithProgress(
+  url: string,
+  form: FormData,
+  onProgress: (loaded: number, total: number) => void,
+  signal: AbortSignal,
+): Promise<UploadResult> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    xhr.responseType = 'text';
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress(event.loaded, event.total);
+    };
+    xhr.onload = () => {
+      let body: unknown = null;
+      try {
+        body = JSON.parse(xhr.responseText);
+      } catch {
+        body = null;
+      }
+      resolve({ status: xhr.status, body });
+    };
+    xhr.onerror = () => reject(new Error('network'));
+    xhr.onabort = () => reject(new DOMException('aborted', 'AbortError'));
+    signal.addEventListener('abort', () => xhr.abort(), { once: true });
+    xhr.send(form);
+  });
+}
 
 /**
  * Upload form shared by the media library and the media picker (one implementation).
@@ -29,6 +64,9 @@ export function MediaUploadForm({
   const [fileName, setFileName] = useState('');
   const [dragging, setDragging] = useState(false);
   const [message, setMessage] = useState<{ tone: 'error' | 'success'; text: string } | null>(null);
+  // Bytes sent so far; null = no upload running. "sent" = waiting for server-side processing.
+  const [progress, setProgress] = useState<{ loaded: number; total: number } | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -47,18 +85,31 @@ export function MediaUploadForm({
     }
     setBusy(true);
     setMessage(null);
+    setProgress({ loaded: 0, total: file.size });
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       const form = new FormData();
-      form.append('file', file);
+      // Text fields first: the server reads the multipart stream in order.
       if (altText.trim()) form.append('altText', altText.trim());
-      const res = await fetch(endpoint, { method: 'POST', body: form });
-      const body: unknown = await res.json().catch(() => null);
+      form.append('file', file);
+      const res = await postWithProgress(
+        endpoint,
+        form,
+        (loaded, total) => setProgress({ loaded, total }),
+        controller.signal,
+      );
+      const body = res.body;
       const asset = adminMediaAssetSchema.safeParse(body);
-      if (!res.ok || !asset.success) {
+      if (res.status < 200 || res.status >= 300 || !asset.success) {
         const error = apiErrorSchema.safeParse(body);
         setMessage({
           tone: 'error',
-          text: error.success ? error.data.error.message : 'Upload fehlgeschlagen.',
+          text: error.success
+            ? error.data.error.message
+            : res.status === 413
+              ? 'Datei zu groß für den Server.'
+              : 'Upload fehlgeschlagen.',
         });
         return;
       }
@@ -67,9 +118,17 @@ export function MediaUploadForm({
       if (fileRef.current) fileRef.current.value = '';
       setFileName('');
       onUploaded(asset.data);
-    } catch {
-      setMessage({ tone: 'error', text: 'Upload fehlgeschlagen (keine Verbindung).' });
+    } catch (error) {
+      setMessage({
+        tone: 'error',
+        text:
+          error instanceof DOMException && error.name === 'AbortError'
+            ? 'Upload abgebrochen.'
+            : 'Upload fehlgeschlagen (keine Verbindung).',
+      });
     } finally {
+      abortRef.current = null;
+      setProgress(null);
       setBusy(false);
     }
   }
@@ -112,11 +171,7 @@ export function MediaUploadForm({
             </span>
           </div>
           <p id={`${id}-file-hint`} className="type-caption text-fg-subtle">
-            {kinds.includes('VIDEO') && kinds.includes('IMAGE')
-              ? 'Bilder: JPEG, PNG, WebP, AVIF (max. 20 MB) · Videos: MP4 (H.264), WebM (max. 100 MB)'
-              : kinds.includes('VIDEO')
-                ? 'MP4 (H.264) oder WebM, max. 100 MB'
-                : 'JPEG, PNG, WebP oder AVIF, max. 20 MB'}
+            {uploadLimitHint(kinds)}
           </p>
         </div>
         <div className="flex flex-col gap-1.5">
@@ -137,6 +192,11 @@ export function MediaUploadForm({
         <Button type="submit" variant="secondary" icon={<Upload />} loading={busy}>
           Hochladen
         </Button>
+        {busy && (
+          <Button type="button" variant="ghost" onClick={() => abortRef.current?.abort()}>
+            Abbrechen
+          </Button>
+        )}
         <p
           role="status"
           aria-live="polite"
@@ -147,6 +207,21 @@ export function MediaUploadForm({
           {message?.text}
         </p>
       </div>
+      {progress && (
+        <div className="flex flex-col gap-1.5">
+          <progress
+            className="vt-upload-progress"
+            max={progress.total || 1}
+            value={progress.loaded}
+            aria-label="Upload-Fortschritt"
+          />
+          <p className="type-caption text-fg-muted" aria-live="polite">
+            {progress.loaded >= progress.total
+              ? 'Hochgeladen – wird geprüft und gespeichert …'
+              : `${Math.floor((progress.loaded / (progress.total || 1)) * 100)} % · ${formatBytes(progress.loaded)} von ${formatBytes(progress.total)}`}
+          </p>
+        </div>
+      )}
     </form>
   );
 }

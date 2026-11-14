@@ -230,3 +230,59 @@ export function sniffMedia(bytes: Uint8Array): SniffResult | null {
     sniffWebm(bytes)
   );
 }
+
+/** Bytes read from the start of a staged non-MP4 file for detection (headers live up front). */
+export const SNIFF_HEAD_BYTES = 4 * 1024 * 1024;
+/** Upper bound for the metadata boxes collected from an MP4 (moov is usually a few MB). */
+export const MAX_ISO_METADATA_BYTES = 64 * 1024 * 1024;
+/** Top-level ISO-BMFF boxes that carry payload only — skipped, never read into memory. */
+const PAYLOAD_BOXES = new Set(['mdat', 'free', 'skip', 'wide']);
+
+interface FileReader {
+  read(position: number, length: number): Promise<Uint8Array>;
+}
+
+/**
+ * Detects the format of a file on disk with bounded memory. MP4s may keep their `moov` box at
+ * the END of the file (no "faststart"), so instead of reading the whole file the top-level box
+ * headers are walked and only the metadata boxes (ftyp, moov, meta …) are read — media data
+ * (`mdat`) is skipped. The collected boxes form a valid box sequence for `sniffMedia`.
+ */
+export async function sniffMediaFile(
+  file: FileReader,
+  sizeBytes: number,
+): Promise<SniffResult | null> {
+  const head = await file.read(0, Math.min(sizeBytes, SNIFF_HEAD_BYTES));
+  if (ascii(head, 4, 4) !== 'ftyp') return sniffMedia(head);
+
+  const kept: Uint8Array[] = [];
+  let keptBytes = 0;
+  let offset = 0;
+  for (let guard = 0; offset + 8 <= sizeBytes && guard < 10_000; guard++) {
+    const header = await file.read(offset, Math.min(16, sizeBytes - offset));
+    const r = reader(header);
+    let size = r.u32be(0) ?? 0;
+    const type = ascii(header, 4, 4);
+    let headerSize = 8;
+    if (size === 1) {
+      size = r.u64be(8) ?? 0;
+      headerSize = 16;
+    } else if (size === 0) {
+      size = sizeBytes - offset;
+    }
+    if (size < headerSize || offset + size > sizeBytes) break;
+    if (!PAYLOAD_BOXES.has(type)) {
+      keptBytes += size;
+      if (keptBytes > MAX_ISO_METADATA_BYTES) return null;
+      kept.push(await file.read(offset, size));
+    }
+    offset += size;
+  }
+  const joined = new Uint8Array(keptBytes);
+  let at = 0;
+  for (const part of kept) {
+    joined.set(part, at);
+    at += part.length;
+  }
+  return sniffMedia(joined);
+}

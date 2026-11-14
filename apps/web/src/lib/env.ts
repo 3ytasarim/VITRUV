@@ -1,5 +1,10 @@
 import 'server-only';
-import { blankToUndefined, parseEnv } from '@vitruv/shared';
+import {
+  WEBSITE_MEDIA_MAX_BYTES,
+  blankToUndefined,
+  mediaUploadMaxBodyBytes,
+  parseEnv,
+} from '@vitruv/shared';
 import { z } from 'zod';
 
 /**
@@ -38,6 +43,20 @@ const webServerEnvSchema = z
      * /api/revalidate after a publish. Server-only — never NEXT_PUBLIC_.
      */
     REVALIDATE_SECRET: z.string().min(32).optional(),
+    /**
+     * Media upload limits — the SAME variables the API reads (repo-root .env), so the early
+     * size check here never disagrees with the API. Defaults: @vitruv/shared.
+     */
+    MEDIA_MAX_IMAGE_BYTES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(WEBSITE_MEDIA_MAX_BYTES.IMAGE),
+    MEDIA_MAX_VIDEO_BYTES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(WEBSITE_MEDIA_MAX_BYTES.VIDEO),
   })
   .superRefine((env, ctx) => {
     const url = new URL(env.PUBLIC_SITE_URL);
@@ -53,6 +72,17 @@ const webServerEnvSchema = z
       });
     }
   });
+
+/** Per-kind media upload limits (bytes) as configured for the API. */
+export function mediaUploadLimits(): { IMAGE: number; VIDEO: number } {
+  const env = webServerEnv();
+  return { IMAGE: env.MEDIA_MAX_IMAGE_BYTES, VIDEO: env.MEDIA_MAX_VIDEO_BYTES };
+}
+
+/** Largest acceptable media upload request (largest file + multipart overhead). */
+export function mediaUploadBodyLimit(): number {
+  return mediaUploadMaxBodyBytes(mediaUploadLimits());
+}
 
 /** Public base URL without a trailing slash, e.g. `https://vitruv.example`. */
 export function publicSiteUrl(): string {

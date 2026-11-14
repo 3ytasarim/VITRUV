@@ -1,7 +1,9 @@
 import type { NextRequest } from 'next/server';
+import { mediaUploadBodyLimit } from '@/lib/env';
 import { proxyMediaUpload } from '@/lib/media-upload-proxy';
 
 /** Website media library upload (API: /v1/admin/media, website.media.write). */
 export function POST(request: NextRequest) {
-  return proxyMediaUpload(request, '/v1/admin/media');
+  // Excluded from src/proxy.ts (no body buffering): streamed straight through to the API.
+  return proxyMediaUpload(request, '/v1/admin/media', { maxBodyBytes: mediaUploadBodyLimit() });
 }

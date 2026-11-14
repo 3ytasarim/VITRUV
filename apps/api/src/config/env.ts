@@ -73,6 +73,19 @@ export const apiEnvSchema = z
       .int()
       .positive()
       .default(WEBSITE_MEDIA_MAX_BYTES.VIDEO),
+    /**
+     * Streaming media uploads are staged here before validation + transfer to storage. Needs
+     * free disk space of (max. video size × MEDIA_UPLOAD_CONCURRENCY). Default: <os tmp>/vitruv-uploads.
+     */
+    MEDIA_UPLOAD_TMP_DIR: z.string().optional(),
+    /** Max. simultaneous media uploads per API process (more → 429). */
+    MEDIA_UPLOAD_CONCURRENCY: z.coerce.number().int().min(1).max(32).default(4),
+    /** Max. time to receive one request body (ms); large uploads need more than Node's 5 min. */
+    API_REQUEST_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(60_000)
+      .default(30 * 60_000),
 
     /**
      * On-demand revalidation of the public website after a publish (server-to-server).

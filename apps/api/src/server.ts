@@ -1,5 +1,7 @@
 import { serve } from '@hono/node-server';
 import { createDatabase, describeDatabaseTarget } from '@vitruv/db';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createApp } from './app';
 import { createAuthResolver } from './auth/resolver';
 import { loadApiEnv } from './config/env';
@@ -73,12 +75,18 @@ function main() {
       storage,
       urls,
       limits: { IMAGE: env.MEDIA_MAX_IMAGE_BYTES, VIDEO: env.MEDIA_MAX_VIDEO_BYTES },
+      uploads: {
+        tmpDir: env.MEDIA_UPLOAD_TMP_DIR ?? join(tmpdir(), 'vitruv-uploads'),
+        maxConcurrent: env.MEDIA_UPLOAD_CONCURRENCY,
+      },
     },
   });
 
   const server = serve({ fetch: app.fetch, hostname: env.API_HOST, port: env.API_PORT }, (info) =>
     logger.info({ port: info.port }, 'vitruv-api listening'),
   );
+  // Node's default (5 min for a whole request) would cut off large uploads on slow links.
+  if ('requestTimeout' in server) server.requestTimeout = env.API_REQUEST_TIMEOUT_MS;
 
   const shutdown = (signal: string) => {
     logger.info({ signal }, 'shutting down');

@@ -4,9 +4,10 @@ import {
   HeadObjectCommand,
   PutObjectCommand,
 } from '@aws-sdk/client-s3';
+import { Readable } from 'node:stream';
 import { describe, expect, it, vi } from 'vitest';
 import { StorageUnavailableError } from './object-storage';
-import { createS3Storage, type S3StorageConfig } from './s3-storage';
+import { createS3Storage, type S3StorageConfig, type StreamUploadParams } from './s3-storage';
 
 // Fictional configuration — never real credentials in tests.
 const config: S3StorageConfig = {
@@ -194,5 +195,74 @@ describe('s3 storage driver', () => {
     const { send, storage } = setup();
     await expect(storage.get('../etc/passwd', 'PUBLIC')).rejects.toThrow();
     expect(send).not.toHaveBeenCalled();
+  });
+});
+
+describe('s3 storage driver — streamed uploads (putStream)', () => {
+  const streamOf = (...chunks: Uint8Array[]) => Readable.from(chunks.map((c) => Buffer.from(c)));
+  const consume = async (body: Readable) => {
+    let total = 0;
+    for await (const chunk of body) total += (chunk as Buffer).length;
+    return total;
+  };
+
+  it('streams into the right bucket with the unchanged key and immutable caching', async () => {
+    let received = 0;
+    const uploadStream = vi.fn(async (params: StreamUploadParams) => {
+      received = await consume(params.Body);
+    });
+    const storage = createS3Storage(config, { send: vi.fn(), uploadStream });
+    const key = 'public/website/2026/11/a.mp4';
+    await expect(
+      storage.putStream({
+        key,
+        body: streamOf(new Uint8Array(3), new Uint8Array(5)),
+        sizeBytes: 8,
+        contentType: 'video/mp4',
+        visibility: 'PUBLIC',
+      }),
+    ).resolves.toEqual({ key, sizeBytes: 8 });
+    expect(received).toBe(8);
+    expect(uploadStream.mock.calls[0]?.[0]).toMatchObject({
+      Bucket: 'pub-bucket',
+      Key: key,
+      ContentType: 'video/mp4',
+      CacheControl: 'public, max-age=31536000, immutable',
+    });
+  });
+
+  it('fails (never publishes) when the stream is shorter than announced', async () => {
+    const uploadStream = vi.fn(async (params: StreamUploadParams) => {
+      await consume(params.Body);
+    });
+    const storage = createS3Storage(config, { send: vi.fn(), uploadStream });
+    await expect(
+      storage.putStream({
+        key: 'public/website/2026/11/b.mp4',
+        body: streamOf(new Uint8Array(4)),
+        sizeBytes: 10,
+        contentType: 'video/mp4',
+        visibility: 'PUBLIC',
+      }),
+    ).rejects.toBeInstanceOf(StorageUnavailableError);
+  });
+
+  it('wraps provider failures and validates the key before uploading', async () => {
+    const uploadStream = vi.fn(async () => {
+      throw providerError('InternalError', 500);
+    });
+    const storage = createS3Storage(config, { send: vi.fn(), uploadStream });
+    const input = {
+      body: streamOf(new Uint8Array(1)),
+      sizeBytes: 1,
+      contentType: 'video/mp4',
+      visibility: 'PUBLIC' as const,
+    };
+    await expect(
+      storage.putStream({ ...input, key: 'public/website/2026/11/c.mp4' }),
+    ).rejects.toBeInstanceOf(StorageUnavailableError);
+    uploadStream.mockClear();
+    await expect(storage.putStream({ ...input, key: '../escape.mp4' })).rejects.toThrow();
+    expect(uploadStream).not.toHaveBeenCalled();
   });
 });

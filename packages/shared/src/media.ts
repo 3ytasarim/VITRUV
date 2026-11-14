@@ -49,11 +49,25 @@ export const WEBSITE_MEDIA_MIME_TYPES = {
 
 export type WebsiteMediaKind = keyof typeof WEBSITE_MEDIA_MIME_TYPES;
 
-/** Default upload limits for website media (bytes); the API can lower/raise them via env. */
+/**
+ * Default upload limits for website media (bytes). The API can override them via env
+ * (MEDIA_MAX_IMAGE_BYTES / MEDIA_MAX_VIDEO_BYTES); the web upload route reads the same variables
+ * so both sides agree. Uploads are streamed end to end — never buffered in memory.
+ */
 export const WEBSITE_MEDIA_MAX_BYTES: Readonly<Record<WebsiteMediaKind, number>> = {
   IMAGE: 20 * 1024 * 1024,
-  VIDEO: 100 * 1024 * 1024,
+  VIDEO: 500 * 1024 * 1024,
 };
+
+/** Allowance for multipart framing (boundaries, part headers, the alt-text field). */
+export const MULTIPART_OVERHEAD_BYTES = 1024 * 1024;
+
+/** Largest acceptable multipart request body for a website/training media upload. */
+export function mediaUploadMaxBodyBytes(
+  limits: Readonly<Record<WebsiteMediaKind, number>> = WEBSITE_MEDIA_MAX_BYTES,
+): number {
+  return Math.max(limits.IMAGE, limits.VIDEO) + MULTIPART_OVERHEAD_BYTES;
+}
 
 /** File extension used in storage keys for each allowed website MIME type. */
 export const WEBSITE_MEDIA_EXTENSIONS: Readonly<Record<string, string>> = {

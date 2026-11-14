@@ -12,6 +12,7 @@ import {
   type WebsiteMediaKind,
 } from '@vitruv/shared';
 import { and, count, desc, eq, inArray } from 'drizzle-orm';
+import { createReadStream } from 'node:fs';
 import {
   buildStorageKey,
   type ObjectStorage,
@@ -24,7 +25,8 @@ import {
   pgErrorCode,
 } from '../../lib/errors';
 import type { Logger } from '../../lib/logger';
-import { HEVC_CODECS, sniffMedia, type SniffResult } from './media-sniff';
+import { HEVC_CODECS, sniffMedia, sniffMediaFile, type SniffResult } from './media-sniff';
+import type { StagedUpload } from './upload-receiver';
 import type { MediaUrlResolver } from './media-url';
 
 const {
@@ -58,6 +60,8 @@ export interface MediaServiceDeps {
   urls: MediaUrlResolver;
   logger: Logger;
   limits: Readonly<Record<WebsiteMediaKind, number>>;
+  /** Streaming uploads: temp dir for staged files + max. simultaneous uploads per process. */
+  uploads?: { tmpDir: string; maxConcurrent: number };
 }
 
 type MediaAssetRow = typeof mediaAssets.$inferSelect;
@@ -121,19 +125,40 @@ export function validateWebsiteUpload(input: {
   fileName: string | undefined;
   limits: Readonly<Record<WebsiteMediaKind, number>>;
 }): ValidatedUpload {
-  const declared = normalizeMime(input.declaredType);
-  const declaredKind = websiteMediaKindForMimeType(declared);
+  const declaredKind = checkDeclaredUpload({ ...input, sizeBytes: input.bytes.byteLength });
+  return checkSniffedUpload({ ...input, kind: declaredKind, sniffed: sniffMedia(input.bytes) });
+}
+
+/** Step 1 (before reading content): allowed declared type and per-kind size limit. */
+export function checkDeclaredUpload(input: {
+  declaredType: string;
+  sizeBytes: number;
+  limits: Readonly<Record<WebsiteMediaKind, number>>;
+}): WebsiteMediaKind {
+  const declaredKind = websiteMediaKindForMimeType(normalizeMime(input.declaredType));
   if (!declaredKind) {
     throw AppError.badRequest(
       'Dateityp nicht erlaubt. Erlaubt sind JPEG, PNG, WebP, AVIF, MP4 und WebM.',
     );
   }
-  if (input.bytes.byteLength > input.limits[declaredKind]) {
+  if (input.sizeBytes > input.limits[declaredKind]) {
     throw AppError.payloadTooLarge(
       `Datei zu groß (max. ${Math.floor(input.limits[declaredKind] / 1024 / 1024)} MB).`,
     );
   }
-  const sniffed = sniffMedia(input.bytes);
+  if (input.sizeBytes === 0) throw AppError.badRequest('Die Datei ist leer.');
+  return declaredKind;
+}
+
+/** Step 2: the real content (magic bytes) must match the declared type; no HEVC video. */
+export function checkSniffedUpload(input: {
+  declaredType: string;
+  fileName: string | undefined;
+  kind: WebsiteMediaKind;
+  sniffed: SniffResult | null;
+}): ValidatedUpload {
+  const declared = normalizeMime(input.declaredType);
+  const sniffed = input.sniffed;
   if (!sniffed || sniffed.mimeType !== declared) {
     throw AppError.badRequest('Der Dateiinhalt entspricht nicht dem angegebenen Dateityp.');
   }
@@ -143,7 +168,7 @@ export function validateWebsiteUpload(input: {
     );
   }
   return {
-    kind: declaredKind,
+    kind: input.kind,
     sniffed,
     fileName: sanitizeFileName(input.fileName),
     extension: WEBSITE_MEDIA_EXTENSIONS[sniffed.mimeType] ?? 'bin',
@@ -266,18 +291,83 @@ export async function uploadLibraryMedia(
   input: MediaUploadInput,
 ): Promise<AdminMediaAsset> {
   const upload = validateWebsiteUpload({ ...input, limits: deps.limits });
-  // The key is generated from server-side values only; the client's file name never reaches it.
-  const storageKey = buildStorageKey({
-    visibility: 'PUBLIC',
-    purpose: LIBRARY[library].storagePurpose,
-    extension: upload.extension,
-  });
+  const storageKey = libraryStorageKey(library, upload);
   await deps.storage.put({
     key: storageKey,
     body: input.bytes,
     contentType: upload.sniffed.mimeType,
     visibility: 'PUBLIC',
   });
+  return recordUploadedAsset(deps, library, {
+    upload,
+    storageKey,
+    sizeBytes: input.bytes.byteLength,
+    altText: input.altText,
+    userId: input.userId,
+  });
+}
+
+// The key is generated from server-side values only; the client's file name never reaches it.
+const libraryStorageKey = (library: MediaLibrary, upload: ValidatedUpload) =>
+  buildStorageKey({
+    visibility: 'PUBLIC',
+    purpose: LIBRARY[library].storagePurpose,
+    extension: upload.extension,
+  });
+
+/**
+ * Large-file path: the upload was streamed to a temp file (upload-receiver.ts). Validation reads
+ * only the headers/metadata boxes from disk (bounded memory), then the file is streamed to object
+ * storage. The object only exists under its key after a COMPLETE write (drivers guarantee it),
+ * and the metadata row is inserted last — a failure at any step leaves nothing published.
+ * The caller discards the temp file.
+ */
+export async function uploadStagedLibraryMedia(
+  deps: MediaServiceDeps,
+  library: MediaLibrary,
+  input: { staged: StagedUpload; altText: string | null; userId: string },
+): Promise<AdminMediaAsset> {
+  const { staged } = input;
+  const kind = checkDeclaredUpload({
+    declaredType: staged.declaredType,
+    sizeBytes: staged.sizeBytes,
+    limits: deps.limits,
+  });
+  const upload = checkSniffedUpload({
+    declaredType: staged.declaredType,
+    fileName: staged.fileName,
+    kind,
+    sniffed: await sniffMediaFile(staged, staged.sizeBytes),
+  });
+  const storageKey = libraryStorageKey(library, upload);
+  await deps.storage.putStream({
+    key: storageKey,
+    body: createReadStream(staged.path),
+    sizeBytes: staged.sizeBytes,
+    contentType: upload.sniffed.mimeType,
+    visibility: 'PUBLIC',
+  });
+  return recordUploadedAsset(deps, library, {
+    upload,
+    storageKey,
+    sizeBytes: staged.sizeBytes,
+    altText: input.altText,
+    userId: input.userId,
+  });
+}
+
+async function recordUploadedAsset(
+  deps: MediaServiceDeps,
+  library: MediaLibrary,
+  input: {
+    upload: ValidatedUpload;
+    storageKey: string;
+    sizeBytes: number;
+    altText: string | null;
+    userId: string;
+  },
+): Promise<AdminMediaAsset> {
+  const { upload, storageKey } = input;
   try {
     const [asset] = await deps.db
       .insert(mediaAssets)
@@ -288,7 +378,7 @@ export async function uploadLibraryMedia(
         storageKey,
         fileName: upload.fileName,
         mimeType: upload.sniffed.mimeType,
-        sizeBytes: input.bytes.byteLength,
+        sizeBytes: input.sizeBytes,
         width: upload.sniffed.width,
         height: upload.sniffed.height,
         durationMs: upload.sniffed.durationMs,

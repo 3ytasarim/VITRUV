@@ -1,7 +1,9 @@
-import { createReadStream } from 'node:fs';
-import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { createReadStream, createWriteStream } from 'node:fs';
+import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, resolve, sep } from 'node:path';
 import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import type { MediaVisibility } from '@vitruv/shared';
 import type {
   ByteRange,
@@ -9,6 +11,7 @@ import type {
   ObjectStorage,
   ObjectStream,
   PutObjectInput,
+  PutObjectStreamInput,
   StoredObject,
 } from './object-storage';
 import { assertSafeStorageKey } from './storage-keys';
@@ -53,6 +56,28 @@ export function createLocalStorage(baseDir: string): ObjectStorage {
       await writeFile(target, body);
       await writeFile(`${target}.meta.json`, JSON.stringify({ contentType }));
       return { key, sizeBytes: body.byteLength };
+    },
+
+    async putStream({ key, body, sizeBytes, contentType, visibility }: PutObjectStreamInput) {
+      const target = pathFor(key, visibility);
+      await mkdir(dirname(target), { recursive: true });
+      // Written next to the target and renamed only when complete: a reader never sees a
+      // partial file under the real key (rename is atomic on the same filesystem).
+      const partial = `${target}.${randomUUID()}.partial`;
+      try {
+        await pipeline(body, createWriteStream(partial, { flags: 'wx', mode: 0o600 }));
+        const written = (await stat(partial)).size;
+        if (written !== sizeBytes) {
+          throw new Error(`Incomplete write (${written} of ${sizeBytes} bytes).`);
+        }
+        await writeFile(`${target}.meta.json`, JSON.stringify({ contentType }));
+        await rename(partial, target);
+      } catch (error) {
+        await rm(partial, { force: true });
+        await rm(`${target}.meta.json`, { force: true });
+        throw error;
+      }
+      return { key, sizeBytes };
     },
 
     async get(key, visibility): Promise<StoredObject | null> {
