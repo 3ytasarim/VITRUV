@@ -66,6 +66,8 @@ export interface AppDeps {
 
 /** The media upload routes have their own (larger) body limit. */
 const UPLOAD_PATHS = new Set(['/v1/admin/media', '/v1/admin/training/media']);
+/** File replacement of an existing asset — also a streamed upload with its own limits. */
+const REPLACE_UPLOAD_PATH = /^\/v1\/admin\/(?:training\/)?media\/[0-9a-f-]{36}\/replace$/i;
 
 /**
  * Builds the HTTP application from injected dependencies (no globals, no I/O at import time),
@@ -129,7 +131,9 @@ export function createApp(deps: AppDeps) {
   });
   app.use('*', (c, next) =>
     c.req.method === 'POST' &&
-    (UPLOAD_PATHS.has(c.req.path) || NUTRITION_UPLOAD_PATH.test(c.req.path))
+    (UPLOAD_PATHS.has(c.req.path) ||
+      REPLACE_UPLOAD_PATH.test(c.req.path) ||
+      NUTRITION_UPLOAD_PATH.test(c.req.path))
       ? next()
       : globalBodyLimit(c, next),
   );

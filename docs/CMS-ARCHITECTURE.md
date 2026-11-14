@@ -110,12 +110,13 @@ UI yet. Archived versions do not pin media — restoring one later must re-valid
 
 **Library** (`/v1/admin/media`, admin page `Website → Medien`):
 
-| Action          | Permission             | Behaviour                                                                                                  |
-| --------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------- |
-| list / detail   | `website.media.read`   | Website assets only (`purpose = WEBSITE`), usage count; detail lists each usage (page/section/role/status) |
-| upload          | `website.media.write`  | multipart; see safety below                                                                                |
-| update alt text | `website.media.write`  | file itself is immutable                                                                                   |
-| delete          | `website.media.delete` | **409 CONFLICT with usage details** while any draft/published version references it                        |
+| Action          | Permission                                     | Behaviour                                                                                                     |
+| --------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| list / detail   | `website.media.read`                           | Website assets only (`purpose = WEBSITE`), usage count; detail lists each usage (page/section/role/status)    |
+| upload          | `website.media.write`                          | multipart; see safety below                                                                                   |
+| update alt text | `website.media.write`                          | metadata only                                                                                                 |
+| replace file    | `website.media.write` + `website.media.delete` | `POST /:id/replace`: same id, new file of the **same kind** (image → image); every reference shows it at once |
+| delete          | `website.media.delete`                         | **409 CONFLICT with usage details** while any draft/published version references it                           |
 
 Upload safety: MIME allow-list (JPEG, PNG, WebP, AVIF, MP4, WebM — no SVG/HTML/QuickTime), the
 **bytes are sniffed** and must match the declared type, per-kind size limits (20 MiB / 500 MiB,
@@ -137,6 +138,16 @@ temp file (`MEDIA_UPLOAD_TMP_DIR`). Validation reads only headers / MP4 metadata
 (`putStream`: local = temp file + atomic rename; S3 = multipart upload, aborted on error). The
 `media_assets` row is inserted last; on any failure no object, row or temp file remains.
 Parallel uploads per API process are capped (`MEDIA_UPLOAD_CONCURRENCY`, else 429).
+
+**Replace (owner request 2026-11-14):** media in use can not be deleted, but its file can be
+swapped. Same streaming/validation path as an upload (HEIC → JPEG included); the new object gets a
+NEW key (no stale CDN/browser cache). Order: write new object → switch the row only if it still
+points to the old key (concurrent replace → 409, nothing lost) → expire the public page cache
+(`onPublicMediaChanged` → web revalidation) → delete the old object. Any failure before the switch
+removes the new object; the old file stays live. Alt text is kept unless a new one is sent. Web
+routes: `/admin/api/media/<id>/replace`, `/admin/api/training-media/<id>/replace` (also outside
+`src/proxy.ts`). Nginx must give them the upload limits too, e.g.
+`location ~ ^/admin/api/(media|training-media)(/[0-9a-f-]{36}/replace)?$`.
 
 **Delete protection:** the asset row is locked (`FOR UPDATE`) while usage is checked; the slot FK is
 `ON DELETE RESTRICT`, so the database itself refuses to delete referenced media (a concurrent draft

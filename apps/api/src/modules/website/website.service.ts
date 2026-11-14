@@ -44,7 +44,7 @@ export interface PublishedEvent {
   contentRevision: number;
   publishedAt: Date;
   /** What changed the public page: a content publish or a section setting (enabled / order). */
-  reason: 'publish' | 'settings';
+  reason: 'publish' | 'settings' | 'media';
 }
 
 /**

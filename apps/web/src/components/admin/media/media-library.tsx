@@ -1,7 +1,7 @@
 'use client';
 
 import type { AdminMediaAsset, AdminMediaDetail } from '@vitruv/contracts';
-import { Check, CheckSquare, Trash2, X } from 'lucide-react';
+import { Check, CheckSquare, RefreshCw, Trash2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useState } from 'react';
 import {
@@ -39,7 +39,7 @@ function UsageList({ detail }: { detail: AdminMediaDetail }) {
   );
 }
 
-/** Details of the selected asset: preview, metadata, alt text, usage, protected delete. */
+/** Details of the selected asset: preview, metadata, alt text, usage, file replacement, protected delete. */
 function MediaDetails({
   asset,
   onChanged,
@@ -55,6 +55,7 @@ function MediaDetails({
   const [alt, setAlt] = useState(asset.altText ?? '');
   const [busy, setBusy] = useState<'alt' | 'delete' | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [replacing, setReplacing] = useState(false);
   const [message, setMessage] = useState<{
     tone: 'error' | 'success';
     text: string;
@@ -104,6 +105,17 @@ function MediaDetails({
   }
 
   const inUse = (detail?.usageCount ?? asset.usageCount) > 0;
+
+  // Same id → every page/section using this asset shows the new file; the old file is removed.
+  function replaced(next: AdminMediaAsset) {
+    setReplacing(false);
+    setAlt(next.altText ?? '');
+    setMessage({ tone: 'success', text: `Datei ersetzt durch „${next.fileName}“.` });
+    onChanged(next);
+    void mediaDetailAction(next.id).then((result) => {
+      if (result.ok) setDetail(result.data);
+    });
+  }
 
   return (
     <Card padding="md" className="flex flex-col gap-5">
@@ -174,6 +186,43 @@ function MediaDetails({
       </div>
 
       <div className="flex flex-col gap-3 border-t border-border-subtle pt-4">
+        <h3 className="type-body-sm font-semibold">Datei ersetzen</h3>
+        <p className="type-caption text-fg-subtle">
+          Die neue Datei erscheint überall, wo dieses Medium verwendet wird — ohne die Inhalte zu
+          bearbeiten. Die bisherige Datei wird gelöscht.
+        </p>
+        {replacing ? (
+          <>
+            <MediaUploadForm
+              compact
+              kinds={asset.kind === 'VIDEO' ? ['VIDEO'] : ['IMAGE']}
+              replaceId={asset.id}
+              onUploaded={replaced}
+            />
+            <div>
+              <Button variant="ghost" onClick={() => setReplacing(false)}>
+                Schließen
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div>
+            <Button
+              variant="secondary"
+              icon={<RefreshCw />}
+              disabled={busy !== null}
+              onClick={() => {
+                setMessage(null);
+                setReplacing(true);
+              }}
+            >
+              {asset.kind === 'VIDEO' ? 'Video ersetzen' : 'Bild ersetzen'}
+            </Button>
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-3 border-t border-border-subtle pt-4">
         {confirming ? (
           <div className="flex flex-wrap items-center gap-2">
             <p className="type-body-sm">Endgültig löschen?</p>
@@ -198,7 +247,8 @@ function MediaDetails({
         )}
         {inUse && (
           <p className="type-caption text-fg-subtle">
-            Verwendete Medien können nicht gelöscht werden — zuerst in den Inhalten ersetzen.
+            Verwendete Medien können nicht gelöscht werden. Zum Austauschen oben „
+            {asset.kind === 'VIDEO' ? 'Video' : 'Bild'} ersetzen“ nutzen.
           </p>
         )}
         <div role={message?.tone === 'error' ? 'alert' : 'status'} aria-live="polite">

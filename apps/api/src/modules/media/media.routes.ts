@@ -14,12 +14,13 @@ import {
   deleteLibraryMedia,
   getLibraryMedia,
   listLibraryMedia,
+  replaceStagedLibraryMedia,
   updateLibraryMedia,
   uploadStagedLibraryMedia,
   type MediaLibrary,
   type MediaServiceDeps,
 } from './media.service';
-import { receiveMultipartUpload } from './upload-receiver';
+import { receiveMultipartUpload, type StagedUpload } from './upload-receiver';
 
 const idParams = z.object({ id: z.uuid() });
 
@@ -74,43 +75,68 @@ function mediaLibraryRoutes(
     c.json(await getLibraryMedia(deps, library, c.req.valid('param').id)),
   );
 
+  /**
+   * Streaming upload (the global API body limit is skipped for the upload paths): the body is
+   * counted and limited while it streams to a temp file — never buffered in memory. Each upload
+   * holds a temp file + a storage stream, so parallel uploads per process are capped.
+   */
+  async function withStagedUpload<T>(
+    request: Request,
+    handle: (staged: StagedUpload, altText: string | null) => Promise<T>,
+  ): Promise<T> {
+    if (activeUploads >= uploads.maxConcurrent) {
+      throw new AppError(
+        429,
+        'RATE_LIMITED',
+        'Zu viele gleichzeitige Uploads. Bitte kurz warten und erneut versuchen.',
+      );
+    }
+    activeUploads += 1;
+    try {
+      const staged = await receiveMultipartUpload(request, {
+        tmpDir: uploads.tmpDir,
+        maxFileBytes: Math.max(deps.limits.IMAGE, deps.limits.VIDEO),
+        maxBodyBytes: mediaUploadMaxBodyBytes(deps.limits),
+        fieldNames: ['altText'],
+      });
+      try {
+        return await handle(staged, staged.fields.altText?.slice(0, 300) ?? null);
+      } finally {
+        await staged.discard();
+      }
+    } finally {
+      activeUploads -= 1;
+    }
+  }
+
+  routes.post('/', requirePermission(permissions.write), async (c) => {
+    const principal = c.get('principal');
+    if (!principal) throw AppError.unauthenticated();
+    const asset = await withStagedUpload(c.req.raw, (staged, altText) =>
+      uploadStagedLibraryMedia(deps, library, { staged, altText, userId: principal.userId }),
+    );
+    return c.json(asset, 201);
+  });
+
+  // Replace the file of an asset in use (same id → every reference shows the new file). The old
+  // file is removed, so this needs the delete permission in addition to write.
   routes.post(
-    '/',
+    '/:id/replace',
     requirePermission(permissions.write),
-    // Streaming upload (the global API body limit is skipped for this route only): the body is
-    // counted and limited while it streams to a temp file — never buffered in memory.
+    requirePermission(permissions.delete),
+    validate('param', idParams),
     async (c) => {
       const principal = c.get('principal');
       if (!principal) throw AppError.unauthenticated();
-      // Each upload holds a temp file + a storage stream: cap parallel uploads per process.
-      if (activeUploads >= uploads.maxConcurrent) {
-        throw new AppError(
-          429,
-          'RATE_LIMITED',
-          'Zu viele gleichzeitige Uploads. Bitte kurz warten und erneut versuchen.',
-        );
-      }
-      activeUploads += 1;
-      try {
-        const staged = await receiveMultipartUpload(c.req.raw, {
-          tmpDir: uploads.tmpDir,
-          maxFileBytes: Math.max(deps.limits.IMAGE, deps.limits.VIDEO),
-          maxBodyBytes: mediaUploadMaxBodyBytes(deps.limits),
-          fieldNames: ['altText'],
-        });
-        try {
-          const asset = await uploadStagedLibraryMedia(deps, library, {
-            staged,
-            altText: staged.fields.altText?.slice(0, 300) ?? null,
-            userId: principal.userId,
-          });
-          return c.json(asset, 201);
-        } finally {
-          await staged.discard();
-        }
-      } finally {
-        activeUploads -= 1;
-      }
+      const { id } = c.req.valid('param');
+      const detail = await withStagedUpload(c.req.raw, (staged, altText) =>
+        replaceStagedLibraryMedia(deps, library, id, {
+          staged,
+          altText,
+          userId: principal.userId,
+        }),
+      );
+      return c.json(detail);
     },
   );
 

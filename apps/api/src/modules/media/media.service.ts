@@ -63,6 +63,8 @@ export interface MediaServiceDeps {
   limits: Readonly<Record<WebsiteMediaKind, number>>;
   /** Streaming uploads: temp dir for staged files + max. simultaneous uploads per process. */
   uploads?: { tmpDir: string; maxConcurrent: number };
+  /** Called after a replaced file went live (expires the public page cache). */
+  onPublicMediaChanged?: () => Promise<void>;
   /** HEIC → JPEG conversion (worker thread); injectable for tests. */
   convertHeic?: HeicConverter;
 }
@@ -302,25 +304,38 @@ const libraryStorageKey = (library: MediaLibrary, upload: ValidatedUpload) =>
     extension: upload.extension,
   });
 
+interface StoredFile {
+  upload: ValidatedUpload;
+  storageKey: string;
+  sizeBytes: number;
+}
+
+const KIND_LABEL: Record<WebsiteMediaKind, string> = { IMAGE: 'Bild', VIDEO: 'Video' };
+
 /**
- * Large-file path: the upload was streamed to a temp file (upload-receiver.ts). Validation reads
- * only the headers/metadata boxes from disk (bounded memory), then the file is streamed to object
- * storage. The object only exists under its key after a COMPLETE write (drivers guarantee it),
- * and the metadata row is inserted last — a failure at any step leaves nothing published.
- * The caller discards the temp file.
+ * Validates the staged upload (type, size, content signature; HEIC → JPEG) and writes it to
+ * object storage under a NEW server-generated key. Streaming: validation reads only headers /
+ * metadata boxes from disk (bounded memory), the file is streamed to storage, and an object only
+ * exists under its key after a COMPLETE write (drivers guarantee it). The caller records the
+ * metadata row and deletes the object again if that fails. `expectKind`: replacements keep the
+ * kind (a CMS image slot must not suddenly hold a video).
  */
-export async function uploadStagedLibraryMedia(
+async function storeStagedFile(
   deps: MediaServiceDeps,
   library: MediaLibrary,
-  input: { staged: StagedUpload; altText: string | null; userId: string },
-): Promise<AdminMediaAsset> {
-  const { staged } = input;
+  staged: StagedUpload,
+  expectKind?: WebsiteMediaKind,
+): Promise<StoredFile> {
   const kind = checkDeclaredUpload({
     declaredType: staged.declaredType,
     fileName: staged.fileName,
     sizeBytes: staged.sizeBytes,
     limits: deps.limits,
   });
+  if (expectKind && kind !== expectKind) {
+    const label = KIND_LABEL[expectKind];
+    throw AppError.badRequest(`Ein ${label} kann nur durch ein ${label} ersetzt werden.`);
+  }
   const upload = checkSniffedUpload({
     declaredType: staged.declaredType,
     fileName: staged.fileName,
@@ -328,7 +343,7 @@ export async function uploadStagedLibraryMedia(
     sniffed: await sniffMediaFile(staged, staged.sizeBytes),
   });
   if (upload.sniffed.mimeType === 'image/heic') {
-    return storeConvertedHeic(deps, library, { ...input, upload });
+    return storeConvertedHeic(deps, library, staged, upload);
   }
   const storageKey = libraryStorageKey(library, upload);
   await deps.storage.putStream({
@@ -338,31 +353,20 @@ export async function uploadStagedLibraryMedia(
     contentType: upload.sniffed.mimeType,
     visibility: 'PUBLIC',
   });
-  return recordUploadedAsset(deps, library, {
-    upload,
-    storageKey,
-    sizeBytes: staged.sizeBytes,
-    altText: input.altText,
-    userId: input.userId,
-  });
+  return { upload, storageKey, sizeBytes: staged.sizeBytes };
 }
 
 /**
  * iPhone photo (HEIC/HEIF): converted to JPEG (worker thread, metadata incl. GPS dropped) and
- * stored as a normal JPEG asset — browsers can not display HEIC. Images are ≤ 20 MiB, so the
- * file is read into memory for the decoder; pixel count and parallelism are capped there.
+ * stored as a normal JPEG — browsers can not display HEIC. Images are ≤ 20 MiB, so the file is
+ * read into memory for the decoder; pixel count and parallelism are capped there.
  */
 async function storeConvertedHeic(
   deps: MediaServiceDeps,
   library: MediaLibrary,
-  input: {
-    staged: StagedUpload;
-    upload: ValidatedUpload;
-    altText: string | null;
-    userId: string;
-  },
-): Promise<AdminMediaAsset> {
-  const { staged } = input;
+  staged: StagedUpload,
+  original: ValidatedUpload,
+): Promise<StoredFile> {
   const heic = await staged.read(0, staged.sizeBytes);
   const converted = await (deps.convertHeic ?? convertHeicToJpeg)(heic);
   const upload: ValidatedUpload = {
@@ -374,7 +378,7 @@ async function storeConvertedHeic(
       durationMs: null,
       videoCodecs: [],
     },
-    fileName: sanitizeFileName(jpegFileName(input.upload.fileName)),
+    fileName: sanitizeFileName(jpegFileName(original.fileName)),
     extension: 'jpg',
   };
   const storageKey = libraryStorageKey(library, upload);
@@ -385,13 +389,88 @@ async function storeConvertedHeic(
     visibility: 'PUBLIC',
   });
   deps.logger.info({ library, width: converted.width }, 'HEIC photo converted to JPEG');
+  return { upload, storageKey, sizeBytes: converted.jpeg.byteLength };
+}
+
+/**
+ * New asset from a streamed upload (upload-receiver.ts). The metadata row is inserted last — a
+ * failure at any step leaves nothing published. The caller discards the temp file.
+ */
+export async function uploadStagedLibraryMedia(
+  deps: MediaServiceDeps,
+  library: MediaLibrary,
+  input: { staged: StagedUpload; altText: string | null; userId: string },
+): Promise<AdminMediaAsset> {
+  const stored = await storeStagedFile(deps, library, input.staged);
   return recordUploadedAsset(deps, library, {
-    upload,
-    storageKey,
-    sizeBytes: converted.jpeg.byteLength,
+    ...stored,
     altText: input.altText,
     userId: input.userId,
   });
+}
+
+/**
+ * Replaces the FILE of an existing asset (owner request 2026-11-14: media in use must be
+ * replaceable). The asset keeps its id, so every reference — CMS drafts and published versions,
+ * exercises — shows the new file at once without editing content; only the metadata row points
+ * to a new storage key (new key = no stale CDN/browser cache).
+ *
+ * Order: new object written → row switched (only if it still points to the old key, so two
+ * simultaneous replacements can not lose a file) → public page cache expired → old object
+ * deleted. Any failure before the switch removes the new object; the old file stays live.
+ */
+export async function replaceStagedLibraryMedia(
+  deps: MediaServiceDeps,
+  library: MediaLibrary,
+  id: string,
+  input: { staged: StagedUpload; altText: string | null; userId: string },
+): Promise<AdminMediaDetail> {
+  const [current] = await deps.db.select().from(mediaAssets).where(libraryAsset(library, id));
+  if (!current) throw AppError.notFound('Medium nicht gefunden.');
+  const currentKind: WebsiteMediaKind = current.kind === 'VIDEO' ? 'VIDEO' : 'IMAGE';
+  const stored = await storeStagedFile(deps, library, input.staged, currentKind);
+  let switched: { id: string } | undefined;
+  try {
+    [switched] = await deps.db
+      .update(mediaAssets)
+      .set({
+        storageKey: stored.storageKey,
+        fileName: stored.upload.fileName,
+        mimeType: stored.upload.sniffed.mimeType,
+        sizeBytes: stored.sizeBytes,
+        width: stored.upload.sniffed.width,
+        height: stored.upload.sniffed.height,
+        durationMs: stored.upload.sniffed.durationMs,
+        // A new alt text if given, otherwise the asset's existing one stays.
+        altText: input.altText?.trim() || current.altText,
+        uploadedByUserId: input.userId,
+      })
+      .where(and(libraryAsset(library, id), eq(mediaAssets.storageKey, current.storageKey)))
+      .returning({ id: mediaAssets.id });
+  } catch (error) {
+    await deps.storage.delete(stored.storageKey, 'PUBLIC').catch(() => undefined);
+    throw error;
+  }
+  if (!switched) {
+    await deps.storage.delete(stored.storageKey, 'PUBLIC').catch(() => undefined);
+    throw AppError.conflict(
+      'Das Medium wurde inzwischen geändert oder gelöscht. Bitte die Seite neu laden.',
+    );
+  }
+  // The public page caches resolved media URLs: expire it BEFORE the old file disappears.
+  if (deps.onPublicMediaChanged) {
+    await deps.onPublicMediaChanged().catch((error: unknown) => {
+      deps.logger.warn({ err: (error as Error).name }, 'public cache refresh after replace failed');
+    });
+  }
+  await deps.storage.delete(current.storageKey, 'PUBLIC').catch((error: unknown) => {
+    deps.logger.warn(
+      { assetId: id, err: (error as Error).name },
+      'media replaced but old object cleanup failed (orphaned object)',
+    );
+  });
+  deps.logger.info({ assetId: id, kind: current.kind, library }, 'media file replaced');
+  return getLibraryMedia(deps, library, id);
 }
 
 async function recordUploadedAsset(

@@ -30,6 +30,12 @@ function main() {
     'dependencies configured',
   );
 
+  // After a committed public change: expire the web app's cache tag (see revalidation.ts).
+  const revalidateWeb =
+    env.WEB_REVALIDATE_URL && env.REVALIDATE_SECRET
+      ? createWebRevalidationHook({ url: env.WEB_REVALIDATE_URL, secret: env.REVALIDATE_SECRET })
+      : undefined;
+
   const app = createApp({
     logger,
     corsOrigins: env.CORS_ORIGINS,
@@ -54,14 +60,7 @@ function main() {
     website: {
       db: database.db,
       urls,
-      // After a committed public change: expire the web app's cache tag (see revalidation.ts).
-      onPublished:
-        env.WEB_REVALIDATE_URL && env.REVALIDATE_SECRET
-          ? createWebRevalidationHook({
-              url: env.WEB_REVALIDATE_URL,
-              secret: env.REVALIDATE_SECRET,
-            })
-          : undefined,
+      onPublished: revalidateWeb,
     },
     leads: {
       db: database.db,
@@ -75,6 +74,18 @@ function main() {
       storage,
       urls,
       limits: { IMAGE: env.MEDIA_MAX_IMAGE_BYTES, VIDEO: env.MEDIA_MAX_VIDEO_BYTES },
+      // A replaced file changes the resolved media URL on the public page.
+      onPublicMediaChanged: revalidateWeb
+        ? async () => {
+            await revalidateWeb({
+              pageSlug: 'home',
+              sectionKey: 'media',
+              contentRevision: 0,
+              publishedAt: new Date(),
+              reason: 'media',
+            });
+          }
+        : undefined,
       uploads: {
         tmpDir: env.MEDIA_UPLOAD_TMP_DIR ?? join(tmpdir(), 'vitruv-uploads'),
         maxConcurrent: env.MEDIA_UPLOAD_CONCURRENCY,

@@ -50,12 +50,15 @@ export function MediaUploadForm({
   onUploaded,
   compact = false,
   endpoint = '/admin/api/media',
+  replaceId,
 }: {
   kinds?: readonly ('IMAGE' | 'VIDEO')[];
   /** Same-origin upload proxy: website library (default) or training library. */
   endpoint?: '/admin/api/media' | '/admin/api/training-media';
   onUploaded: (asset: AdminMediaAsset) => void;
   compact?: boolean;
+  /** Replace the FILE of this asset (same id, every reference shows the new file). */
+  replaceId?: string;
 }) {
   const id = useId();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -94,7 +97,7 @@ export function MediaUploadForm({
       if (altText.trim()) form.append('altText', altText.trim());
       form.append('file', file);
       const res = await postWithProgress(
-        endpoint,
+        replaceId ? `${endpoint}/${encodeURIComponent(replaceId)}/replace` : endpoint,
         form,
         (loaded, total) => setProgress({ loaded, total }),
         controller.signal,
@@ -113,7 +116,12 @@ export function MediaUploadForm({
         });
         return;
       }
-      setMessage({ tone: 'success', text: `„${asset.data.fileName}“ wurde hochgeladen.` });
+      setMessage({
+        tone: 'success',
+        text: replaceId
+          ? `Datei ersetzt durch „${asset.data.fileName}“.`
+          : `„${asset.data.fileName}“ wurde hochgeladen.`,
+      });
       setAltText('');
       if (fileRef.current) fileRef.current.value = '';
       setFileName('');
@@ -176,7 +184,10 @@ export function MediaUploadForm({
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor={`${id}-alt`} className="type-body-sm font-semibold">
-            Alt-Text <span className="type-caption ml-2 text-fg-subtle">für Bilder empfohlen</span>
+            Alt-Text{' '}
+            <span className="type-caption ml-2 text-fg-subtle">
+              {replaceId ? 'leer lassen = bisheriger bleibt' : 'für Bilder empfohlen'}
+            </span>
           </label>
           <input
             id={`${id}-alt`}
@@ -190,7 +201,7 @@ export function MediaUploadForm({
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <Button type="submit" variant="secondary" icon={<Upload />} loading={busy}>
-          Hochladen
+          {replaceId ? 'Datei ersetzen' : 'Hochladen'}
         </Button>
         {busy && (
           <Button type="button" variant="ghost" onClick={() => abortRef.current?.abort()}>
