@@ -2,6 +2,7 @@ import { WEBSITE_MEDIA_MAX_BYTES } from '@vitruv/shared';
 import { describe, expect, it } from 'vitest';
 import {
   avif,
+  heic,
   html,
   jpeg,
   mp4,
@@ -13,6 +14,7 @@ import {
   windowsExecutable,
 } from '../../../test/media-fixtures';
 import type { AppError } from '../../lib/errors';
+import { colourProfileOf } from './heic-colour';
 import { sniffMedia } from './media-sniff';
 import { sanitizeFileName, validateWebsiteUpload } from './media.service';
 
@@ -63,6 +65,28 @@ describe('sniffMedia', () => {
     const corrupt = mp4({ width: 1, height: 1, durationMs: 1, codec: 'avc1' });
     corrupt.set([0xff, 0xff, 0xff, 0xff], 24);
     expect(() => sniffMedia(corrupt)).not.toThrow();
+  });
+});
+
+describe('HEIC / HEIF (iPhone photos, converted to JPEG)', () => {
+  it('detects HEIF still images with their dimensions', () => {
+    expect(sniffMedia(heic(4032, 3024))).toMatchObject({
+      mimeType: 'image/heic',
+      width: 4032,
+      height: 3024,
+    });
+    expect(sniffMedia(heic(800, 600, 1, 'mif1'))).toMatchObject({ mimeType: 'image/heic' });
+  });
+
+  it('rejects HEIF image sequences (not a photo)', () => {
+    expect(sniffMedia(heic(10, 10, 1, 'msf1'))).toBeNull();
+    expect(sniffMedia(heic(10, 10, 1, 'hevc'))).toBeNull();
+  });
+
+  it('reads the colour space so iPhone (Display P3) colours stay correct', () => {
+    expect(colourProfileOf(heic(10, 10, 12))).toBe('p3');
+    expect(colourProfileOf(heic(10, 10, 1))).toBe('srgb');
+    expect(colourProfileOf(new Uint8Array(32))).toBe('srgb');
   });
 });
 

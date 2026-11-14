@@ -50,6 +50,15 @@ export const WEBSITE_MEDIA_MIME_TYPES = {
 export type WebsiteMediaKind = keyof typeof WEBSITE_MEDIA_MIME_TYPES;
 
 /**
+ * Upload-only image formats that browsers can not display: accepted as input and converted to
+ * JPEG by the API before storing (iPhone photos). Never stored or served in this format.
+ */
+export const WEBSITE_MEDIA_CONVERTIBLE_MIME_TYPES = ['image/heic', 'image/heif'] as const;
+
+/** File extensions of the convertible formats (some browsers report no MIME type for them). */
+export const WEBSITE_MEDIA_CONVERTIBLE_EXTENSIONS = ['heic', 'heif'] as const;
+
+/**
  * Default upload limits for website media (bytes). The API can override them via env
  * (MEDIA_MAX_IMAGE_BYTES / MEDIA_MAX_VIDEO_BYTES); the web upload route reads the same variables
  * so both sides agree. Uploads are streamed end to end — never buffered in memory.
@@ -82,6 +91,9 @@ export const WEBSITE_MEDIA_EXTENSIONS: Readonly<Record<string, string>> = {
 export function websiteMediaKindForMimeType(mimeType: string): WebsiteMediaKind | null {
   const normalized = mimeType.trim().toLowerCase();
   if ((WEBSITE_MEDIA_MIME_TYPES.IMAGE as readonly string[]).includes(normalized)) return 'IMAGE';
+  if ((WEBSITE_MEDIA_CONVERTIBLE_MIME_TYPES as readonly string[]).includes(normalized)) {
+    return 'IMAGE';
+  }
   if ((WEBSITE_MEDIA_MIME_TYPES.VIDEO as readonly string[]).includes(normalized)) return 'VIDEO';
   return null;
 }

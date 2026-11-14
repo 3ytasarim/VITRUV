@@ -25,6 +25,7 @@ import {
   pgErrorCode,
 } from '../../lib/errors';
 import type { Logger } from '../../lib/logger';
+import { convertHeicToJpeg, type HeicConverter } from './heic-convert';
 import { HEVC_CODECS, sniffMedia, sniffMediaFile, type SniffResult } from './media-sniff';
 import type { StagedUpload } from './upload-receiver';
 import type { MediaUrlResolver } from './media-url';
@@ -62,6 +63,8 @@ export interface MediaServiceDeps {
   limits: Readonly<Record<WebsiteMediaKind, number>>;
   /** Streaming uploads: temp dir for staged files + max. simultaneous uploads per process. */
   uploads?: { tmpDir: string; maxConcurrent: number };
+  /** HEIC → JPEG conversion (worker thread); injectable for tests. */
+  convertHeic?: HeicConverter;
 }
 
 type MediaAssetRow = typeof mediaAssets.$inferSelect;
@@ -103,10 +106,25 @@ export function sanitizeFileName(raw: string | undefined): string {
   return (withoutDots || 'upload').slice(0, 180);
 }
 
-const normalizeMime = (mime: string) => {
+/**
+ * Canonical declared type. HEIC/HEIF are one input format; browsers on Windows often send no
+ * type (or octet-stream) for .heic files, so the extension decides there — the bytes are
+ * sniffed afterwards in any case, the declaration never decides alone.
+ */
+const normalizeMime = (mime: string, fileName?: string) => {
   const lower = mime.trim().toLowerCase();
-  return lower === 'image/jpg' || lower === 'image/pjpeg' ? 'image/jpeg' : lower;
+  if (lower === 'image/jpg' || lower === 'image/pjpeg') return 'image/jpeg';
+  if (lower === 'image/heif') return 'image/heic';
+  // (multipart parts without a Content-Type are reported as text/plain by the parser)
+  const untyped = lower === '' || lower === 'application/octet-stream' || lower === 'text/plain';
+  if (untyped && /.hei[cf]$/i.test(fileName ?? '')) {
+    return 'image/heic';
+  }
+  return lower;
 };
+
+/** Display name of a converted HEIC: same name, .jpg extension. */
+const jpegFileName = (name: string) => name.replace(/.hei[cf]$/i, '') + '.jpg';
 
 export interface ValidatedUpload {
   kind: WebsiteMediaKind;
@@ -132,13 +150,16 @@ export function validateWebsiteUpload(input: {
 /** Step 1 (before reading content): allowed declared type and per-kind size limit. */
 export function checkDeclaredUpload(input: {
   declaredType: string;
+  fileName?: string | undefined;
   sizeBytes: number;
   limits: Readonly<Record<WebsiteMediaKind, number>>;
 }): WebsiteMediaKind {
-  const declaredKind = websiteMediaKindForMimeType(normalizeMime(input.declaredType));
+  const declaredKind = websiteMediaKindForMimeType(
+    normalizeMime(input.declaredType, input.fileName),
+  );
   if (!declaredKind) {
     throw AppError.badRequest(
-      'Dateityp nicht erlaubt. Erlaubt sind JPEG, PNG, WebP, AVIF, MP4 und WebM.',
+      'Dateityp nicht erlaubt. Erlaubt sind JPEG, PNG, WebP, AVIF, HEIC, MP4 und WebM.',
     );
   }
   if (input.sizeBytes > input.limits[declaredKind]) {
@@ -157,7 +178,7 @@ export function checkSniffedUpload(input: {
   kind: WebsiteMediaKind;
   sniffed: SniffResult | null;
 }): ValidatedUpload {
-  const declared = normalizeMime(input.declaredType);
+  const declared = normalizeMime(input.declaredType, input.fileName);
   const sniffed = input.sniffed;
   if (!sniffed || sniffed.mimeType !== declared) {
     throw AppError.badRequest('Der Dateiinhalt entspricht nicht dem angegebenen Dateityp.');
@@ -273,40 +294,6 @@ export async function getLibraryMedia(
   };
 }
 
-export interface MediaUploadInput {
-  bytes: Uint8Array;
-  declaredType: string;
-  fileName: string | undefined;
-  altText: string | null;
-  userId: string;
-}
-
-export function uploadWebsiteMedia(deps: MediaServiceDeps, input: MediaUploadInput) {
-  return uploadLibraryMedia(deps, 'WEBSITE', input);
-}
-
-export async function uploadLibraryMedia(
-  deps: MediaServiceDeps,
-  library: MediaLibrary,
-  input: MediaUploadInput,
-): Promise<AdminMediaAsset> {
-  const upload = validateWebsiteUpload({ ...input, limits: deps.limits });
-  const storageKey = libraryStorageKey(library, upload);
-  await deps.storage.put({
-    key: storageKey,
-    body: input.bytes,
-    contentType: upload.sniffed.mimeType,
-    visibility: 'PUBLIC',
-  });
-  return recordUploadedAsset(deps, library, {
-    upload,
-    storageKey,
-    sizeBytes: input.bytes.byteLength,
-    altText: input.altText,
-    userId: input.userId,
-  });
-}
-
 // The key is generated from server-side values only; the client's file name never reaches it.
 const libraryStorageKey = (library: MediaLibrary, upload: ValidatedUpload) =>
   buildStorageKey({
@@ -330,6 +317,7 @@ export async function uploadStagedLibraryMedia(
   const { staged } = input;
   const kind = checkDeclaredUpload({
     declaredType: staged.declaredType,
+    fileName: staged.fileName,
     sizeBytes: staged.sizeBytes,
     limits: deps.limits,
   });
@@ -339,6 +327,9 @@ export async function uploadStagedLibraryMedia(
     kind,
     sniffed: await sniffMediaFile(staged, staged.sizeBytes),
   });
+  if (upload.sniffed.mimeType === 'image/heic') {
+    return storeConvertedHeic(deps, library, { ...input, upload });
+  }
   const storageKey = libraryStorageKey(library, upload);
   await deps.storage.putStream({
     key: storageKey,
@@ -351,6 +342,53 @@ export async function uploadStagedLibraryMedia(
     upload,
     storageKey,
     sizeBytes: staged.sizeBytes,
+    altText: input.altText,
+    userId: input.userId,
+  });
+}
+
+/**
+ * iPhone photo (HEIC/HEIF): converted to JPEG (worker thread, metadata incl. GPS dropped) and
+ * stored as a normal JPEG asset — browsers can not display HEIC. Images are ≤ 20 MiB, so the
+ * file is read into memory for the decoder; pixel count and parallelism are capped there.
+ */
+async function storeConvertedHeic(
+  deps: MediaServiceDeps,
+  library: MediaLibrary,
+  input: {
+    staged: StagedUpload;
+    upload: ValidatedUpload;
+    altText: string | null;
+    userId: string;
+  },
+): Promise<AdminMediaAsset> {
+  const { staged } = input;
+  const heic = await staged.read(0, staged.sizeBytes);
+  const converted = await (deps.convertHeic ?? convertHeicToJpeg)(heic);
+  const upload: ValidatedUpload = {
+    kind: 'IMAGE',
+    sniffed: {
+      mimeType: 'image/jpeg',
+      width: converted.width,
+      height: converted.height,
+      durationMs: null,
+      videoCodecs: [],
+    },
+    fileName: sanitizeFileName(jpegFileName(input.upload.fileName)),
+    extension: 'jpg',
+  };
+  const storageKey = libraryStorageKey(library, upload);
+  await deps.storage.put({
+    key: storageKey,
+    body: converted.jpeg,
+    contentType: 'image/jpeg',
+    visibility: 'PUBLIC',
+  });
+  deps.logger.info({ library, width: converted.width }, 'HEIC photo converted to JPEG');
+  return recordUploadedAsset(deps, library, {
+    upload,
+    storageKey,
+    sizeBytes: converted.jpeg.byteLength,
     altText: input.altText,
     userId: input.userId,
   });

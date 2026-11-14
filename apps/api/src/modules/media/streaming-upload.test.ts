@@ -9,7 +9,7 @@ import type { DbExecutor } from '@vitruv/db';
 import { WEBSITE_MEDIA_MAX_BYTES, mediaUploadMaxBodyBytes } from '@vitruv/shared';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { buildTestApp, principalResolver, testUrls } from '../../../test/helpers';
-import { html, mp4, png } from '../../../test/media-fixtures';
+import { heic, html, mp4, png } from '../../../test/media-fixtures';
 import { localPathFor, type ObjectStorage } from '../../infra/storage/index';
 import { createLocalStorage } from '../../infra/storage/local-storage';
 import type { MediaServiceDeps } from './media.service';
@@ -197,6 +197,7 @@ function setup(
     limits?: MediaServiceDeps['limits'];
     maxConcurrent?: number;
     storage?: ObjectStorage;
+    convertHeic?: MediaServiceDeps['convertHeic'];
   } = {},
 ) {
   const { db, rows } = fakeDb();
@@ -210,6 +211,7 @@ function setup(
       urls: testUrls,
       limits: options.limits ?? WEBSITE_MEDIA_MAX_BYTES,
       uploads: { tmpDir: uploadDir, maxConcurrent: options.maxConcurrent ?? 4 },
+      ...(options.convertHeic ? { convertHeic: options.convertHeic } : {}),
     },
   });
   return { app, rows, storage };
@@ -487,5 +489,113 @@ describe('streaming media upload — concurrency', () => {
     expect((await first).status).toBe(201);
     expect((await second).status).toBe(201);
     expect(rows).toHaveLength(2);
+  });
+});
+
+describe('HEIC upload (iPhone photo → JPEG)', () => {
+  // Stand-in for the libheif worker (no HEIC encoder exists to build a real test photo):
+  // it receives the uploaded bytes and returns a small JPEG.
+  const fakeJpeg = () => new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 0xff, 0xd9]);
+  const converter = () => {
+    const calls: Uint8Array[] = [];
+    const convert = async (bytes: Uint8Array) => {
+      calls.push(bytes);
+      return { jpeg: fakeJpeg(), width: 4032, height: 3024 };
+    };
+    return { calls, convert };
+  };
+
+  it.each([
+    ['image/heic', 'IMG_0420.HEIC'],
+    ['image/heif', 'IMG_0420.heif'],
+    ['application/octet-stream', 'IMG_0420.heic'],
+  ])('converts %j (%s) and stores a JPEG asset', async (declaredType, fileName) => {
+    const { calls, convert } = converter();
+    const { app, rows } = setup({ convertHeic: convert });
+    const head = heic(4032, 3024);
+    const size = 3 * MiB;
+    const res = await app.request(
+      uploadRequest(
+        '/v1/admin/media',
+        multipartBody({ fileType: declaredType, head, size, fileName }),
+      ),
+    );
+    expect(res.status).toBe(201);
+    const asset = adminMediaAssetSchema.parse(await res.json());
+    expect(asset).toMatchObject({
+      kind: 'IMAGE',
+      mimeType: 'image/jpeg',
+      fileName: 'IMG_0420.jpg',
+      width: 4032,
+      height: 3024,
+      sizeBytes: fakeJpeg().length,
+    });
+    expect(calls[0]?.length).toBe(size);
+    const key = String(rows[0]?.storageKey);
+    expect(key).toMatch(/.jpg$/);
+    expect((await stat(localPathFor(storageDir, key, 'PUBLIC'))).size).toBe(fakeJpeg().length);
+  });
+
+  it('accepts a .heic part sent without any Content-Type (Windows browsers)', async () => {
+    const { convert } = converter();
+    const { app } = setup({ convertHeic: convert });
+    const boundary = 'heicboundary';
+    const head = heic(100, 80);
+    const body = new Uint8Array([
+      // No Content-Type header on the file part (what some browsers send for .heic).
+      ...enc(
+        `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="IMG_1.HEIC"\r\n\r\n`,
+      ),
+      ...head,
+      ...enc(`\r\n--${boundary}--\r\n`),
+    ]);
+    const res = await app.request('/v1/admin/media', {
+      method: 'POST',
+      headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}` },
+      body,
+    });
+    const json: unknown = await res.json();
+    expect({ status: res.status, json }).toMatchObject({
+      status: 201,
+      json: { mimeType: 'image/jpeg', fileName: 'IMG_1.jpg' },
+    });
+  });
+
+  it('rejects a HEIF image sequence and a fake .heic', async () => {
+    const { calls, convert } = converter();
+    const { app, rows } = setup({ convertHeic: convert });
+    for (const head of [heic(10, 10, 1, 'msf1'), png(10, 10)]) {
+      const res = await app.request(
+        uploadRequest(
+          '/v1/admin/media',
+          multipartBody({ fileType: 'image/heic', head, size: 4096, fileName: 'x.heic' }),
+        ),
+      );
+      expect(res.status).toBe(400);
+    }
+    expect(calls).toHaveLength(0);
+    expect(rows).toHaveLength(0);
+  });
+
+  it('a failed conversion stores nothing', async () => {
+    const { app, rows } = setup({
+      convertHeic: async () => {
+        throw new Error('decoder crashed');
+      },
+    });
+    const res = await app.request(
+      uploadRequest(
+        '/v1/admin/media',
+        multipartBody({
+          fileType: 'image/heic',
+          head: heic(10, 10),
+          size: 4096,
+          fileName: 'a.heic',
+        }),
+      ),
+    );
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(rows).toHaveLength(0);
+    expect(await storedFiles()).toEqual([]);
   });
 });

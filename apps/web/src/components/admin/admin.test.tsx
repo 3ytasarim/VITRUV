@@ -39,7 +39,7 @@ const { SectionEditor } = await import('./editor/section-editor');
 const { MediaIndexProvider } = await import('./media/media-index');
 const { MediaPickerGrid } = await import('./media/media-picker');
 const { MediaLibrary } = await import('./media/media-library');
-const { describeMedia, precheckUpload } = await import('./media/media-format');
+const { acceptAttribute, describeMedia, precheckUpload } = await import('./media/media-format');
 const { SectionPreview } = await import('./preview/section-preview');
 const { AdminNav } = await import('./admin-nav');
 
@@ -299,6 +299,16 @@ describe('media picker and library', () => {
     expect(precheckUpload({ type: 'image/png', size: 30 * 1024 * 1024 })).toMatch(/zu groß/);
     expect(precheckUpload({ type: 'video/mp4', size: 10 }, ['IMAGE'])).toMatch(/JPEG/);
     expect(precheckUpload({ type: 'image/webp', size: 10 })).toBeNull();
+    expect(acceptAttribute(['IMAGE'])).toContain('.heic');
+    expect(acceptAttribute(['VIDEO'])).not.toContain('heic');
+    // iPhone photos: accepted (the API converts them to JPEG), also without a MIME type.
+    expect(precheckUpload({ type: 'image/heic', size: 10, name: 'IMG_0001.HEIC' })).toBeNull();
+    expect(precheckUpload({ type: 'image/heif', size: 10, name: 'a.heif' })).toBeNull();
+    expect(precheckUpload({ type: '', size: 10, name: 'IMG_0002.heic' })).toBeNull();
+    expect(precheckUpload({ type: '', size: 10, name: 'notes.txt' })).toMatch(/nicht erlaubt/);
+    expect(precheckUpload({ type: 'image/heic', size: 10, name: 'a.heic' }, ['VIDEO'])).toMatch(
+      /nicht erlaubt/,
+    );
   });
 });
 

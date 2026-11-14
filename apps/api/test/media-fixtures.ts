@@ -97,3 +97,19 @@ export function webm() {
 export const html = () => bytes(text('<!doctype html><script>alert(1)</script>'));
 export const svg = () => bytes(text('<svg xmlns="http://www.w3.org/2000/svg"></svg>'));
 export const windowsExecutable = () => bytes(text('MZ'), zeros(62), text('PE'), zeros(16));
+
+/**
+ * HEIF still-image header (iPhone layout: major brand 'heic', meta/iprp/ipco with ispe + colr).
+ * Header only — enough for detection; decoding is covered with an injected converter.
+ */
+export function heic(width: number, height: number, primaries = 12, major = 'heic') {
+  const colr = box('colr', text('nclx'), [0, primaries, 0, 13, 0, 6, 0]);
+  return bytes(
+    box('ftyp', text(major), u32(0), text('mif1'), text('heic')),
+    box(
+      'meta',
+      zeros(4),
+      box('iprp', box('ipco', box('ispe', zeros(4), u32(width), u32(height)), colr)),
+    ),
+  );
+}

@@ -6,7 +6,15 @@
  * and never decodes or executes media.
  */
 export interface SniffResult {
-  mimeType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/avif' | 'video/mp4' | 'video/webm';
+  /** image/heic = HEIF still image (iPhone) — accepted for conversion to JPEG, never stored. */
+  mimeType:
+    | 'image/jpeg'
+    | 'image/png'
+    | 'image/webp'
+    | 'image/avif'
+    | 'image/heic'
+    | 'video/mp4'
+    | 'video/webm';
   width: number | null;
   height: number | null;
   durationMs: number | null;
@@ -151,23 +159,27 @@ function sniffIsoBmff(bytes: Uint8Array): SniffResult | null {
   for (let o = ftyp.start + 8; o + 4 <= ftyp.end; o += 4) brands.push(ascii(bytes, o, 4));
   const r = reader(bytes);
 
-  if (brands.includes('avif') || brands.includes('avis')) {
-    // Image spatial extent ('ispe') lives in meta/iprp/ipco; take the first one.
-    let width: number | null = null;
-    let height: number | null = null;
+  // Image spatial extent ('ispe') lives in meta/iprp/ipco; take the first one.
+  const extent = () => {
     for (let o = ftyp.end; o + 16 <= bytes.length; o++) {
       if (ascii(bytes, o, 4) === 'ispe') {
-        width = positive(r.u32be(o + 8));
-        height = positive(r.u32be(o + 12));
-        break;
+        return { width: positive(r.u32be(o + 8)), height: positive(r.u32be(o + 12)) };
       }
     }
-    return { mimeType: 'image/avif', width, height, durationMs: null, videoCodecs: [] };
+    return { width: null, height: null };
+  };
+
+  if (brands.includes('avif') || brands.includes('avis')) {
+    return { mimeType: 'image/avif', ...extent(), durationMs: null, videoCodecs: [] };
   }
 
-  // QuickTime (.mov) and still-image HEIF containers are not website video formats.
   const major = brands[0] ?? '';
-  if (major === 'qt  ' || ['heic', 'heix', 'mif1', 'msf1'].includes(major)) return null;
+  // HEIF still images (iPhone photos): accepted only to be converted to JPEG by the API.
+  if (['heic', 'heix', 'heim', 'heis', 'mif1'].includes(major)) {
+    return { mimeType: 'image/heic', ...extent(), durationMs: null, videoCodecs: [] };
+  }
+  // QuickTime (.mov) and HEIF image sequences are not website formats.
+  if (major === 'qt  ' || ['msf1', 'hevc', 'hevx'].includes(major)) return null;
 
   let durationMs: number | null = null;
   let width: number | null = null;

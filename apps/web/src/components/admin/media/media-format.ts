@@ -1,5 +1,7 @@
 import type { AdminMediaAsset } from '@vitruv/contracts';
 import {
+  WEBSITE_MEDIA_CONVERTIBLE_EXTENSIONS,
+  WEBSITE_MEDIA_CONVERTIBLE_MIME_TYPES,
   WEBSITE_MEDIA_MAX_BYTES,
   WEBSITE_MEDIA_MIME_TYPES,
   websiteMediaKindForMimeType,
@@ -33,7 +35,27 @@ export function describeMedia(
 export function acceptAttribute(
   kinds: readonly ('IMAGE' | 'VIDEO')[] = ['IMAGE', 'VIDEO'],
 ): string {
-  return kinds.flatMap((kind) => WEBSITE_MEDIA_MIME_TYPES[kind]).join(',');
+  const types: string[] = kinds.flatMap((kind) => WEBSITE_MEDIA_MIME_TYPES[kind]);
+  if (kinds.includes('IMAGE')) {
+    // iPhone photos (converted to JPEG by the API); extensions too, because some systems
+    // (Windows) report no MIME type for .heic files.
+    types.push(
+      ...WEBSITE_MEDIA_CONVERTIBLE_MIME_TYPES,
+      ...WEBSITE_MEDIA_CONVERTIBLE_EXTENSIONS.map((ext) => `.${ext}`),
+    );
+  }
+  return types.join(',');
+}
+
+/** Kind of a chosen file: MIME type, or for HEIC/HEIF without a type the file extension. */
+function kindOfFile(file: { type: string; name?: string }) {
+  const kind = websiteMediaKindForMimeType(file.type);
+  if (kind) return kind;
+  const ext = file.name?.split('.').pop()?.toLowerCase() ?? '';
+  const untyped = file.type === '' || file.type === 'application/octet-stream';
+  return untyped && (WEBSITE_MEDIA_CONVERTIBLE_EXTENSIONS as readonly string[]).includes(ext)
+    ? 'IMAGE'
+    : null;
 }
 
 /**
@@ -41,16 +63,16 @@ export function acceptAttribute(
  * Returns a German error message or null.
  */
 export function precheckUpload(
-  file: { type: string; size: number },
+  file: { type: string; size: number; name?: string },
   kinds: readonly ('IMAGE' | 'VIDEO')[] = ['IMAGE', 'VIDEO'],
 ): string | null {
-  const kind = websiteMediaKindForMimeType(file.type);
+  const kind = kindOfFile(file);
   if (!kind || !kinds.includes(kind)) {
     const allowed = kinds.includes('VIDEO')
       ? kinds.includes('IMAGE')
-        ? 'JPEG, PNG, WebP, AVIF, MP4 oder WebM'
+        ? 'JPEG, PNG, WebP, AVIF, HEIC, MP4 oder WebM'
         : 'MP4 oder WebM'
-      : 'JPEG, PNG, WebP oder AVIF';
+      : 'JPEG, PNG, WebP, AVIF oder HEIC';
     return `Dateityp nicht erlaubt. Erlaubt: ${allowed}.`;
   }
   if (file.size > WEBSITE_MEDIA_MAX_BYTES[kind]) {
@@ -65,7 +87,7 @@ const mb = (bytes: number) => `${Math.round(bytes / 1024 / 1024)} MB`;
 export function uploadLimitHint(
   kinds: readonly ('IMAGE' | 'VIDEO')[] = ['IMAGE', 'VIDEO'],
 ): string {
-  const image = `JPEG, PNG, WebP oder AVIF, max. ${mb(WEBSITE_MEDIA_MAX_BYTES.IMAGE)}`;
+  const image = `JPEG, PNG, WebP, AVIF oder HEIC (wird zu JPEG), max. ${mb(WEBSITE_MEDIA_MAX_BYTES.IMAGE)}`;
   const video = `MP4 (H.264) oder WebM, max. ${mb(WEBSITE_MEDIA_MAX_BYTES.VIDEO)}`;
   if (kinds.includes('IMAGE') && kinds.includes('VIDEO'))
     return `Bilder: ${image} · Videos: ${video}`;
