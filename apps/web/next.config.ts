@@ -70,6 +70,13 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  experimental: {
+    // src/proxy.ts runs on /admin/api/* (session refresh + origin check), and Next buffers the
+    // request body for the proxy — by default only the first 10 MB, the rest is silently cut off.
+    // That broke every media/nutrition upload over 10 MB (truncated multipart → API error).
+    // Must cover the largest upload: video 100 MB (WEBSITE_MEDIA_MAX_BYTES) + 1 MB multipart overhead.
+    proxyClientMaxBodySize: 101 * 1024 * 1024,
+  },
   // Internal workspace packages are published as TypeScript source.
   transpilePackages: ['@vitruv/contracts', '@vitruv/design-tokens', '@vitruv/shared'],
   images: {
