@@ -1,6 +1,7 @@
 'use server';
 
 import {
+  focalPointSchema,
   sectionKeySchema,
   type AdminMediaDetail,
   type AdminMediaList,
@@ -83,7 +84,20 @@ export async function updateMediaAltAction(
   const i = idSchema.safeParse(id);
   const a = z.string().max(300).nullable().safeParse(altText);
   if (!i.success || !a.success) return invalid('Ungültige Anfrage.');
-  const result = toAction(await adminApi.updateMedia(i.data, a.data));
+  const result = toAction(await adminApi.updateMedia(i.data, { altText: a.data }));
+  if (result.ok) revalidatePath('/admin/website/medien');
+  return result;
+}
+
+/** Default image section of a library asset (null = centred); used by placements without their own. */
+export async function updateMediaFocalAction(
+  id: string,
+  focalPoint: { x: number; y: number } | null,
+): Promise<ActionResult<AdminMediaDetail>> {
+  const i = idSchema.safeParse(id);
+  const f = focalPointSchema.nullable().safeParse(focalPoint);
+  if (!i.success || !f.success) return invalid('Ungültige Anfrage.');
+  const result = toAction(await adminApi.updateMedia(i.data, { focalPoint: f.data }));
   if (result.ok) revalidatePath('/admin/website/medien');
   return result;
 }

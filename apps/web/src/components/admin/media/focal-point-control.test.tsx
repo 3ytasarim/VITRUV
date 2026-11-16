@@ -21,6 +21,7 @@ const image: AdminMediaAsset = {
   createdAt: '2026-10-15T10:00:00.000Z',
   updatedAt: '2026-10-15T10:00:00.000Z',
   usageCount: 0,
+  focalPoint: null,
 };
 
 afterEach(cleanup);
@@ -117,5 +118,45 @@ describe('CmsMedia focal points', () => {
     const html = renderToStaticMarkup(<CmsMedia slot={{ desktop: resolved() }} />);
     expect(html).not.toContain('object-position');
     expect(html).not.toContain('data-focal-mobile');
+  });
+});
+
+describe('FocalPointControl with a Medien default', () => {
+  it('shows the inherited section and resets to it', () => {
+    const onChange = vi.fn<(ref: MediaRef) => void>();
+    const withDefault = { ...image, focalPoint: { x: 0.3, y: 0.6 } };
+    const { rerender } = render(
+      <FocalPointControl
+        refValue={{ assetId: image.id }}
+        asset={withDefault}
+        onChange={onChange}
+      />,
+    );
+    expect(screen.getByText(/Horizontal 30 % · Vertikal 60 %/)).toBeTruthy();
+    expect(screen.getByText(/Übernimmt den Ausschnitt aus den Medien/)).toBeTruthy();
+    // Moving starts from the inherited value and stores an own section.
+    fireEvent.click(screen.getByRole('button', { name: 'Ausschnitt nach rechts' }));
+    expect(onChange).toHaveBeenLastCalledWith({
+      assetId: image.id,
+      focalPoint: { x: 0.35, y: 0.6 },
+    });
+
+    rerender(
+      <FocalPointControl
+        refValue={{ assetId: image.id, focalPoint: { x: 0.35, y: 0.6 } }}
+        asset={withDefault}
+        onChange={onChange}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Wie in Medien' }));
+    expect(onChange).toHaveBeenLastCalledWith({ assetId: image.id });
+  });
+
+  it('says when the format leaves nothing to move', () => {
+    render(<FocalPointControl refValue={{ assetId: image.id }} asset={image} onChange={vi.fn()} />);
+    // 1600×900 is 16:9 → the default 16:9 frame shows the whole image.
+    expect(screen.getByText(/nichts zu verschieben/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Hoch 4:5' }));
+    expect(screen.getByText(/nach links und rechts verschieben/)).toBeTruthy();
   });
 });

@@ -52,10 +52,8 @@ export function dragFocalPoint(
 const percent = (value: number) => `${Math.round(value * 100)} %`;
 
 /**
- * Image section of ONE placement (owner request 2026-11-17): the editor drags the image inside a
- * frame (or uses the arrow buttons / keys) until the visible part fits, then saves the content.
- * Stored as `focalPoint` (0..1) on the media reference; the site renders it as `object-position`.
- * The file itself is never changed. No focal point = centred (default).
+ * Image section of ONE placement (owner request 2026-11-17), stored as `focalPoint` on the media
+ * reference. Without its own, the placement uses the asset's default from Medien (shown here).
  */
 export function FocalPointControl({
   refValue,
@@ -66,21 +64,60 @@ export function FocalPointControl({
   asset: AdminMediaAsset;
   onChange: (ref: MediaRef) => void;
 }) {
+  return (
+    <FocalPointEditor
+      asset={asset}
+      value={refValue.focalPoint ?? null}
+      fallback={asset.focalPoint}
+      hint={
+        refValue.focalPoint || !asset.focalPoint
+          ? 'Bild im Rahmen ziehen (oder Pfeiltasten), bis der sichtbare Teil passt — danach den Inhalt speichern bzw. veröffentlichen.'
+          : 'Übernimmt den Ausschnitt aus den Medien. Ziehen legt einen eigenen Ausschnitt nur für diese Stelle fest.'
+      }
+      resetLabel={asset.focalPoint ? 'Wie in Medien' : 'Mitte'}
+      onChange={(next) => {
+        const rest = { ...refValue };
+        delete rest.focalPoint;
+        onChange(next ? { ...rest, focalPoint: next } : rest);
+      }}
+    />
+  );
+}
+
+/**
+ * Frame editor (owner request 2026-11-17): the editor drags the image inside a frame (or uses the
+ * arrow buttons / keys) until the visible part fits. The value is an object-position (0..1); the
+ * file itself is never changed. `null` = no own value → `fallback` (or centred) is shown.
+ */
+export function FocalPointEditor({
+  asset,
+  value,
+  fallback = null,
+  hint,
+  resetLabel = 'Mitte',
+  onChange,
+}: {
+  asset: Pick<AdminMediaAsset, 'kind' | 'url' | 'width' | 'height'>;
+  value: Point | null;
+  fallback?: Point | null;
+  hint: string;
+  resetLabel?: string;
+  onChange: (point: Point | null) => void;
+}) {
   const id = useId();
   const frameRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ pointerId: number; x: number; y: number; start: Point } | null>(null);
   const [format, setFormat] = useState<FormatKey>('wide');
-  const point = refValue.focalPoint ?? CENTER;
+  const point = value ?? fallback ?? CENTER;
   const ratio = FORMATS.find((f) => f.key === format)?.ratio ?? 16 / 9;
   const media = { width: asset.width ?? 1600, height: asset.height ?? 900 };
 
-  const set = (next: Point | null) => {
-    const rest = { ...refValue };
-    delete rest.focalPoint;
-    onChange(
-      next && (next.x !== CENTER.x || next.y !== CENTER.y) ? { ...rest, focalPoint: next } : rest,
-    );
-  };
+  // Centred without a fallback = nothing to store (default rendering).
+  const set = (next: Point | null) =>
+    onChange(next && (fallback || next.x !== CENTER.x || next.y !== CENTER.y) ? next : null);
+  const mediaRatio = media.width / media.height;
+  const movable =
+    Math.abs(mediaRatio - ratio) < 0.01 ? 'none' : mediaRatio > ratio ? 'horizontal' : 'vertical';
   const nudge = (dx: number, dy: number) =>
     set({ x: round(clamp(point.x + dx)), y: round(clamp(point.y + dy)) });
 
@@ -139,8 +176,7 @@ export function FocalPointControl({
           Bildausschnitt
         </p>
         <p id={`${id}-hint`} className="type-caption text-fg-subtle">
-          Bild im Rahmen ziehen (oder Pfeiltasten), bis der sichtbare Teil passt — danach den Inhalt
-          speichern bzw. veröffentlichen. Die Datei selbst bleibt unverändert.
+          {hint} Die Datei selbst bleibt unverändert.
         </p>
       </div>
       <div className="flex flex-wrap gap-2" role="group" aria-label="Vorschau-Format">
@@ -189,6 +225,13 @@ export function FocalPointControl({
           />
         )}
       </div>
+      <p className="type-caption text-fg-muted" aria-live="polite">
+        {movable === 'none'
+          ? 'In diesem Format ist das ganze Bild sichtbar — nichts zu verschieben. Anderes Format wählen.'
+          : movable === 'horizontal'
+            ? 'In diesem Format lässt sich das Bild nach links und rechts verschieben.'
+            : 'In diesem Format lässt sich das Bild nach oben und unten verschieben.'}
+      </p>
       <div className="flex flex-wrap items-center gap-2">
         <Button
           variant="secondary"
@@ -217,10 +260,10 @@ export function FocalPointControl({
         <Button
           variant="ghost"
           icon={<RotateCcw />}
-          disabled={!refValue.focalPoint}
-          onClick={() => set(null)}
+          disabled={!value}
+          onClick={() => onChange(null)}
         >
-          Mitte
+          {resetLabel}
         </Button>
         <span id={`${id}-value`} className="type-caption text-fg-subtle" aria-live="polite">
           Horizontal {percent(point.x)} · Vertikal {percent(point.y)}

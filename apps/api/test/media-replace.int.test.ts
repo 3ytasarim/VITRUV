@@ -147,6 +147,52 @@ describe.skipIf(!databaseUrl)('media replace (integration, rolled back)', () => 
     });
   });
 
+  it('stores a default image section in Medien that placements without their own inherit', async () => {
+    await inRollback(handle, async (tx) => {
+      const { app, saveDraft, publish, publicPage, onPublicMediaChanged } = await setup(tx);
+      const asset = await createAsset(tx);
+      const other = await createAsset(tx);
+      const patch = (id: string, body: unknown) =>
+        app.request(`/v1/admin/media/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+      const saved = await patch(asset.id, { focalPoint: { x: 0.25, y: 0.8 } });
+      expect(saved.status).toBe(200);
+      expect(await saved.json()).toMatchObject({
+        focalPoint: { x: 0.25, y: 0.8 },
+        altText: 'Athlet beim Training', // untouched
+      });
+      expect(onPublicMediaChanged).toHaveBeenCalledTimes(1);
+      expect((await patch(asset.id, { focalPoint: { x: 2, y: 0 } })).status).toBe(400);
+      expect((await patch(asset.id, {})).status).toBe(400);
+
+      // hero: inherits the default; second slot: own section wins.
+      await saveDraft(
+        hero('Ausschnitt', {
+          media: {
+            desktop: { assetId: asset.id },
+            mobile: { assetId: other.id, focalPoint: { x: 0.1, y: 0.2 } },
+          },
+        }),
+      );
+      expect((await publish()).status).toBe(200);
+      const page = (await (await publicPage()).json()) as {
+        sections: { content: { media: Record<string, { focalPoint?: unknown }> } }[];
+      };
+      const media = must(page.sections[0]).content.media;
+      expect(media.desktop?.focalPoint).toEqual({ x: 0.25, y: 0.8 });
+      expect(media.mobile?.focalPoint).toEqual({ x: 0.1, y: 0.2 });
+
+      // Centred = no default.
+      expect(await (await patch(asset.id, { focalPoint: null })).json()).toMatchObject({
+        focalPoint: null,
+      });
+    });
+  });
+
   it('updates the alt text when one is sent', async () => {
     await inRollback(handle, async (tx) => {
       const { app } = await setup(tx);

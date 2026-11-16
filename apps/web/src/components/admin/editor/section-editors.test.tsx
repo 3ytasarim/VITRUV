@@ -40,6 +40,7 @@ const image: AdminMediaAsset = {
   createdAt: '2026-10-15T10:00:00.000Z',
   updatedAt: '2026-10-15T10:00:00.000Z',
   usageCount: 0,
+  focalPoint: null,
 };
 
 const summary = (type: WebsiteSectionType, hasDraft = false): WebsiteSectionSummary => ({

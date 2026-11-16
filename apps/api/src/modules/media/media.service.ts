@@ -87,6 +87,10 @@ export function toAdminMediaDto(
     height: asset.height,
     durationMs: asset.durationMs,
     altText: asset.altText,
+    focalPoint:
+      typeof asset.focalX === 'number' && typeof asset.focalY === 'number'
+        ? { x: asset.focalX, y: asset.focalY }
+        : null,
     url: urls.publicUrl(asset.storageKey),
     createdAt: asset.createdAt.toISOString(),
     updatedAt: asset.updatedAt.toISOString(),
@@ -523,12 +527,30 @@ export async function updateLibraryMedia(
   id: string,
   patch: UpdateMediaRequest,
 ): Promise<AdminMediaDetail> {
+  const set: Partial<typeof mediaAssets.$inferInsert> = {};
+  if (patch.altText !== undefined) set.altText = patch.altText?.trim() || null;
+  if (patch.focalPoint !== undefined) {
+    // Stored rounded; centred = no default (null).
+    const point = patch.focalPoint;
+    const centred = !point || (point.x === 0.5 && point.y === 0.5);
+    set.focalX = centred ? null : Math.round(point.x * 1000) / 1000;
+    set.focalY = centred ? null : Math.round(point.y * 1000) / 1000;
+  }
   const [updated] = await deps.db
     .update(mediaAssets)
-    .set({ altText: patch.altText?.trim() || null })
+    .set(set)
     .where(libraryAsset(library, id))
     .returning({ id: mediaAssets.id });
   if (!updated) throw AppError.notFound('Medium nicht gefunden.');
+  // The default image section shows on the public page wherever a placement has none of its own.
+  if (patch.focalPoint !== undefined && deps.onPublicMediaChanged) {
+    await deps.onPublicMediaChanged().catch((error: unknown) => {
+      deps.logger.warn(
+        { err: (error as Error).name },
+        'public cache refresh after media edit failed',
+      );
+    });
+  }
   return getLibraryMedia(deps, library, id);
 }
 

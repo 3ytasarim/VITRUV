@@ -275,7 +275,12 @@ function resolveRef(
     width: asset.width,
     height: asset.height,
     altText: ref.altText ?? asset.altText ?? '',
-    ...(ref.focalPoint ? { focalPoint: ref.focalPoint } : {}),
+    // The placement's own image section wins; otherwise the asset's default (Medien).
+    ...(ref.focalPoint
+      ? { focalPoint: ref.focalPoint }
+      : typeof asset.focalX === 'number' && typeof asset.focalY === 'number'
+        ? { focalPoint: { x: asset.focalX, y: asset.focalY } }
+        : {}),
   };
 }
 

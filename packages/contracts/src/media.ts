@@ -3,6 +3,13 @@ import { z } from 'zod';
 
 const isoDate = z.iso.datetime({ offset: true });
 
+/** Image section as object-position (0..1 from left / top). */
+export const focalPointSchema = z.object({
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+});
+export type FocalPoint = z.infer<typeof focalPointSchema>;
+
 /** Public representation of a media_assets row. `storageKey` stays server-side. */
 export const mediaAssetSchema = z.object({
   id: z.uuid(),
@@ -36,6 +43,8 @@ export type MediaUsage = z.infer<typeof mediaUsageSchema>;
 /** Admin media library entry. */
 export const adminMediaAssetSchema = mediaAssetSchema.extend({
   usageCount: z.number().int().nonnegative(),
+  /** Default image section for placements without their own (null = centred). */
+  focalPoint: focalPointSchema.nullable().default(null),
 });
 export type AdminMediaAsset = z.infer<typeof adminMediaAssetSchema>;
 
@@ -56,8 +65,14 @@ export const mediaListQuerySchema = z.object({
 });
 
 /** PATCH /v1/admin/media/:id — only editorial metadata is editable; the file is immutable. */
-export const updateMediaRequestSchema = z.object({
-  /** null = no default alt text (placements must then provide one or mark the image decorative). */
-  altText: z.string().trim().max(300).nullable(),
-});
+export const updateMediaRequestSchema = z
+  .object({
+    /** null = no default alt text (placements must then provide one or mark the image decorative). */
+    altText: z.string().trim().max(300).nullable().optional(),
+    /** Default image section of the asset; null = centred. */
+    focalPoint: focalPointSchema.nullable().optional(),
+  })
+  .refine((patch) => patch.altText !== undefined || patch.focalPoint !== undefined, {
+    message: 'Nothing to update.',
+  });
 export type UpdateMediaRequest = z.infer<typeof updateMediaRequestSchema>;

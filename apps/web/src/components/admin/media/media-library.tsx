@@ -9,10 +9,12 @@ import {
   deleteMediaBulkAction,
   mediaDetailAction,
   updateMediaAltAction,
+  updateMediaFocalAction,
 } from '@/app/admin/website-actions';
 import { Badge, Button, Card, cx } from '@/components/ui';
 import { SECTION_LABELS, formatDateTime } from '../section-registry';
 import { EmptyState } from '../states';
+import { FocalPointEditor } from './focal-point-control';
 import { describeMedia } from './media-format';
 import { MediaThumb } from './media-thumb';
 import { MediaUploadForm } from './media-upload-form';
@@ -53,7 +55,9 @@ function MediaDetails({
   const [detail, setDetail] = useState<AdminMediaDetail | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [alt, setAlt] = useState(asset.altText ?? '');
-  const [busy, setBusy] = useState<'alt' | 'delete' | null>(null);
+  const [busy, setBusy] = useState<'alt' | 'focal' | 'delete' | null>(null);
+  // Unsaved image section (null = centred / none); saved = asset.focalPoint.
+  const [focal, setFocal] = useState(asset.focalPoint);
   const [confirming, setConfirming] = useState(false);
   const [replacing, setReplacing] = useState(false);
   const [message, setMessage] = useState<{
@@ -87,6 +91,23 @@ function MediaDetails({
     onChanged(result.data);
     setMessage({ tone: 'success', text: 'Alt-Text gespeichert.' });
   }
+
+  async function saveFocal() {
+    setBusy('focal');
+    const result = await updateMediaFocalAction(asset.id, focal);
+    setBusy(null);
+    if (!result.ok) {
+      setMessage({ tone: 'error', text: result.message });
+      return;
+    }
+    setDetail(result.data);
+    setFocal(result.data.focalPoint);
+    onChanged(result.data);
+    setMessage({ tone: 'success', text: 'Bildausschnitt gespeichert.' });
+  }
+  const focalDirty =
+    (focal?.x ?? 0.5) !== (asset.focalPoint?.x ?? 0.5) ||
+    (focal?.y ?? 0.5) !== (asset.focalPoint?.y ?? 0.5);
 
   async function remove() {
     setBusy('delete');
@@ -167,6 +188,27 @@ function MediaDetails({
               onClick={saveAlt}
             >
               Alt-Text speichern
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {(asset.kind === 'IMAGE' || asset.kind === 'VIDEO') && (
+        <div className="flex flex-col gap-3">
+          <FocalPointEditor
+            asset={asset}
+            value={focal}
+            hint="Bild im Rahmen ziehen (oder Pfeiltasten), bis der sichtbare Teil passt, dann „Ausschnitt speichern“. Gilt überall, wo dieses Medium ohne eigenen Ausschnitt eingesetzt ist."
+            onChange={setFocal}
+          />
+          <div>
+            <Button
+              variant="secondary"
+              loading={busy === 'focal'}
+              disabled={busy !== null || !focalDirty}
+              onClick={saveFocal}
+            >
+              Ausschnitt speichern
             </Button>
           </div>
         </div>

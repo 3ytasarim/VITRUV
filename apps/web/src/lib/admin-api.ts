@@ -14,6 +14,7 @@ import {
   type CreateClientRequest,
   type CreateCoachRequest,
   type UpdateClientRequest,
+  type UpdateMediaRequest,
   type UpdateCoachRequest,
   adminMediaDetailSchema,
   adminMediaListSchema,
@@ -119,10 +120,10 @@ export const adminApi = {
   mediaList: (kind?: 'IMAGE' | 'VIDEO') =>
     adminFetch(`/v1/admin/media${kind ? `?kind=${kind}` : ''}`, adminMediaListSchema),
   media: (id: string) => adminFetch(`/v1/admin/media/${id}`, adminMediaDetailSchema),
-  updateMedia: (id: string, altText: string | null) =>
+  updateMedia: (id: string, patch: UpdateMediaRequest) =>
     adminFetch(`/v1/admin/media/${id}`, adminMediaDetailSchema, {
       method: 'PATCH',
-      body: { altText },
+      body: patch,
     }),
   deleteMedia: (id: string) => adminFetch(`/v1/admin/media/${id}`, null, { method: 'DELETE' }),
   // ---- coach & client management (Sprint 5) — scoped and authorised by the API

@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { bigint, check, index, integer, pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import { bigint, check, index, integer, pgTable, real, text, uuid } from 'drizzle-orm/pg-core';
 import { timestamps } from './columns';
 import { mediaKind, mediaPurpose, mediaVisibility } from './enums';
 import { users } from './users';
@@ -26,6 +26,9 @@ export const mediaAssets = pgTable(
     height: integer('height'),
     durationMs: integer('duration_ms'),
     altText: text('alt_text'),
+    // Default image section (0..1, object-position) for every placement without its own; both or none.
+    focalX: real('focal_x'),
+    focalY: real('focal_y'),
     uploadedByUserId: uuid('uploaded_by_user_id').references(() => users.id, {
       onDelete: 'set null',
     }),
@@ -39,6 +42,10 @@ export const mediaAssets = pgTable(
     check('media_assets_width_positive', sql`${table.width} > 0`),
     check('media_assets_height_positive', sql`${table.height} > 0`),
     check('media_assets_duration_nonnegative', sql`${table.durationMs} >= 0`),
+    check(
+      'media_assets_focal_point',
+      sql`(${table.focalX} IS NULL AND ${table.focalY} IS NULL) OR (${table.focalX} BETWEEN 0 AND 1 AND ${table.focalY} BETWEEN 0 AND 1)`,
+    ),
   ],
 );
 
