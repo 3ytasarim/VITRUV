@@ -865,3 +865,31 @@
     transition: none;
   }
 }
+
+/* ---- Image section of a placement (focal point editor) ----------------------------------------- */
+.vt-focal-frame {
+  position: relative;
+  /* Tall formats get narrower so every shape fits about the same height. */
+  inline-size: min(100%, calc(24rem * var(--vt-focal-ratio, 1.78)), 32rem);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-sunken);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.vt-focal-frame:active {
+  cursor: grabbing;
+}
+.vt-focal-frame:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+.vt-focal-frame__media {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}

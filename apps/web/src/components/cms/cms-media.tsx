@@ -1,5 +1,6 @@
 import type { ResolvedMedia, ResolvedMediaSlot } from '@vitruv/contracts';
 import { getImageProps } from 'next/image';
+import type { CSSProperties } from 'react';
 import { AmbientVideo } from './ambient-video';
 
 /** Below this width the optional mobile variant of a slot is used. Matches Tailwind `md`. */
@@ -76,13 +77,24 @@ export function CmsMedia({
 
   const { style, ...desktopImg } = imageProps(desktop, sizes, priority);
   const mobileImg = mobile?.kind === 'IMAGE' ? imageProps(mobile, mobileSizes, priority) : null;
+  // The mobile variant may have its own image section; one <img> serves both sources, so the
+  // phone position is a CSS variable applied below the md breakpoint (styles/components.css).
+  const mobilePosition = mobileImg ? objectPosition(mobile?.focalPoint) : undefined;
+  const mobileStyle = mobilePosition
+    ? ({ '--vt-focal-mobile': mobilePosition } as CSSProperties)
+    : undefined;
   return (
     <picture>
       {mobileImg && (
         <source media={MOBILE_QUERY} srcSet={mobileImg.srcSet} sizes={mobileImg.sizes} />
       )}
       {/* eslint-disable-next-line jsx-a11y/alt-text -- alt comes from getImageProps (CMS alt text) */}
-      <img {...desktopImg} className={className} style={{ ...style, ...position }} />
+      <img
+        {...desktopImg}
+        className={className}
+        data-focal-mobile={mobilePosition ? '' : undefined}
+        style={{ ...style, ...position, ...mobileStyle }}
+      />
     </picture>
   );
 }

@@ -985,3 +985,11 @@
     animation-name: vt-glitch-replay;
   }
 }
+
+/* Image section of a mobile media variant (CmsMedia): the same <img> renders the <picture>'s
+   phone source, so its own object-position applies below the md breakpoint. */
+@media (max-width: 767px) {
+  img[data-focal-mobile] {
+    object-position: var(--vt-focal-mobile) !important;
+  }
+}

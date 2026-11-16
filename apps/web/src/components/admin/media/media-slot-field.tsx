@@ -5,6 +5,7 @@ import { useId, useState } from 'react';
 import { Button } from '@/components/ui';
 import type { FieldErrors } from '../editor/editor-state';
 import { FieldGroup } from '../editor/fields';
+import { FocalPointControl } from './focal-point-control';
 import { describeMedia } from './media-format';
 import { useMediaIndex } from './media-index';
 import { MediaPicker, type MediaKindFilter } from './media-picker';
@@ -150,6 +151,9 @@ function VariantRow({
         {refValue && asset?.kind === 'IMAGE' && kinds.length > 0 && (
           <AltTextControl refValue={refValue} asset={asset} onChange={onChange} />
         )}
+        {refValue && asset && variant !== 'poster' && (
+          <FocalPointControl refValue={refValue} asset={asset} onChange={onChange} />
+        )}
       </div>
     </div>
   );
@@ -157,7 +161,7 @@ function VariantRow({
 
 /**
  * Edits a media slot: desktop (required once media is set), optional mobile variant (same kind)
- * and, for videos, an optional poster image. Stores references only ({ assetId, altText? }).
+ * and, for videos, an optional poster image. Stores references only ({ assetId, altText?, focalPoint? }).
  */
 export function MediaSlotField({
   legend,
