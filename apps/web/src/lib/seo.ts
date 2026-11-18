@@ -1,5 +1,6 @@
 import type { PublicSectionContent, PublicWebsitePage } from '@vitruv/contracts';
 import type { Metadata } from 'next';
+import { BRAND_OG_IMAGE } from './brand';
 
 /**
  * SEO from PUBLISHED CMS data only (the `seo` page-settings document, visible FAQ and footer).
@@ -25,6 +26,17 @@ export function absoluteUrl(siteUrl: string, path = '/'): string {
   return new URL(path, `${siteUrl}/`).toString();
 }
 
+/** The bundled link-preview image as an absolute Open Graph entry. */
+export function brandOgImage(siteUrl: string) {
+  return {
+    url: absoluteUrl(siteUrl, BRAND_OG_IMAGE.path),
+    width: BRAND_OG_IMAGE.width,
+    height: BRAND_OG_IMAGE.height,
+    alt: BRAND_OG_IMAGE.alt,
+    type: 'image/png',
+  };
+}
+
 export function buildHomeMetadata(
   page: PublicWebsitePage | null,
   options: { siteUrl: string; indexing: boolean },
@@ -35,6 +47,7 @@ export function buildHomeMetadata(
   if (!seo) return { alternates: { canonical }, robots };
 
   const og = seo.ogImage?.desktop;
+  // CMS image first; otherwise the bundled logo preview (white logo centred on black)
   const images = og
     ? [
         {
@@ -43,7 +56,7 @@ export function buildHomeMetadata(
           ...(og.width && og.height ? { width: og.width, height: og.height } : {}),
         },
       ]
-    : undefined;
+    : [brandOgImage(options.siteUrl)];
   return {
     title: { absolute: seo.title },
     description: seo.description,
@@ -56,13 +69,13 @@ export function buildHomeMetadata(
       siteName: seo.siteName,
       title: seo.title,
       description: seo.description,
-      ...(images ? { images } : {}),
+      images,
     },
     twitter: {
-      card: images ? 'summary_large_image' : 'summary',
+      card: 'summary_large_image',
       title: seo.title,
       description: seo.description,
-      ...(images ? { images: images.map((image) => image.url) } : {}),
+      images: images.map((image) => image.url),
     },
   };
 }

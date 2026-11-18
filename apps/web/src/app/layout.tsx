@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { TranslationGuard } from '@/components/shared/translation-guard';
 import { isIndexingEnabled, publicSiteUrl } from '@/lib/env';
 import { fontVariables, publicFontVariables } from '@/lib/fonts';
+import { brandOgImage } from '@/lib/seo';
 import '@/styles/globals.css';
 
 /**
@@ -13,9 +14,13 @@ import '@/styles/globals.css';
  * The brand name is only the fallback title.
  */
 export function generateMetadata(): Metadata {
+  const image = brandOgImage(publicSiteUrl());
   return {
     metadataBase: new URL(`${publicSiteUrl()}/`),
     title: { default: 'VITRUV', template: '%s · VITRUV' },
+    // every page shares the logo preview unless it sets its own (homepage: CMS image first)
+    openGraph: { type: 'website', locale: 'de_DE', siteName: 'VITRUV', images: [image] },
+    twitter: { card: 'summary_large_image', images: [image.url] },
     ...(isIndexingEnabled() ? {} : { robots: { index: false, follow: false } }),
   };
 }

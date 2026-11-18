@@ -56,8 +56,21 @@ describe('homepage metadata', () => {
       siteName: 'VITRUV',
       locale: 'de_DE',
     });
-    expect(metadata.openGraph).not.toHaveProperty('images'); // no fake image
-    expect(metadata.twitter).toMatchObject({ card: 'summary' });
+    // no CMS image → the bundled logo preview (absolute, 1200×630)
+    expect(metadata.openGraph).toMatchObject({
+      images: [
+        {
+          url: 'https://vitruv.example/brand/og-image.png',
+          width: 1200,
+          height: 630,
+          alt: 'VITRUV Logo',
+        },
+      ],
+    });
+    expect(metadata.twitter).toMatchObject({
+      card: 'summary_large_image',
+      images: ['https://vitruv.example/brand/og-image.png'],
+    });
   });
 
   it('adds the CMS Open Graph image with its alt text', () => {
