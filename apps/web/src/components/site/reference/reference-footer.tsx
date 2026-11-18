@@ -1,9 +1,13 @@
 import type { PublicSectionContent } from '@vitruv/contracts';
+import { ArrowUpRight } from 'lucide-react';
 import Link from 'next/link';
 import { DitherBand } from './dither-band';
 import type { ReferenceLink } from './reference-header';
 
 type Apply = PublicSectionContent<'home'>['apply'];
+
+/** Agency credit in the bottom bar (owner request 2026-11-18). */
+const CREDIT_URL = 'https://www.bleibsichtbar.com';
 
 const external = (href: string) =>
   href.startsWith('https://') ? { rel: 'noopener noreferrer', target: '_blank' } : {};
@@ -91,6 +95,19 @@ export function ReferenceFooter({
         <div className="df-bottom__inner">
           <div className="df-bottom__left">
             <p>© {year} VITRUV</p>
+            <a
+              href={CREDIT_URL}
+              className="df-credit"
+              {...external(CREDIT_URL)}
+              aria-label="Designed by Bleibsichtbar (öffnet in einem neuen Tab)"
+              data-track="outbound_click"
+              data-track-label="bleibsichtbar"
+            >
+              <span aria-hidden className="df-credit__dot" />
+              <span className="df-credit__by">Designed by</span>
+              <span className="df-credit__name">Bleibsichtbar</span>
+              <ArrowUpRight aria-hidden className="df-credit__arrow" />
+            </a>
           </div>
           <div className="df-bottom__right">
             {channels.map((ch) => (

@@ -312,6 +312,10 @@ export const referencePalette = {
     logoFilter: 'invert(1)',
     glass: '#ffffff', // white glass buttons (header CTA, phone menu CTA)
     tagRgb: '91, 157, 255', // channel tag tint (the light file keeps the dark blue here)
+    // "Designed by Bleibsichtbar" credit (owner 2026-11-18): Bleibsichtbar cobalt #0047ab + bright #007bff
+    credit: '#2f8bff', // text, 6.2:1 on the black footer
+    creditShine: '#bfe0ff', // sweep highlight
+    creditRgb: '0, 71, 171', // cobalt glow / underline
   },
   light: {
     bg: '#f6f6f3',
@@ -335,6 +339,9 @@ export const referencePalette = {
     logoFilter: 'none',
     glass: '#ffffff',
     tagRgb: '91, 157, 255',
+    credit: '#0047ab', // cobalt text on the light footer
+    creditShine: '#1a5fd6',
+    creditRgb: '0, 123, 255',
   },
 } as const;
 

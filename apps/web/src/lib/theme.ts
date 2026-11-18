@@ -96,6 +96,9 @@ function referenceVars(p: ReferenceMode, scheme: 'dark' | 'light'): string {
     ['--r-logo-filter', p.logoFilter],
     ['--r-glass', p.glass],
     ['--r-tag-rgb', p.tagRgb],
+    ['--r-credit', p.credit],
+    ['--r-credit-shine', p.creditShine],
+    ['--r-credit-rgb', p.creditRgb],
     // shared roles: Impressum / Kontakt / Datenschutz and the Journey map engine
     ['--color-bg', p.bg],
     ['--color-surface', p.card],
