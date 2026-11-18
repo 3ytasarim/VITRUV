@@ -33,7 +33,7 @@ export function brandOgImage(siteUrl: string) {
     width: BRAND_OG_IMAGE.width,
     height: BRAND_OG_IMAGE.height,
     alt: BRAND_OG_IMAGE.alt,
-    type: 'image/png',
+    type: BRAND_OG_IMAGE.type,
   };
 }
 

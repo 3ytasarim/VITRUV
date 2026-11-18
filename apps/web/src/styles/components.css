@@ -512,6 +512,29 @@
   [data-weg-map] [data-fd][data-on] {
     opacity: 1;
   }
+  /* Safari / iOS ("lite", set by the engine): own compositing layers for map + route, no glow
+     filter on the route, and a plain short fade instead of hundreds of drawing strokes. */
+  [data-weg-lite] :is([data-weg-mapsvg], [data-weg-svg]) {
+    transform: translateZ(0);
+  }
+  [data-weg-lite] [data-weg-line] {
+    filter: none;
+    stroke-width: 3;
+  }
+  [data-weg-lite] [data-weg-map] :is([data-dr], [data-fd]) {
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+  [data-weg-lite] [data-weg-map] [data-dr] {
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+  }
+  [data-weg-lite] [data-weg-map] [data-dr][data-ring] {
+    fill-opacity: 0.5;
+  }
+  [data-weg-lite] [data-weg-map] :is([data-dr], [data-fd])[data-on] {
+    opacity: 1;
+  }
   /* Phones (prototype ≤ 820 px): image and text stay side by side, smaller. */
   @media (max-width: 820px) {
     .vt-weg__m {

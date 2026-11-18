@@ -112,7 +112,7 @@ export function ReferenceHeader({
             className="r-brand"
           >
             {logoSrc && (
-              <img src={logoSrc} alt="VITRUV" className="r-brand__logo" width={75} height={46} />
+              <img src={logoSrc} alt="VITRUV" className="r-brand__logo" width={81} height={46} />
             )}
             {/* the logo carries the wordmark; text only as fallback without a CMS logo */}
             {!logoSrc && <span className="r-brand__word">VITRUV</span>}

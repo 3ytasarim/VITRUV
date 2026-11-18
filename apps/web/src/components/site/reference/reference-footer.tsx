@@ -45,7 +45,7 @@ export function ReferenceFooter({
       <div className="df-top">
         <section id="bewerben" className="df-brand" aria-labelledby="bewerben-title">
           <Link href="/#top" className="df-logo" aria-label="VITRUV – nach oben">
-            {logoSrc ? <img src={logoSrc} alt="" width={117} height={72} /> : 'VITRUV'}
+            {logoSrc ? <img src={logoSrc} alt="" width={127} height={72} /> : 'VITRUV'}
           </Link>
           {apply?.lead && <p className="df-text">{apply.lead}</p>}
           {apply && (

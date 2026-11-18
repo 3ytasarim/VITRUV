@@ -60,7 +60,7 @@ describe('homepage metadata', () => {
     expect(metadata.openGraph).toMatchObject({
       images: [
         {
-          url: 'https://vitruv.example/brand/og-image.png',
+          url: 'https://vitruv.example/brand/og-image.jpg',
           width: 1200,
           height: 630,
           alt: 'VITRUV Logo',
@@ -69,7 +69,7 @@ describe('homepage metadata', () => {
     });
     expect(metadata.twitter).toMatchObject({
       card: 'summary_large_image',
-      images: ['https://vitruv.example/brand/og-image.png'],
+      images: ['https://vitruv.example/brand/og-image.jpg'],
     });
   });
 

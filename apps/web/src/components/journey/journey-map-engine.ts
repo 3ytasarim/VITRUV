@@ -125,13 +125,26 @@ export function mountJourneyMap(root: HTMLElement): () => void {
     return (seed - 1) / 2147483646;
   };
 
-  let map = svg.querySelector<SVGGElement>('[data-weg-map]');
-  if (!map) {
-    map = document.createElementNS(NS, 'g') as SVGGElement;
-    map.setAttribute('data-weg-map', '');
-    svg.insertBefore(map, ghost);
-  }
-  const mapEl = map;
+  // Safari / every iOS browser (WebKit) repaints a whole SVG — SVG filters included — whenever
+  // one child changes; the route redrawn on every scroll frame froze the map there (owner report
+  // 2026-11-18). "lite": blur filters become radial gradients, no glow filter on the route,
+  // lighter reveal. Chrome/Firefox keep the original look.
+  const ua = navigator.userAgent;
+  const lite = /AppleWebKit/.test(ua) && !/Chrome|Chromium|Edg|OPR|Android/.test(ua);
+  root.toggleAttribute('data-weg-lite', lite);
+
+  // The map gets its OWN <svg> layer below the route svg, so moving the route never repaints
+  // the (static) map.
+  const mapSvg = document.createElementNS(NS, 'svg') as SVGSVGElement;
+  mapSvg.setAttribute('aria-hidden', 'true');
+  mapSvg.setAttribute('preserveAspectRatio', 'none');
+  mapSvg.setAttribute('class', svg.getAttribute('class') ?? '');
+  mapSvg.setAttribute('data-weg-mapsvg', '');
+  svg.before(mapSvg);
+  const mapEl = document.createElementNS(NS, 'g') as SVGGElement;
+  mapEl.setAttribute('data-weg-map', '');
+  mapSvg.appendChild(mapEl);
+  svg.querySelector('[data-weg-map]')?.remove();
 
   const drawMap = (H: number) => {
     if (!NET) return;
@@ -152,7 +165,14 @@ export function mountJourneyMap(root: HTMLElement): () => void {
     const txt = (x: number, y: number, s: string, sz: number, a: number, ex = '') =>
       `<text x="${f1(x)}" y="${f1(y)}" fill="${c(a)}" font-family="${F.replace(/"/g, "'")}" font-size="${sz}" letter-spacing="1"${ex}>${s}</text>`;
     const halo = ` paint-order="stroke" stroke="${bgc}" stroke-width="3"`;
-    let h = `<defs><filter id="wblur" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="${mob ? 9 : 15}"/></filter></defs>`;
+    let h = lite
+      ? `<defs><radialGradient id="wsh"><stop offset="0" stop-color="${sh}"/><stop offset="0.55" stop-color="${sh}"/><stop offset="1" stop-color="${c(0)}"/></radialGradient><radialGradient id="whl"><stop offset="0" stop-color="${hl}"/><stop offset="0.45" stop-color="${hl}"/><stop offset="1" stop-color="rgba(255,255,255,0)"/></radialGradient></defs>`
+      : `<defs><filter id="wblur" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="${mob ? 9 : 15}"/></filter></defs>`;
+    // soft relief blobs: blurred ellipses, or (lite) slightly larger gradient ellipses
+    const blob = (cx: number, cy: number, rx: number, ry: number, light: boolean) =>
+      lite
+        ? `<ellipse cx="${f1(cx)}" cy="${f1(cy)}" rx="${f1(rx * 1.35)}" ry="${f1(ry * 1.35)}" fill="url(#${light ? 'whl' : 'wsh'})"/>`
+        : `<ellipse cx="${f1(cx)}" cy="${f1(cy)}" rx="${f1(rx)}" ry="${f1(ry)}" fill="${light ? hl : sh}" filter="url(#wblur)"/>`;
     const gs = gx * 3;
     for (let x = Math.ceil(XL / gs) * gs, n = 0; x < XR; x += gs, n++) {
       h += `<line x1="${f1(x)}" y1="0" x2="${f1(x)}" y2="${H}" stroke="${c(0.06)}" stroke-dasharray="1 6"/>`;
@@ -225,8 +245,8 @@ export function mountJourneyMap(root: HTMLElement): () => void {
           for (let s = 0; s <= 56; s++) a.push(m.rf(k, (s / 56) * Math.PI * 2));
           return pth(a) + 'Z';
         };
-        h += `<ellipse cx="${f1(mx + MR * 0.22)}" cy="${f1(m.cy + MR * 0.12)}" rx="${f1(MR * sx)}" ry="${f1(MR * 0.64)}" fill="${sh}" filter="url(#wblur)"/>`;
-        h += `<ellipse cx="${f1(mx - MR * 0.2)}" cy="${f1((m.cy + pk) / 2 - MR * 0.12)}" rx="${f1(MR * 0.5)}" ry="${f1(MR * 0.32)}" fill="${hl}" filter="url(#wblur)"/>`;
+        h += blob(mx + MR * 0.22, m.cy + MR * 0.12, MR * sx, MR * 0.64, false);
+        h += blob(mx - MR * 0.2, (m.cy + pk) / 2 - MR * 0.12, MR * 0.5, MR * 0.32, true);
         for (let k = rings; k >= 1; k--) {
           const idx = k % 3 === 0;
           h += `<path d="${ringPath(k)}" fill="${k === rings ? 'none' : bgc}"${k === rings ? '' : ' fill-opacity="0.5"'} stroke="${c(idx ? 0.17 : 0.075)}" stroke-width="${idx ? 1.2 : 0.7}"/>`;
@@ -414,10 +434,12 @@ export function mountJourneyMap(root: HTMLElement): () => void {
     const VW = document.documentElement.clientWidth || W,
       XL = -r.left,
       XR = VW - r.left;
-    svg.style.left = XL + 'px';
-    svg.style.right = 'auto';
-    svg.style.width = VW + 'px';
-    svg.setAttribute('viewBox', `${XL} 0 ${VW} ${H}`);
+    for (const layer of [mapSvg, svg]) {
+      layer.style.left = XL + 'px';
+      layer.style.right = 'auto';
+      layer.style.width = VW + 'px';
+      layer.setAttribute('viewBox', `${XL} 0 ${VW} ${H}`);
+    }
     const mob = W < 700,
       gx = mob ? 58 : 92,
       gy = mob ? 66 : 100;
@@ -943,6 +965,8 @@ export function mountJourneyMap(root: HTMLElement): () => void {
     ro?.disconnect();
     window.clearTimeout(late);
     if (raf) cancelAnimationFrame(raf);
+    mapSvg.remove(); // the theme remount creates a fresh layer
     root.removeAttribute('data-weg-ready');
+    root.removeAttribute('data-weg-lite');
   };
 }
