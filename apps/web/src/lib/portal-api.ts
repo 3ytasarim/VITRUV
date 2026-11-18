@@ -4,6 +4,7 @@ import {
   clientActiveNutritionResponseSchema,
   clientActiveTrainingResponseSchema,
   clientSelfProfileSchema,
+  clientWelcomeSchema,
   currentWorkoutResponseSchema,
   finishWorkoutResponseSchema,
   startWorkoutResponseSchema,
@@ -29,6 +30,8 @@ export const portalApi = {
   /** Own profile (name, coach) — deduplicated per request (layout + page). */
   me: cache(() => adminFetch(`${C}/me`, clientSelfProfileSchema)),
   /** The ACTIVE meal plan (PDF metadata; the file is fetched through the portal proxy). */
+  /** "Willkommen" videos (same for every client). */
+  welcome: () => adminFetch(`${C}/welcome`, clientWelcomeSchema),
   nutrition: () => adminFetch(`${C}/nutrition/active`, clientActiveNutritionResponseSchema),
   activeProgram: () => adminFetch(`${C}/training/active`, clientActiveTrainingResponseSchema),
   /** The dated exercise plan (exercise + date + coach note). */

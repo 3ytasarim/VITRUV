@@ -1,6 +1,11 @@
 import type { Metadata } from 'next';
-import { setClientAccountAction, setClientPasswordAction } from '@/app/admin/management-actions';
+import {
+  setClientAccountAction,
+  setClientArchivedAction,
+  setClientPasswordAction,
+} from '@/app/admin/management-actions';
 import { AccountControls } from '@/components/admin/management/account-controls';
+import { ArchiveControls } from '@/components/admin/management/archive-controls';
 import { SetPasswordForm } from '@/components/admin/management/set-password-form';
 import { Card } from '@/components/ui';
 import { loadClient } from '@/lib/admin-data';
@@ -20,6 +25,7 @@ export default async function ClientAccountPage({ params }: { params: Promise<{ 
   const client = result.data;
   const name = `${client.firstName} ${client.lastName}`;
   const canManage = user.permissions.includes('clients.account.manage');
+  const canArchive = user.permissions.includes('clients.archive');
   return (
     <div className="grid gap-6">
       <Card padding="md">
@@ -52,6 +58,16 @@ export default async function ClientAccountPage({ params }: { params: Promise<{ 
           setStatus={setClientAccountAction.bind(null, client.id)}
         />
       </Card>
+      {canArchive && (
+        <Card padding="md">
+          <h2 className="type-title mb-4">Aus der Liste entfernen</h2>
+          <ArchiveControls
+            archivedAt={client.archivedAt}
+            personName={name}
+            setArchived={setClientArchivedAction.bind(null, client.id)}
+          />
+        </Card>
+      )}
     </div>
   );
 }

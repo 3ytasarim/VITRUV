@@ -398,6 +398,10 @@ function defineSectionSchemas<Slot extends z.ZodType>(slot: Slot) {
           label: optionalText(40),
           featured: z.boolean(),
           text: optionalText(400),
+          /** Price as shown ("490 €", "ab 290 €"); empty = no price on the card. */
+          price: optionalText(30),
+          /** Small text next to the price ("/ 6 Wochen", "einmalig"). */
+          priceNote: optionalText(40),
           features: z.array(plainText(160)).max(20),
           note: optionalText(160),
           cta: ctaSchema,

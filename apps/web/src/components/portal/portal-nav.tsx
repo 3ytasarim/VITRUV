@@ -1,12 +1,14 @@
 'use client';
 
-import { CalendarDays, History, LayoutDashboard, Salad } from 'lucide-react';
+import { CalendarDays, Clapperboard, History, LayoutDashboard, Salad } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { PORTAL_PATH } from '@/lib/auth/cookies';
 
 const ITEMS = [
   { href: PORTAL_PATH, label: 'Übersicht', short: 'Übersicht', icon: LayoutDashboard, exact: true },
+  // owner request 2026-11-18: welcome videos directly under the overview
+  { href: `${PORTAL_PATH}/willkommen`, label: 'Willkommen', short: 'Videos', icon: Clapperboard },
   {
     href: `${PORTAL_PATH}/plan`,
     label: 'Trainingsplan',

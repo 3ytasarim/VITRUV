@@ -37,6 +37,7 @@ const {
   websiteSections,
   websitePages,
   exercises,
+  welcomeVideos,
 } = schema;
 
 /**
@@ -231,6 +232,15 @@ export async function exerciseUsages(
     .from(exercises)
     .where(eq(exercises.mediaAssetId, assetId))
     .orderBy(exercises.name);
+}
+
+/** "Willkommen" videos that show the asset (owner request 2026-11-18). */
+async function welcomeUsages(db: DbExecutor, assetId: string) {
+  return db
+    .select({ id: welcomeVideos.id, title: welcomeVideos.title })
+    .from(welcomeVideos)
+    .where(eq(welcomeVideos.mediaAssetId, assetId))
+    .orderBy(welcomeVideos.title);
 }
 
 export async function mediaUsages(db: DbExecutor, assetId: string): Promise<MediaUsage[]> {
@@ -560,9 +570,13 @@ const STATUS_LABEL: Record<string, string> = {
   ARCHIVED: 'Archiv',
 };
 
-function inUseError(usages: MediaUsage[], byExercises: ExerciseMediaUsage[] = []) {
+function inUseError(
+  usages: MediaUsage[],
+  byExercises: ExerciseMediaUsage[] = [],
+  byWelcome: { id: string; title: string }[] = [],
+) {
   return AppError.conflict(
-    'Das Medium wird noch verwendet und kann nicht gelöscht werden. Zuerst in den Inhalten bzw. Übungen ersetzen oder entfernen.',
+    'Das Medium wird noch verwendet und kann nicht gelöscht werden. Zuerst in den Inhalten, Übungen bzw. unter „Willkommen“ ersetzen oder entfernen.',
     [
       ...usages.map((usage) => ({
         path: `${usage.pageSlug}/${usage.sectionKey}/${usage.role}`,
@@ -571,6 +585,10 @@ function inUseError(usages: MediaUsage[], byExercises: ExerciseMediaUsage[] = []
       ...byExercises.map((usage) => ({
         path: `exercise/${usage.exerciseId}`,
         message: `Übung „${usage.name}“${usage.active ? '' : ' (inaktiv)'}`,
+      })),
+      ...byWelcome.map((usage) => ({
+        path: `welcome/${usage.id}`,
+        message: `Willkommen-Video „${usage.title}“`,
       })),
     ],
   );
@@ -603,14 +621,21 @@ export async function deleteLibraryMedia(
       if (!asset) throw AppError.notFound('Medium nicht gefunden.');
       const usages = await mediaUsages(tx, id);
       const byExercises = await exerciseUsages(tx, id);
-      if (usages.length > 0 || byExercises.length > 0) throw inUseError(usages, byExercises);
+      const byWelcome = await welcomeUsages(tx, id);
+      if (usages.length > 0 || byExercises.length > 0 || byWelcome.length > 0) {
+        throw inUseError(usages, byExercises, byWelcome);
+      }
       await tx.delete(mediaAssets).where(eq(mediaAssets.id, id));
       return asset.storageKey;
     });
   } catch (error) {
     const code = pgErrorCode(error);
     if (code === PG_RESTRICT_VIOLATION || code === PG_FOREIGN_KEY_VIOLATION) {
-      throw inUseError(await mediaUsages(deps.db, id), await exerciseUsages(deps.db, id));
+      throw inUseError(
+        await mediaUsages(deps.db, id),
+        await exerciseUsages(deps.db, id),
+        await welcomeUsages(deps.db, id),
+      );
     }
     throw error;
   }

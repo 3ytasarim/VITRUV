@@ -24,12 +24,16 @@ const one = (value: string | string[] | undefined) =>
 export default async function ClientsPage({ searchParams }: { searchParams: Promise<Search> }) {
   const user = await requirePagePermission('clients.read', '/admin/kunden');
   const isAdmin = user.permissions.includes('clients.assign');
+  const canArchive = user.permissions.includes('clients.archive');
   const raw = await searchParams;
+  // Removed clients (archived: account disabled, data kept) — a separate view for ADMIN.
+  const removedView = canArchive && one(raw.ansicht) === 'entfernt';
   const parsed = clientListQuerySchema.safeParse({
     q: one(raw.q) || undefined,
     coachingStatus: one(raw.status) || undefined,
     activation: one(raw.aktivierung) || undefined,
     coach: isAdmin && COACH_TEAM_ENABLED ? one(raw.coach) || undefined : undefined,
+    view: removedView ? 'removed' : 'current',
     page: one(raw.seite) || undefined,
     pageSize: 20,
   });
@@ -44,7 +48,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
 
   const pageHref = (page: number) => {
     const params = new URLSearchParams();
-    for (const key of ['q', 'status', 'aktivierung', 'coach'] as const) {
+    for (const key of ['q', 'status', 'aktivierung', 'coach', 'ansicht'] as const) {
       const value = one(raw[key]);
       if (value) params.set(key, value);
     }
@@ -56,13 +60,15 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
   return (
     <>
       <AdminPageHeader
-        title="Kund:innen"
+        title={removedView ? 'Entfernte Kund:innen' : 'Kund:innen'}
         description={
-          isAdmin
-            ? COACH_TEAM_ENABLED
-              ? 'Alle Kund:innen mit Coach-Zuordnung, Coaching- und Kontostatus.'
-              : 'Alle Kund:innen mit Coaching- und Kontostatus.'
-            : 'Deine zugeordneten Kund:innen.'
+          removedView
+            ? 'Aus der Liste entfernt: Konto deaktiviert, Daten bleiben erhalten. Über „Konto“ wiederherstellbar.'
+            : isAdmin
+              ? COACH_TEAM_ENABLED
+                ? 'Alle Kund:innen mit Coach-Zuordnung, Coaching- und Kontostatus.'
+                : 'Alle Kund:innen mit Coaching- und Kontostatus.'
+              : 'Deine zugeordneten Kund:innen.'
         }
         actions={
           user.permissions.includes('clients.create') ? (
@@ -150,24 +156,37 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
             </select>
           </div>
         )}
+        {removedView && <input type="hidden" name="ansicht" value="entfernt" />}
         <Button type="submit" variant="secondary">
           Filtern
         </Button>
       </form>
+      {canArchive && (
+        <p className="type-body-sm mb-4">
+          <Link
+            href={removedView ? '/admin/kunden' : '/admin/kunden?ansicht=entfernt'}
+            className="text-accent-text underline underline-offset-4"
+          >
+            {removedView ? '← Zurück zu den aktuellen Kund:innen' : 'Entfernte Kund:innen anzeigen'}
+          </Link>
+        </p>
+      )}
 
       {!result.ok ? (
         <ErrorState message="Die Kundenliste konnte nicht geladen werden." />
       ) : result.data.total === 0 ? (
-        filtered ? (
+        filtered || removedView ? (
           <EmptyState
-            title="Keine Treffer"
+            title={removedView && !filtered ? 'Keine entfernten Kund:innen' : 'Keine Treffer'}
             action={
               <ButtonLink href="/admin/kunden" variant="secondary">
-                Filter zurücksetzen
+                {removedView ? 'Zu den aktuellen Kund:innen' : 'Filter zurücksetzen'}
               </ButtonLink>
             }
           >
-            Für diese Suche oder diesen Filter gibt es keine Kund:innen.
+            {removedView && !filtered
+              ? 'Es wurde noch keine Kund:in aus der Liste entfernt.'
+              : 'Für diese Suche oder diesen Filter gibt es keine Kund:innen.'}
           </EmptyState>
         ) : (
           <EmptyState

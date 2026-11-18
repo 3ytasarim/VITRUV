@@ -402,6 +402,7 @@ describe.skipIf(!databaseUrl)('authentication (integration, rolled back)', () =>
           'self:read',
           'training.self.read',
           'training.self.workout',
+          'welcome.self.read',
         ]);
       });
     });

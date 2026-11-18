@@ -192,6 +192,24 @@ export async function listTrainingMediaAction(
     : { ok: false, message: failure(result).message };
 }
 
+/** Deletes a training-library medium (picker). In-use media are refused by the API (409). */
+export async function deleteTrainingMediaAction(
+  mediaId: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (!id.safeParse(mediaId).success) return { ok: false, message: GENERIC };
+  const result = await trainingApi.deleteMedia(mediaId);
+  if (result.ok) return { ok: true };
+  return {
+    ok: false,
+    message:
+      result.status === 409
+        ? result.error.message
+        : result.status === 403
+          ? 'Dafür fehlt dir die Berechtigung.'
+          : failure(result).message,
+  };
+}
+
 // ---------------------------------------------------------------- programs
 
 export async function createProgramAction(

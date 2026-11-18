@@ -1,10 +1,10 @@
 'use client';
 
 import type { AdminMediaAsset } from '@vitruv/contracts';
-import { X } from 'lucide-react';
+import { Trash2, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
-import { listTrainingMediaAction } from '@/app/admin/training-actions';
+import { deleteTrainingMediaAction, listTrainingMediaAction } from '@/app/admin/training-actions';
 import { listMediaAction } from '@/app/admin/website-actions';
 import { Button } from '@/components/ui';
 import { EmptyState, ErrorState } from '../states';
@@ -26,12 +26,26 @@ export function MediaPickerGrid({
   selectedId,
   onSelect,
   onRetry,
+  onDelete,
 }: {
   state: LoadState;
   selectedId?: string;
   onSelect: (asset: AdminMediaAsset) => void;
   onRetry?: () => void;
+  /** Optional delete per tile; resolves to an error message or null on success. */
+  onDelete?: (asset: AdminMediaAsset) => Promise<string | null>;
 }) {
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<{ id: string; message: string } | null>(null);
+  const remove = async (asset: AdminMediaAsset) => {
+    if (!onDelete) return;
+    setBusyId(asset.id);
+    const message = await onDelete(asset);
+    setBusyId(null);
+    setConfirmId(null);
+    setDeleteError(message ? { id: asset.id, message } : null);
+  };
   const { limit, sentinel, more, hasMore } = useProgressive(
     state.status === 'ready' ? state.items.length : 0,
     state,
@@ -67,7 +81,7 @@ export function MediaPickerGrid({
   return (
     <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       {state.items.slice(0, limit).map((asset) => (
-        <li key={asset.id}>
+        <li key={asset.id} className="flex flex-col gap-2">
           <button
             type="button"
             aria-pressed={asset.id === selectedId}
@@ -78,6 +92,40 @@ export function MediaPickerGrid({
             <span className="type-caption block truncate text-fg">{asset.fileName}</span>
             <span className="type-caption block text-fg-subtle">{describeMedia(asset)}</span>
           </button>
+          {onDelete &&
+            (confirmId === asset.id ? (
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Löschen bestätigen">
+                <Button
+                  variant="primary"
+                  icon={<Trash2 />}
+                  loading={busyId === asset.id}
+                  onClick={() => void remove(asset)}
+                >
+                  Endgültig löschen
+                </Button>
+                <Button variant="ghost" onClick={() => setConfirmId(null)}>
+                  Abbrechen
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="ghost"
+                icon={<Trash2 />}
+                className="self-start"
+                aria-label={`„${asset.fileName}“ aus der Mediathek löschen`}
+                onClick={() => {
+                  setDeleteError(null);
+                  setConfirmId(asset.id);
+                }}
+              >
+                Löschen
+              </Button>
+            ))}
+          {deleteError?.id === asset.id && (
+            <p role="alert" className="type-caption text-error">
+              {deleteError.message}
+            </p>
+          )}
         </li>
       ))}
       <li className="col-span-full flex justify-center">
@@ -208,6 +256,16 @@ export function MediaPicker({
                 selectedId={selectedId}
                 onSelect={choose}
                 onRetry={() => setReload((n) => n + 1)}
+                onDelete={
+                  library === 'TRAINING'
+                    ? async (asset) => {
+                        const response = await deleteTrainingMediaAction(asset.id);
+                        if (!response.ok) return response.message;
+                        setReload((n) => n + 1);
+                        return null;
+                      }
+                    : undefined
+                }
               />
             </section>
           </div>

@@ -46,7 +46,7 @@ export function Greeting({ name }: { name: string }) {
         {name && (
           <>
             {' '}
-            <em className="vt-greet__name">{name}</em>
+            <span className="vt-greet__name">{name}</span>
           </>
         )}
       </h1>

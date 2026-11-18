@@ -141,6 +141,20 @@
       "when": 1794868364084,
       "tag": "0019_media_focal_point",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795001439185,
+      "tag": "0020_client_archive",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1795002525057,
+      "tag": "0021_welcome_videos",
+      "breakpoints": true
     }
   ]
 }

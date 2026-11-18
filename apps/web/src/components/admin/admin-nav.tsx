@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  Clapperboard,
   Gauge,
   Dumbbell,
   FileText,
@@ -55,6 +56,12 @@ const GROUPS: {
         label: 'Übungen',
         icon: Dumbbell,
         permission: 'training.exercises.read',
+      },
+      {
+        href: '/admin/willkommen',
+        label: 'Willkommen',
+        icon: Clapperboard,
+        permission: 'welcome.manage',
       },
       ...(COACH_TEAM_ENABLED
         ? [

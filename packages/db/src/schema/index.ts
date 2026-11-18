@@ -8,3 +8,4 @@ export * from './coaching';
 export * from './training';
 export * from './workouts';
 export * from './nutrition';
+export * from './welcome';

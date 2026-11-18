@@ -53,6 +53,9 @@ export const clientProfiles = pgTable(
     phone: text('phone'),
     coachingStatus: coachingStatus('coaching_status').notNull().default('ACTIVE'),
     internalNotes: text('internal_notes'),
+    // Removed from the client list by staff (owner request 2026-11-18): account disabled, data kept,
+    // restorable. Users are never hard-deleted.
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
     createdByUserId: uuid('created_by_user_id').references(() => users.id, {
       onDelete: 'set null',
     }),

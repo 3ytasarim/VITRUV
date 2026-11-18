@@ -101,92 +101,92 @@ export function ReferenceHeader({
 
   return (
     <>
-    <header className="r-header">
-      <div className="r-header__bar">
-        <Link
-          href="/#top"
-          onClick={onLogo}
-          aria-label="Menü / nach oben"
-          aria-expanded={open}
-          aria-controls={menuId}
-          className="r-brand"
-        >
-          {logoSrc && (
-            <img src={logoSrc} alt="VITRUV" className="r-brand__logo" width={75} height={46} />
+      <header className="r-header">
+        <div className="r-header__bar">
+          <Link
+            href="/#top"
+            onClick={onLogo}
+            aria-label="Menü / nach oben"
+            aria-expanded={open}
+            aria-controls={menuId}
+            className="r-brand"
+          >
+            {logoSrc && (
+              <img src={logoSrc} alt="VITRUV" className="r-brand__logo" width={75} height={46} />
+            )}
+            {/* the logo carries the wordmark; text only as fallback without a CMS logo */}
+            {!logoSrc && <span className="r-brand__word">VITRUV</span>}
+          </Link>
+          {links.length > 0 && (
+            <nav className="r-links" aria-label="Hauptnavigation">
+              {links.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="r-links__a"
+                  data-active={active && link.href.endsWith(`#${active}`) ? '' : undefined}
+                  aria-current={active && link.href.endsWith(`#${active}`) ? 'true' : undefined}
+                  data-track="navigation_click"
+                  data-track-section="header"
+                >
+                  {link.label}
+                </a>
+              ))}
+            </nav>
           )}
-          {/* the logo carries the wordmark; text only as fallback without a CMS logo */}
-          {!logoSrc && <span className="r-brand__word">VITRUV</span>}
-        </Link>
-        {links.length > 0 && (
-          <nav className="r-links" aria-label="Hauptnavigation">
-            {links.map((link) => (
+          {SHOW_THEME_TOGGLE && <ThemeToggle initial={mode} className="r-theme" />}
+        </div>
+        {open && (
+          <nav id={menuId} className="r-mmenu" aria-label="Hauptnavigation">
+            {menu.map((item, i) => (
               <a
-                key={link.href}
-                href={link.href}
-                className="r-links__a"
-                data-active={active && link.href.endsWith(`#${active}`) ? '' : undefined}
-                aria-current={active && link.href.endsWith(`#${active}`) ? 'true' : undefined}
+                key={item.href}
+                href={item.href}
+                data-idx={`${String(i + 1).padStart(2, '0')} //`}
+                onClick={() => setOpen(false)}
                 data-track="navigation_click"
-                data-track-section="header"
+                data-track-section="mobile-menu"
               >
-                {link.label}
+                {item.label}
               </a>
             ))}
-          </nav>
-        )}
-        {SHOW_THEME_TOGGLE && <ThemeToggle initial={mode} className="r-theme" />}
-      </div>
-      {open && (
-        <nav id={menuId} className="r-mmenu" aria-label="Hauptnavigation">
-          {menu.map((item, i) => (
             <a
-              key={item.href}
-              href={item.href}
-              data-idx={`${String(i + 1).padStart(2, '0')} //`}
+              href={cta.href}
+              className="r-mmenu__cta"
               onClick={() => setOpen(false)}
-              data-track="navigation_click"
+              data-track="cta_click"
               data-track-section="mobile-menu"
             >
-              {item.label}
+              {cta.label}
             </a>
-          ))}
-          <a
-            href={cta.href}
-            className="r-mmenu__cta"
-            onClick={() => setOpen(false)}
-            data-track="cta_click"
-            data-track-section="mobile-menu"
-          >
-            {cta.label}
-          </a>
-        </nav>
-      )}
-    </header>
-    {/* sticky tabs on the right edge ("Jetzt bewerben" blue, "Login" white below) — outside the
+          </nav>
+        )}
+      </header>
+      {/* sticky tabs on the right edge ("Jetzt bewerben" blue, "Login" white below) — outside the
         header, whose backdrop-filter would otherwise become the containing block of these fixed
         elements */}
-    <div className="r-sticks" data-show={showCta ? '1' : '0'}>
-      <a
-        href={cta.href}
-        className="r-stick"
-        tabIndex={showCta ? undefined : -1}
-        aria-hidden={showCta ? undefined : true}
-        data-track="cta_click"
-        data-track-section="sticky"
-      >
-        {cta.label}
-      </a>
-      <Link
-        href="/login"
-        className="r-stick r-stick--light"
-        tabIndex={showCta ? undefined : -1}
-        aria-hidden={showCta ? undefined : true}
-        data-track="navigation_click"
-        data-track-section="sticky"
-      >
-        Login
-      </Link>
-    </div>
+      <div className="r-sticks" data-show={showCta ? '1' : '0'}>
+        <a
+          href={cta.href}
+          className="r-stick"
+          tabIndex={showCta ? undefined : -1}
+          aria-hidden={showCta ? undefined : true}
+          data-track="cta_click"
+          data-track-section="sticky"
+        >
+          {cta.label}
+        </a>
+        <Link
+          href="/login"
+          className="r-stick r-stick--light"
+          tabIndex={showCta ? undefined : -1}
+          aria-hidden={showCta ? undefined : true}
+          data-track="navigation_click"
+          data-track-section="sticky"
+        >
+          Login
+        </Link>
+      </div>
     </>
   );
 }

@@ -32,6 +32,8 @@ export const PERMISSIONS = [
   'clients.assign',
   /** Activation links, disable/re-enable the client's account. */
   'clients.account.manage',
+  /** Remove a client from the list (account disabled, data kept) and restore (ADMIN only). */
+  'clients.archive',
   /** Coach management (ADMIN only). */
   'coaches.read',
   'coaches.create',
@@ -55,6 +57,10 @@ export const PERMISSIONS = [
   'nutrition.documents.assign',
   /** The signed-in CLIENT reads its own ACTIVE nutrition document (self context). */
   'nutrition.self.read',
+  /** "Willkommen" categories + videos for all clients (ADMIN only). */
+  'welcome.manage',
+  /** The signed-in CLIENT reads the "Willkommen" videos. */
+  'welcome.self.read',
   /** The signed-in CLIENT's own ACTIVE program (self context, future Flutter). */
   'training.self.read',
   /** The signed-in CLIENT starts, records and finishes their own workouts (self context). */
@@ -93,6 +99,7 @@ const ROLE_PERMISSIONS: Readonly<Record<UserRole, ReadonlySet<Permission>>> = {
     'training.self.read',
     'training.self.workout',
     'nutrition.self.read',
+    'welcome.self.read',
   ]),
 };
 

@@ -21,6 +21,7 @@ import type { AppEnv } from '../../types';
 import type { AuthRateLimits } from '../auth/auth.service';
 import { activateAccount, checkActivation } from './activation.service';
 import {
+  archiveClient,
   assignClient,
   clientSelfProfile,
   coachOptions,
@@ -32,6 +33,7 @@ import {
   listCoaches,
   regenerateClientActivation,
   regenerateCoachActivation,
+  restoreClient,
   setClientAccountStatus,
   setClientPassword,
   setCoachAccountStatus,
@@ -124,6 +126,19 @@ export function adminClientRoutes(deps: ManagementDeps) {
           c.req.valid('json').status,
         ),
       ),
+  );
+  // Remove from the list (account disabled, data kept) / restore — ADMIN only.
+  routes.post(
+    '/:id/archive',
+    requirePermission('clients.archive'),
+    validate('param', idParam),
+    async (c) => c.json(await archiveClient(deps, actorOf(c), c.req.valid('param').id)),
+  );
+  routes.post(
+    '/:id/restore',
+    requirePermission('clients.archive'),
+    validate('param', idParam),
+    async (c) => c.json(await restoreClient(deps, actorOf(c), c.req.valid('param').id)),
   );
   routes.post(
     '/:id/activation',

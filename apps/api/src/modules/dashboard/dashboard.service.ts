@@ -38,7 +38,7 @@ export async function adminDashboard(
 
       const statusRows = await rows(
         tx,
-        sql`select ${CP.coachingStatus} as status, count(*)::int as n from ${CP} where ${scopeCP} group by 1`,
+        sql`select ${CP.coachingStatus} as status, count(*)::int as n from ${CP} where ${scopeCP} and ${CP.archivedAt} is null group by 1`,
       );
       const clientsByStatus = Object.fromEntries(
         COACHING_STATUSES.map((s) => [s, num(statusRows.find((r) => r.status === s)?.n)]),

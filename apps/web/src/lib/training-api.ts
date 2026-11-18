@@ -65,6 +65,8 @@ export const trainingApi = {
     ),
   media: (kind?: 'IMAGE' | 'VIDEO') =>
     adminFetch(`${T}/media${kind ? `?kind=${kind}` : ''}`, adminMediaListSchema),
+  /** Protected delete: the API refuses media still used by exercises or "Willkommen". */
+  deleteMedia: (id: string) => adminFetch(`${T}/media/${id}`, null, { method: 'DELETE' }),
 
   /** Dated exercise plan of a client (flat list, saved as a whole). */
   plan: (clientId: string) => adminFetch(`${T}/clients/${clientId}/plan`, clientPlanSchema),

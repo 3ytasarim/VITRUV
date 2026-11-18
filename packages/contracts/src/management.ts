@@ -132,6 +132,8 @@ export const clientListQuerySchema = z.object({
   activation: activationStateSchema.optional(),
   /** ADMIN only: a coach id or `none` (unassigned). */
   coach: z.union([z.uuid(), z.literal('none')]).optional(),
+  /** current (default) = without removed clients; removed = only removed ones (ADMIN). */
+  view: z.enum(['current', 'removed']).default('current'),
   page: z.coerce.number().int().min(1).max(10_000).default(1),
   pageSize: z.coerce.number().int().min(1).max(50).default(20),
 });
@@ -147,6 +149,8 @@ export const adminClientListItemSchema = z.object({
   account: accountSummarySchema,
   coach: coachRefSchema.nullable(),
   createdAt: isoDate,
+  /** Removed from the list by staff (account disabled, data kept); null = current client. */
+  archivedAt: isoDate.nullable().default(null),
 });
 export type AdminClientListItem = z.infer<typeof adminClientListItemSchema>;
 

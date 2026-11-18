@@ -222,6 +222,21 @@ export async function setClientAccountAction(
   return { status: 'success', data: undefined };
 }
 
+/** Removes the client from the list (account disabled, data kept) or restores them. */
+export async function setClientArchivedAction(
+  clientId: string,
+  archived: boolean,
+): Promise<FormState> {
+  if (!idSchema.safeParse(clientId).success || typeof archived !== 'boolean') {
+    return { status: 'error', message: GENERIC };
+  }
+  const result = await adminApi.clientArchive(clientId, archived);
+  if (!result.ok) return apiFailure(result);
+  revalidatePath(`/admin/kunden/${clientId}`, 'layout');
+  revalidatePath('/admin/kunden');
+  return { status: 'success', data: undefined };
+}
+
 export async function regenerateClientActivationAction(
   clientId: string,
 ): Promise<FormState<ActivationLink>> {

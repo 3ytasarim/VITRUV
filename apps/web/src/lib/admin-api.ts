@@ -145,6 +145,15 @@ export const adminApi = {
       method: 'PUT',
       body: { coachId },
     }),
+  /** Remove from the list (account disabled, data kept) / restore — ADMIN (clients.archive). */
+  clientArchive: (id: string, archived: boolean) =>
+    adminFetch(
+      `/v1/admin/clients/${id}/${archived ? 'archive' : 'restore'}`,
+      adminClientDetailSchema,
+      {
+        method: 'POST',
+      },
+    ),
   clientAccount: (id: string, status: AccountStatusRequest['status']) =>
     adminFetch(`/v1/admin/clients/${id}/account`, adminClientDetailSchema, {
       method: 'PUT',

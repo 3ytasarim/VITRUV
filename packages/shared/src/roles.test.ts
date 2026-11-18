@@ -103,6 +103,9 @@ describe('nutrition permissions', () => {
     }
     expect(roleHasPermission('CLIENT', 'nutrition.self.read')).toBe(true);
     expect(roleHasPermission('COACH', 'nutrition.self.read')).toBe(false);
+    expect(roleHasPermission('CLIENT', 'welcome.self.read')).toBe(true);
+    expect(roleHasPermission('COACH', 'welcome.manage')).toBe(false);
+    expect(roleHasPermission('ADMIN', 'welcome.manage')).toBe(true);
     expect(
       PERMISSIONS.filter((p) => p.startsWith('website.') && roleHasPermission('COACH', p)),
     ).toEqual([]);

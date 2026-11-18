@@ -168,6 +168,7 @@ function toListItem(row: ClientRow, now: Date): AdminClientListItem {
     account: accountSummary(row.user, row.activationExpiresAt, now),
     coach: row.coachId && row.coachName ? { id: row.coachId, displayName: row.coachName } : null,
     createdAt: row.user.createdAt.toISOString(),
+    archivedAt: row.profile.archivedAt?.toISOString() ?? null,
   };
 }
 
@@ -181,12 +182,19 @@ export async function listClients(
     coachingStatus?: CoachingStatus;
     activation?: 'ACTIVATED' | 'PENDING' | 'EXPIRED';
     coach?: string;
+    view?: 'current' | 'removed';
     page: number;
     pageSize: number;
   },
 ): Promise<AdminClientList> {
   const now = nowOf(deps);
   const conditions: (SQL | undefined)[] = [clientScope(actor)];
+  // Removed clients are listed only on request (and only for those who see all clients).
+  conditions.push(
+    query.view === 'removed' && seesAllClients(actor)
+      ? isNotNull(schema.clientProfiles.archivedAt)
+      : isNull(schema.clientProfiles.archivedAt),
+  );
   if (query.q) {
     const pattern = `%${escapeLike(query.q)}%`;
     conditions.push(
@@ -616,6 +624,62 @@ export async function setClientAccountStatus(
 ): Promise<AdminClientDetail> {
   await loadScopedClient(deps.db, actor, clientId);
   await setAccountStatus(deps, actor, clientId, status);
+  return getClient(deps, actor, clientId);
+}
+
+/**
+ * "Kund:in entfernen" (owner request 2026-11-18, e.g. test clients): the account is disabled
+ * (sessions + activation links revoked), the coaching ends, and the client disappears from the
+ * list. NOTHING is deleted — users are never hard-deleted; `restoreClient` undoes it.
+ */
+export async function archiveClient(
+  deps: ManagementDeps,
+  actor: Principal,
+  clientId: string,
+): Promise<AdminClientDetail> {
+  await loadScopedClient(deps.db, actor, clientId);
+  await setAccountStatus(deps, actor, clientId, 'DISABLED');
+  const now = nowOf(deps);
+  await deps.db.transaction(async (tx) => {
+    await tx
+      .update(schema.clientProfiles)
+      .set({ archivedAt: now, coachingStatus: 'COMPLETED' })
+      .where(
+        and(eq(schema.clientProfiles.userId, clientId), isNull(schema.clientProfiles.archivedAt)),
+      );
+    await tx
+      .update(schema.coachClientAssignments)
+      .set({ endedAt: now })
+      .where(
+        and(
+          eq(schema.coachClientAssignments.clientUserId, clientId),
+          isNull(schema.coachClientAssignments.endedAt),
+        ),
+      );
+  });
+  deps.logger.info(
+    { event: 'client_archived', userId: clientId, actorUserId: actor.userId },
+    'client removed from the list',
+  );
+  return getClient(deps, actor, clientId);
+}
+
+/** Brings a removed client back into the list and re-enables the account (coach: assign again). */
+export async function restoreClient(
+  deps: ManagementDeps,
+  actor: Principal,
+  clientId: string,
+): Promise<AdminClientDetail> {
+  await loadScopedClient(deps.db, actor, clientId);
+  await deps.db
+    .update(schema.clientProfiles)
+    .set({ archivedAt: null })
+    .where(eq(schema.clientProfiles.userId, clientId));
+  await setAccountStatus(deps, actor, clientId, 'ACTIVE');
+  deps.logger.info(
+    { event: 'client_restored', userId: clientId, actorUserId: actor.userId },
+    'client restored',
+  );
   return getClient(deps, actor, clientId);
 }
 

@@ -29,6 +29,7 @@ import {
 } from './modules/media/media.routes';
 import type { TrainingDeps } from './modules/training/exercises.service';
 import { adminTrainingRoutes, clientTrainingRoutes } from './modules/training/training.routes';
+import { adminWelcomeRoutes, clientWelcomeRoutes } from './modules/welcome/welcome.routes';
 import { adminWorkoutRoutes, clientWorkoutRoutes } from './modules/workouts/workouts.routes';
 import {
   adminNutritionRoutes,
@@ -174,6 +175,8 @@ export function createApp(deps: AppDeps) {
   app.route('/v1/admin/training', adminTrainingRoutes(training));
   app.route('/v1/client/training', clientTrainingRoutes(training));
   app.route('/v1/client/workouts', clientWorkoutRoutes(training));
+  app.route('/v1/admin/welcome', adminWelcomeRoutes(training));
+  app.route('/v1/client/welcome', clientWelcomeRoutes(training));
   const nutritionDeps = {
     db: deps.media.db,
     storage: deps.media.storage,

@@ -227,7 +227,7 @@
   }
   .vt-ptabs ul {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: calc(var(--spacing) * 1);
     padding: calc(var(--spacing) * 1);
     border: var(--border-hairline) solid var(--p-line);
@@ -349,9 +349,10 @@
     letter-spacing: -0.015em;
     overflow-wrap: anywhere;
   }
+  /* Owner request 2026-11-18: the name upright, same font as the greeting (no italic). */
   .vt-greet__name {
-    font-family: var(--font-public-serif);
-    font-style: italic;
+    font-family: inherit;
+    font-style: normal;
     color: var(--color-brand-gold);
   }
   .vt-greet__hand {
@@ -613,6 +614,71 @@
   .vt-pcard.vt-pcard--flush {
     padding: 0;
     overflow: hidden;
+  }
+
+  /* "Willkommen" (owner request 2026-11-18): category pills + video cards */
+  .vt-wtabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: calc(var(--spacing) * 2);
+  }
+  .vt-wtab {
+    min-height: calc(var(--spacing) * 12);
+    padding: 0 calc(var(--spacing) * 5);
+    border: var(--border-hairline) solid var(--p-line);
+    border-radius: var(--radius-pill);
+    background: var(--p-card);
+    color: var(--color-fg);
+    font-size: 0.9375rem;
+    cursor: pointer;
+    transition:
+      background-color var(--duration-micro) ease,
+      color var(--duration-micro) ease,
+      border-color var(--duration-micro) ease;
+  }
+  .vt-wtab:hover {
+    border-color: var(--color-fg);
+  }
+  .vt-wtab[aria-pressed='true'] {
+    border-color: var(--color-fg);
+    background: var(--color-fg);
+    color: var(--color-bg);
+  }
+  .vt-wtab:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+  .vt-wgrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+    gap: calc(var(--spacing) * 4);
+  }
+  .vt-wcard {
+    display: flex;
+    flex-direction: column;
+  }
+  .vt-wcard__video {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: var(--color-fg);
+    object-fit: contain;
+  }
+  .vt-wcard__body {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 2);
+    padding: calc(var(--spacing) * 5);
+  }
+  .vt-wcard__title {
+    font-size: 1.0625rem;
+    font-weight: 500;
+    line-height: 1.3;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .vt-wtab {
+      transition: none;
+    }
   }
   .vt-pcard__head {
     display: flex;
@@ -929,6 +995,34 @@
   }
   .vt-pcard[data-today] {
     border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  }
+  .vt-dplan__sets {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 1.5);
+    margin: calc(var(--spacing) * 1) 0;
+    padding: 0;
+    list-style: none;
+  }
+  .vt-dplan__set {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--spacing) * 3);
+    min-height: 2.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+    background: var(--color-surface-sunken);
+    font-size: var(--text-body-sm);
+    font-weight: 600;
+  }
+  .vt-dplan__set-no {
+    flex-shrink: 0;
+    min-width: 4.5rem;
+    color: var(--color-accent-text);
+    font-size: var(--text-caption);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
   .vt-dplan__past > summary {
     cursor: pointer;

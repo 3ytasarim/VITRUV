@@ -706,6 +706,72 @@ describe.skipIf(!databaseUrl)('coach & client management (integration, rolled ba
     });
   });
 
+  describe('remove from the list (archive) + restore', () => {
+    it('disables the account, hides the client, keeps the data; restore brings it back', async () => {
+      await inRollback(handle, async (tx) => {
+        const t = setup(tx);
+        const admin = await t.userWithSession('ADMIN');
+        const { client } = await t.createClientAs(admin.token, { lastName: 'Archivtest' });
+        const session = await t.login(must(client.email), CLIENT_PASSWORD, 'MOBILE');
+        const listed = async (view?: string) =>
+          adminClientListSchema
+            .parse(
+              (
+                await t.call(
+                  'GET',
+                  `/v1/admin/clients?q=Archivtest${view ? `&view=${view}` : ''}`,
+                  admin.token,
+                )
+              ).body,
+            )
+            .items.map((item) => item.id);
+
+        expect(await listed()).toEqual([client.id]);
+        const coach = await t.activatedCoach(admin.token, 'Coach Archiv');
+        expect(
+          (await t.call('POST', `/v1/admin/clients/${client.id}/archive`, coach.token)).status,
+        ).toBe(403);
+
+        const archived = await t.call(
+          'POST',
+          `/v1/admin/clients/${client.id}/archive`,
+          admin.token,
+        );
+        expect(archived.status).toBe(200);
+        const detail = adminClientDetailSchema.parse(archived.body);
+        expect(detail.archivedAt).not.toBeNull();
+        expect(detail.account.status).toBe('DISABLED');
+        expect(detail.coachingStatus).toBe('COMPLETED');
+        expect(await listed()).toEqual([]);
+        expect(await listed('removed')).toEqual([client.id]);
+        // Signed out everywhere, no new login; the rows still exist (never hard-deleted).
+        expect((await t.call('GET', '/v1/client/me', session.accessToken)).status).toBe(401);
+        const [kept] = await tx
+          .select({ id: schema.clientProfiles.id })
+          .from(schema.clientProfiles)
+          .where(eq(schema.clientProfiles.userId, client.id));
+        expect(kept).toBeDefined();
+        // Idempotent.
+        expect(
+          (await t.call('POST', `/v1/admin/clients/${client.id}/archive`, admin.token)).status,
+        ).toBe(200);
+
+        const restored = await t.call(
+          'POST',
+          `/v1/admin/clients/${client.id}/restore`,
+          admin.token,
+        );
+        expect(adminClientDetailSchema.parse(restored.body)).toMatchObject({
+          archivedAt: null,
+          account: { status: 'ACTIVE' },
+        });
+        expect(await listed()).toEqual([client.id]);
+        const fresh = await t.login(must(client.email), CLIENT_PASSWORD, 'MOBILE');
+        expect((await t.call('GET', '/v1/client/me', fresh.accessToken)).status).toBe(200);
+      });
+    });
+  });
+
   describe('list, search, pagination, privacy', () => {
     it('paginates, searches and filters within scope; notes never in lists or logs', async () => {
       await inRollback(handle, async (tx) => {

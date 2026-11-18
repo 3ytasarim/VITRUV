@@ -26,6 +26,13 @@ export function planStatus(plan: Pick<ClientPlan, 'startsOn' | 'endsOn'>, today:
   return 'running' as const;
 }
 
+/** "4 Sätze (Kraft) …" → 4. Only a number directly before "Satz/Sätze"; capped at 20. */
+export function setCount(standard: string | null | undefined) {
+  const match = standard?.match(/(\d{1,2})\s*(?:x\s*)?(?:sätze|saetze|satz)/i);
+  const n = match ? Number(match[1]) : 0;
+  return n >= 1 && n <= 20 ? n : 0;
+}
+
 export type PlanGroup = { key: string; name: string; items: ClientPlanItem[] };
 
 /** Items grouped by category, groups in the order the coach first placed them. */
@@ -48,6 +55,7 @@ function PlanItem({ item }: { item: ClientPlanItem }) {
   const { exercise } = item;
   const media = exercise.media;
   const facts = [exercise.standard, exercise.captureType].filter(Boolean).join(' · ');
+  const sets = setCount(exercise.standard);
   return (
     <li className="vt-dplan__item">
       {media &&
@@ -69,6 +77,16 @@ function PlanItem({ item }: { item: ClientPlanItem }) {
           {exercise.name}
         </p>
         {facts && <p className="type-caption text-fg-subtle">{facts}</p>}
+        {sets > 1 && (
+          <ol className="vt-dplan__sets" aria-label={`${sets} Sätze`}>
+            {Array.from({ length: sets }, (_, i) => (
+              <li key={i} className="vt-dplan__set">
+                <span className="vt-dplan__set-no">Satz {i + 1}</span>
+                <span className="min-w-0 break-words">{exercise.name}</span>
+              </li>
+            ))}
+          </ol>
+        )}
         {item.note && (
           <p className="vt-dplan__note">
             <MessageSquareText aria-hidden className="size-4 shrink-0" />
