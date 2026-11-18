@@ -132,6 +132,15 @@ export function ReferenceHeader({
                   {link.label}
                 </a>
               ))}
+              {/* owner request 2026-11-18: Login at the end, the white CTA tab look */}
+              <Link
+                href="/login"
+                className="r-links__login"
+                data-track="navigation_click"
+                data-track-section="header"
+              >
+                Login
+              </Link>
             </nav>
           )}
           {SHOW_THEME_TOGGLE && <ThemeToggle initial={mode} className="r-theme" />}

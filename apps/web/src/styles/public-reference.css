@@ -408,6 +408,42 @@
   .r-links__a[data-active] {
     color: var(--r-fg);
   }
+  /* Login at the end of the menu — the white sticky tab ("r-stick--light") as a header button */
+  .r-links__login {
+    --r-stick-ink: color-mix(in srgb, var(--r-accent) 72%, black);
+    pointer-events: auto;
+    display: inline-flex;
+    align-items: center;
+    min-height: 48px;
+    margin-left: clamp(4px, 0.6vw, 10px);
+    padding: 0 18px 0 20px;
+    clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px);
+    background: white;
+    color: var(--r-stick-ink);
+    box-shadow: 0 0 18px rgba(var(--r-glow-rgb), 0.25);
+    font-family: var(--font-label);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    text-decoration: none;
+    transition: padding-right 400ms var(--r-ease);
+  }
+  .r-links__login:hover,
+  .r-links__login:focus-visible {
+    color: var(--r-stick-ink);
+    padding-right: 24px;
+  }
+  .r-links__login:focus-visible {
+    outline: 2px solid var(--r-stick-ink);
+    outline-offset: -4px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .r-links__login {
+      transition: none;
+    }
+  }
   @media (min-width: 1280px) {
     .r-links {
       display: flex;
