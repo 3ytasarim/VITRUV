@@ -892,7 +892,17 @@ export function mountJourneyMap(root: HTMLElement): () => void {
     ghost.setAttribute('d', d);
     line.setAttribute('d', d);
     drawMap(H);
-    line.style.strokeDasharray = String(total);
+    // WebKit repaints a dash change reliably only as an SVG attribute (a style change could leave
+    // the old, longer route on screen when scrolling back); others keep the style property.
+    if (lite) {
+      line.style.removeProperty('stroke-dasharray');
+      line.style.removeProperty('stroke-dashoffset');
+      line.setAttribute('stroke-dasharray', String(total));
+    } else {
+      line.removeAttribute('stroke-dasharray');
+      line.removeAttribute('stroke-dashoffset');
+      line.style.strokeDasharray = String(total);
+    }
     update();
   };
 
@@ -901,7 +911,8 @@ export function mountJourneyMap(root: HTMLElement): () => void {
     const r = root.getBoundingClientRect();
     const p = Math.max(0, Math.min(1, (window.innerHeight * 0.62 - r.top) / (r.height || 1)));
     const L = p * total;
-    line.style.strokeDashoffset = String(total - L);
+    if (lite) line.setAttribute('stroke-dashoffset', (total - L).toFixed(1));
+    else line.style.strokeDashoffset = String(total - L);
     const pt = at(L);
     const ry = Math.max(pt[1], window.innerHeight * 0.62 - r.top) + 220;
     while (revI < REV.length && (REV[revI] as [number, Element])[0] < ry) {

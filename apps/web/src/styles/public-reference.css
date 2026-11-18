@@ -1826,8 +1826,9 @@
     border-bottom: 1px solid rgba(var(--r-line-rgb), 0.1);
     transition: background 400ms ease;
   }
+  /* open question on a black ground (owner 2026-11-18; light theme: its footer tone) */
   .r-faq__list details[open] {
-    background: linear-gradient(90deg, rgba(var(--r-glow-rgb), 0.06), transparent 70%);
+    background: var(--r-footer);
   }
   .r-faq__list details::details-content {
     block-size: 0;
@@ -1871,21 +1872,32 @@
     flex: 1;
   }
   .r-faq__plus {
+    position: relative;
     flex: none;
-    display: grid;
-    place-items: center;
     width: 30px;
     height: 30px;
     border-radius: 50%;
     border: 1px solid rgba(var(--r-glow-rgb), 0.35);
-    font-family: var(--font-label);
-    font-weight: 600;
-    font-size: 18px;
-    line-height: 1;
     color: var(--r-accent-text);
     transition:
       transform 400ms var(--r-ease),
       background 400ms ease;
+  }
+  /* two bars, centred exactly; the 45° turn makes the × */
+  .r-faq__plus::before,
+  .r-faq__plus::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 12px;
+    height: 2px;
+    border-radius: 1px;
+    background: currentColor;
+    transform: translate(-50%, -50%);
+  }
+  .r-faq__plus::after {
+    transform: translate(-50%, -50%) rotate(90deg);
   }
   .r-faq__list details[open] .r-faq__plus {
     transform: rotate(45deg);

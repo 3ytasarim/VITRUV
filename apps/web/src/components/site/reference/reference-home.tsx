@@ -503,9 +503,8 @@ export function ReferenceHome({ content: c }: { content: HomeContent }) {
                     {nn(i)}
                   </span>
                   <span className="r-faq__q">{f.question}</span>
-                  <span aria-hidden className="r-faq__plus">
-                    +
-                  </span>
+                  {/* drawn plus (two bars) — a "+" glyph never sits exactly in the centre */}
+                  <span aria-hidden className="r-faq__plus" />
                 </summary>
                 <p>{f.answer}</p>
               </details>
