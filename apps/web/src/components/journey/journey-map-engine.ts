@@ -902,16 +902,44 @@ export function mountJourneyMap(root: HTMLElement): () => void {
   const onScroll = () => {
     if (!raf) raf = requestAnimationFrame(update);
   };
+  // Phones fire `resize` (and change the section height by a few px) whenever the browser bar
+  // shows/hides while scrolling. Rebuilding the whole map then froze the scroll (owner report
+  // 2026-11-18): only a real layout change — width, or height by more than 120px — rebuilds; a
+  // bar toggle just re-positions the route. Rebuilds are debounced.
+  let lastW = 0;
+  let lastH = 0;
+  let pending = 0;
+  const relayout = () => {
+    const r = root.getBoundingClientRect();
+    if (Math.round(r.width) === lastW && Math.abs(r.height - lastH) < 120) {
+      onScroll();
+      return;
+    }
+    window.clearTimeout(pending);
+    pending = window.setTimeout(() => {
+      const now = root.getBoundingClientRect();
+      lastW = Math.round(now.width);
+      lastH = now.height;
+      build();
+    }, 150);
+  };
+  const first = () => {
+    const r = root.getBoundingClientRect();
+    lastW = Math.round(r.width);
+    lastH = r.height;
+    build();
+  };
   window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('resize', build);
-  const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(build);
+  window.addEventListener('resize', relayout);
+  const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(relayout);
   ro?.observe(root);
   root.setAttribute('data-weg-ready', '');
-  build();
-  const late = window.setTimeout(build, 800);
+  first();
+  const late = window.setTimeout(first, 800);
   return () => {
+    window.clearTimeout(pending);
     window.removeEventListener('scroll', onScroll);
-    window.removeEventListener('resize', build);
+    window.removeEventListener('resize', relayout);
     ro?.disconnect();
     window.clearTimeout(late);
     if (raf) cancelAnimationFrame(raf);

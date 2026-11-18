@@ -42,15 +42,27 @@ export function StepTimeline({
     const row = track.current;
     if (!sec || !row || still) return;
     const items = [...row.querySelectorAll<HTMLElement>('[data-tl-item]')];
+    // phones (owner feedback 2026-11-18): a vertical timeline instead of the pinned horizontal
+    // track — no huge gaps, nothing cut off; steps open one by one as they scroll into view
+    const phone = window.matchMedia('(max-width: 760px)');
     let overflow = 0;
     let frame = 0;
 
     const measure = () => {
-      overflow = Math.max(0, row.scrollWidth - window.innerWidth);
+      overflow = phone.matches ? 0 : Math.max(0, row.scrollWidth - window.innerWidth);
       sec.style.setProperty('--tl-scroll', `${overflow}px`);
     };
     const update = () => {
       frame = 0;
+      if (phone.matches) {
+        row.style.transform = '';
+        const reveal = window.innerHeight * 0.85;
+        for (const item of items) {
+          const on = item.getBoundingClientRect().top < reveal;
+          if (on !== item.hasAttribute('data-on')) item.toggleAttribute('data-on', on);
+        }
+        return;
+      }
       const rect = sec.getBoundingClientRect();
       const total = sec.offsetHeight - window.innerHeight;
       const p = total > 0 ? Math.min(1, Math.max(0, -rect.top / total)) : 0;
@@ -72,10 +84,18 @@ export function StepTimeline({
       schedule();
     });
     ro.observe(row);
+    // measure after the layout of the new mode is applied
+    const onMode = () =>
+      requestAnimationFrame(() => {
+        measure();
+        schedule();
+      });
+    phone.addEventListener('change', onMode);
     window.addEventListener('scroll', schedule, { passive: true });
     window.addEventListener('resize', schedule);
     return () => {
       cancelAnimationFrame(frame);
+      phone.removeEventListener('change', onMode);
       ro.disconnect();
       window.removeEventListener('scroll', schedule);
       window.removeEventListener('resize', schedule);

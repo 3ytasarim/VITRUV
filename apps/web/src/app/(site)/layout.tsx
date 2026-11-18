@@ -37,7 +37,12 @@ function headerLinks(home: Home | null): ReferenceLink[] {
     [home.faq.eyebrow, 'faq'],
     [home.apply.eyebrow, 'bewerben'],
   ];
-  return items.flatMap(([label, id]) => (label ? [{ label, href: `/#${id}` }] : []));
+  // owner request 2026-11-18: "Bewerben" opens WhatsApp — the CMS WhatsApp channel link, if set
+  const whatsapp = home.apply.channels.find((ch) => ch.id === 'whatsapp')?.href;
+  const applyHref = whatsapp?.startsWith('https://') ? whatsapp : '/#bewerben';
+  return items.flatMap(([label, id]) =>
+    label ? [{ label, href: id === 'bewerben' ? applyHref : `/#${id}` }] : [],
+  );
 }
 
 /**

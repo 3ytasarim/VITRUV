@@ -861,6 +861,14 @@
     stroke-linejoin: round;
     filter: drop-shadow(0 0 6px color-mix(in srgb, var(--r-accent) 70%, transparent));
   }
+  /* phones: the drop-shadow on a section-tall SVG repainted the whole area on every scroll frame
+     (stutter, owner report 2026-11-18) — a slightly bolder line without the filter instead */
+  @media (max-width: 760px), (pointer: coarse) {
+    .r-weg__line {
+      stroke-width: 3;
+      filter: none;
+    }
+  }
   .r-weg__dot {
     position: absolute;
     left: 0;
@@ -2688,21 +2696,87 @@
     color: rgba(var(--r-fg-rgb), 0.62);
     text-wrap: pretty;
   }
-  @media (max-width: 600px) {
+  /* phones: a vertical timeline (owner feedback 2026-11-18) — the pinned horizontal track left
+     huge gaps above/below the line and cut the copy off. Line on the left, steps stacked; each
+     step's stem grows down to the next one as it scrolls in, so the line fills step by step. */
+  @media (max-width: 760px) {
     .tl {
-      --tl-start: 62vw;
-      --tl-gap: 72vw;
-      --tl-step-w: 66vw;
+      height: auto;
     }
-    .r-slot.tl-frame {
-      width: 85vw;
-      height: 65vw;
+    .tl .tl-pin {
+      position: static;
+      height: auto;
+      overflow: visible;
+      display: block;
+      padding: 72px 0 40px;
     }
-    .tl-area {
-      height: 78vh;
+    .tl .tl-track {
+      display: block;
+      width: auto;
+      padding: 0 var(--r-side);
+      transform: none;
     }
-    .tl-step[data-side='bottom'] {
-      margin-left: 0;
+    .r-slot.tl-frame,
+    .tl .tl-line {
+      display: none;
+    }
+    .tl .tl-area {
+      height: auto;
+      width: auto;
+    }
+    .tl .tl-head {
+      position: static;
+      width: auto;
+      margin-bottom: 36px;
+    }
+    .tl .tl-title {
+      font-size: clamp(28px, 8vw, 40px);
+    }
+    .tl .tl-steps {
+      position: static;
+      display: flex;
+      flex-direction: column;
+    }
+    .tl .tl-step,
+    .tl .tl-step[data-side='bottom'] {
+      position: relative;
+      left: auto;
+      top: auto;
+      width: auto;
+      height: auto;
+      margin: 0;
+      padding: 0 0 32px 32px;
+    }
+    .tl .tl-step:last-child {
+      padding-bottom: 0;
+    }
+    .tl .tl-step__stem,
+    .tl .tl-step[data-side='bottom'] .tl-step__stem {
+      left: 7px;
+      top: 9px;
+      height: 100%;
+      transform-origin: top;
+    }
+    .tl .tl-step:last-child .tl-step__stem {
+      display: none;
+    }
+    .tl .tl-step__dot,
+    .tl .tl-step[data-side='bottom'] .tl-step__dot {
+      left: 7px;
+      top: 9px;
+    }
+    .tl .tl-step__copy,
+    .tl .tl-step[data-side='bottom'] .tl-step__copy {
+      position: static;
+      gap: 8px;
+      padding: 0;
+      margin: 0;
+    }
+    .tl .tl-step__title {
+      font-size: 20px;
+    }
+    .tl .tl-step__text {
+      font-size: 15px;
     }
   }
   /* reduced motion: no pinning, a plain scrollable row with every step shown */
