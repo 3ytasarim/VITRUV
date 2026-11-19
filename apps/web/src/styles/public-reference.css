@@ -408,45 +408,42 @@
   .r-links__a[data-active] {
     color: var(--r-fg);
   }
-  /* Login at the end of the menu — the white sticky tab ("r-stick--light") as a header button */
+  /* Login at the end of the menu: the owner's person icon (PNG, owner 2026-11-19) + "Login".
+     The PNG is used as a mask so the icon takes the text colour (white on the live black theme,
+     ink on the light one). 48px tap target. */
   .r-links__login {
-    --r-stick-ink: color-mix(in srgb, var(--r-accent) 72%, black);
     pointer-events: auto;
-    position: relative;
-    isolation: isolate;
     display: inline-flex;
     align-items: center;
-    /* 48px tap target; the visible white tab is smaller (owner 2026-11-19: looked too big) */
+    gap: 9px;
     min-height: 48px;
     margin-left: clamp(4px, 0.6vw, 10px);
-    padding: 0 14px 0 16px;
-    color: var(--r-stick-ink);
+    padding: 0 4px;
+    color: var(--r-fg);
     font-family: var(--font-label);
     font-weight: 600;
-    font-size: 10px;
-    letter-spacing: 0.2em;
+    font-size: 11px;
+    letter-spacing: 0.24em;
     text-transform: uppercase;
     white-space: nowrap;
     text-decoration: none;
-    transition: padding-right 400ms var(--r-ease);
+    transition: color 400ms ease;
   }
-  .r-links__login::before {
-    content: '';
-    position: absolute;
-    inset: 8px 0;
-    z-index: -1;
-    clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px);
-    background: white;
-    box-shadow: 0 0 18px rgba(var(--r-glow-rgb), 0.25);
+  .r-links__login-icon {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    background: currentColor;
+    -webkit-mask: url('/brand/login-icon.png') center / contain no-repeat;
+    mask: url('/brand/login-icon.png') center / contain no-repeat;
   }
   .r-links__login:hover,
   .r-links__login:focus-visible {
-    color: var(--r-stick-ink);
-    padding-right: 20px;
+    color: var(--r-accent-text);
   }
   .r-links__login:focus-visible {
-    outline: 2px solid var(--r-stick-ink);
-    outline-offset: -10px;
+    outline: 2px solid var(--r-accent);
+    outline-offset: 2px;
   }
   @media (prefers-reduced-motion: reduce) {
     .r-links__login {

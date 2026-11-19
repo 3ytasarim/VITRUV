@@ -132,13 +132,14 @@ export function ReferenceHeader({
                   {link.label}
                 </a>
               ))}
-              {/* owner request 2026-11-18: Login at the end, the white CTA tab look */}
+              {/* owner request 2026-11-19: their person icon + "Login" at the end of the menu */}
               <Link
                 href="/login"
                 className="r-links__login"
                 data-track="navigation_click"
                 data-track-section="header"
               >
+                <span aria-hidden className="r-links__login-icon" />
                 Login
               </Link>
             </nav>
