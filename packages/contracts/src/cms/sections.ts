@@ -413,6 +413,8 @@ function defineSectionSchemas<Slot extends z.ZodType>(slot: Slot) {
       eyebrow: optionalText(60),
       title: plainText(120),
       items: idList({ title: plainText(80), text: plainText(400) }, 12),
+      /** Image/video in the leading frame of the timeline (additive 2026-11-19). */
+      media: media.optional(),
     }),
     training: z.object({
       eyebrow: optionalText(60),

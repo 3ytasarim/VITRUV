@@ -1,15 +1,14 @@
 import type { PublicSectionContent, ResolvedMediaSlot } from '@vitruv/contracts';
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { CmsMedia } from '@/components/cms/cms-media';
 import { JourneyMapMount } from '@/components/journey/journey-map-mount';
-import { cx, RevealGroup } from '@/components/ui';
-import { ArrowUpRight, Check, Dumbbell, Star } from 'lucide-react';
+import { cx } from '@/components/ui';
+import { ArrowUpRight, Dumbbell } from 'lucide-react';
 import { splitHighlight } from '../highlighted-title';
 import { BorderBeam } from './border-beam';
 import { CtaShader } from './cta-shader';
 import { IncludedIcon } from './included-icon';
 import { Marquee } from './marquee';
-import { PricingStarfield } from './pricing-starfield';
 import { StepTimeline } from './step-timeline';
 import { VerticalMarquee } from './vertical-marquee';
 
@@ -335,57 +334,40 @@ export function ReferenceHome({ content: c }: { content: HomeContent }) {
         </div>
       </section>
 
-      {/* ---- Pakete (pricing block pattern: starfield, centred head, raised featured card) ---- */}
-      <section id="pakete" className="r-sec r-sec--rule r-pricing" aria-labelledby="pakete-title">
-        <PricingStarfield />
+      {/* ---- Pakete ---- */}
+      <section id="pakete" className="r-sec r-sec--rule" aria-labelledby="pakete-title">
         <div className="r-wrap r-pakete__inner">
           <Head
             eyebrow={c.packages.eyebrow}
             title={c.packages.title}
             lead={c.packages.lead}
             id="pakete-title"
-            className="r-pricing__head"
           />
-          <RevealGroup className="r-pricing__grid">
-            {c.packages.items.map((pkg, index) => (
+          <div className="r-pakete__grid">
+            {c.packages.items.map((pkg) => (
               <article
                 key={pkg.id}
-                className="r-price-card"
+                className="r-package"
                 data-featured={pkg.featured ? '' : undefined}
-                style={{ '--r-price-delay': `${index * 150}ms` } as CSSProperties}
               >
-                {pkg.featured && pkg.label && (
-                  <span className="r-price-card__badge">
-                    <Star aria-hidden className="r-price-card__star" />
-                    {pkg.label}
-                  </span>
-                )}
-                {!pkg.featured && pkg.label && (
-                  <span className="r-price-card__label">{pkg.label}</span>
-                )}
-                <h3 className="r-price-card__name">{pkg.name}</h3>
-                {pkg.text && <p className="r-price-card__text">{pkg.text}</p>}
-                {pkg.price && (
-                  <p className="r-price-card__price">
-                    <span className="r-price-card__amount">{pkg.price}</span>
-                    {pkg.priceNote && <span className="r-price-card__per">{pkg.priceNote}</span>}
-                  </p>
-                )}
-                <ul className="r-price-card__features">
+                <div className="r-package__head">
+                  <h3>{pkg.name}</h3>
+                  {pkg.label && (
+                    <span className={pkg.featured ? 'r-package__badge' : 'r-package__label'}>
+                      {pkg.label}
+                    </span>
+                  )}
+                </div>
+                {pkg.text && <p className="r-package__text">{pkg.text}</p>}
+                <ul>
                   {pkg.features.map((f, i) => (
-                    <li key={i}>
-                      <Check aria-hidden className="r-price-card__check" />
-                      <span>{f}</span>
-                    </li>
+                    <li key={i}>+ {f}</li>
                   ))}
+                  {pkg.note && <li className="r-package__note">{pkg.note}</li>}
                 </ul>
-                {pkg.note && <p className="r-price-card__note">{pkg.note}</p>}
                 <a
                   href={pkg.cta.href}
-                  className={cx(
-                    'r-btn r-price-card__cta',
-                    pkg.featured ? 'r-btn--primary' : 'r-btn--outline',
-                  )}
+                  className={cx('r-btn', pkg.featured ? 'r-btn--primary' : 'r-btn--outline')}
                   data-track="package_cta_click"
                   data-track-section="packages"
                   data-track-label={pkg.id}
@@ -394,7 +376,7 @@ export function ReferenceHome({ content: c }: { content: HomeContent }) {
                 </a>
               </article>
             ))}
-          </RevealGroup>
+          </div>
         </div>
       </section>
 
@@ -404,6 +386,7 @@ export function ReferenceHome({ content: c }: { content: HomeContent }) {
         eyebrow={c.steps.eyebrow}
         steps={c.steps.items}
         titleId="ablauf-title"
+        media={c.steps.media ?? null}
       />
 
       {/* ---- Im Training ---- */}
@@ -455,7 +438,13 @@ export function ReferenceHome({ content: c }: { content: HomeContent }) {
               <span aria-hidden className="t2-line t2-line--v t2-line--right" />
               <span aria-hidden className="t2-line t2-line--h t2-line--top" />
               <span aria-hidden className="t2-line t2-line--h t2-line--bottom" />
-              <MediaSlot slot={c.coach.media} sizes="320px" className="t2-portrait__img" />
+              {/* the square frame crops with object-fit: cover — a landscape portrait renders up to
+                2x the frame width, so ask for that (owner: pixelated on desktop, 2026-11-19) */}
+              <MediaSlot
+                slot={c.coach.media}
+                sizes="(min-width: 820px) 560px, 400px"
+                className="t2-portrait__img"
+              />
             </div>
             <figcaption className="t2-caption">
               <blockquote className="t2-quote">

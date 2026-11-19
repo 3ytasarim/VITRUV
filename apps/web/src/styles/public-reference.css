@@ -1322,219 +1322,121 @@
 
   /* ---- Pakete --------------------------------------------------------------------------------- */
   .r-pakete__inner {
-    position: relative;
-    z-index: 1;
     display: flex;
     flex-direction: column;
-    gap: 56px;
+    gap: 44px;
   }
-  /* Pricing block pattern (21st.dev ravikatiyar162/pricing, rebuilt in the site palette):
-     starfield behind, centred head, cards with check lists, the featured card raised with a
-     badge on its top edge. Colours only from the --r-* theme variables. */
-  .r-pricing {
+  .r-pakete__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+    gap: 16px;
+    align-items: stretch;
+  }
+  .r-package {
     position: relative;
-    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 32px 30px;
+    border-radius: 24px;
+    border: 1px solid rgba(var(--r-line-rgb), 0.1);
+    background: var(--r-card-package);
+    transition:
+      border-color 600ms ease,
+      transform 600ms var(--r-ease),
+      box-shadow 600ms ease;
   }
-  .r-starfield {
+  .r-package:hover {
+    border-color: rgba(var(--r-line-rgb), 0.3);
+    transform: translateY(-4px);
+  }
+  .r-package[data-featured] {
+    border: 1px solid transparent;
+    background:
+      linear-gradient(var(--r-card-package), var(--r-card-package)) padding-box,
+      linear-gradient(var(--r-accent), var(--r-accent)) border-box;
+    box-shadow: 0 0 60px rgba(var(--r-glow-rgb), 0.08);
+    animation: r-card-pulse 3.8s ease-in-out infinite;
+  }
+  .r-package[data-featured]:hover {
+    box-shadow: 0 0 80px rgba(var(--r-glow-rgb), 0.18);
+  }
+  .r-package[data-featured] > * {
+    animation: r-card-jitter 6.5s steps(1, end) infinite;
+  }
+  .r-package[data-featured]::before {
+    content: '';
     position: absolute;
     inset: 0;
-    overflow: hidden;
+    z-index: 1;
     pointer-events: none;
-  }
-  .r-starfield > span {
-    position: absolute;
-    border-radius: 999px;
-    background: var(--r-fg);
     opacity: 0;
-    animation-name: r-star-twinkle;
-    animation-iteration-count: infinite;
-    animation-timing-function: ease-in-out;
-    will-change: translate, opacity;
+    border-radius: 24px;
+    background: repeating-linear-gradient(
+      180deg,
+      transparent 0 9px,
+      rgba(var(--r-glow-rgb), 0.12) 9px 11px
+    );
+    animation: r-card-glitch 6.5s steps(1, end) infinite;
   }
-  @keyframes r-star-twinkle {
-    0%,
-    100% {
-      opacity: 0;
-    }
-    50% {
-      opacity: 0.9;
-    }
-  }
-  .r-pricing__head {
-    margin-inline: auto;
-    text-align: center;
-    align-items: center;
-  }
-  .r-pricing__grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 380px));
-    justify-content: center;
-    align-items: start;
-    gap: 32px;
-  }
-  .r-price-card {
-    position: relative;
+  .r-package__head {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 14px;
-    height: 100%;
-    padding: 40px 32px 32px;
-    border-radius: 20px;
-    border: 1px solid rgba(var(--r-line-rgb), 0.14);
-    background: color-mix(in srgb, var(--r-card-package) 72%, transparent);
-    backdrop-filter: blur(6px);
-    text-align: center;
-    transition:
-      transform 600ms var(--r-ease),
-      border-color 400ms ease,
-      box-shadow 400ms ease;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
   }
-  .r-price-card:hover {
-    border-color: rgba(var(--r-line-rgb), 0.32);
+  .r-package__head h3 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 400;
+    color: var(--r-fg);
   }
-  .r-price-card[data-featured] {
-    border: 2px solid var(--r-accent);
-    box-shadow: 0 24px 80px rgba(var(--r-glow-rgb), 0.16);
-  }
-  @media (min-width: 1024px) {
-    .r-price-card[data-featured] {
-      transform: translateY(-20px);
-    }
-  }
-  /* Spring-like entrance once the grid is in view (RevealGroup). */
-  .r-pricing__grid[data-armed] .r-price-card {
-    opacity: 0;
-    translate: 0 50px;
-  }
-  .r-pricing__grid[data-inview] .r-price-card {
-    opacity: 1;
-    translate: 0 0;
-    transition:
-      opacity 600ms ease var(--r-price-delay, 0ms),
-      translate 900ms cubic-bezier(0.34, 1.4, 0.64, 1) var(--r-price-delay, 0ms),
-      transform 600ms var(--r-ease),
-      border-color 400ms ease,
-      box-shadow 400ms ease;
-  }
-  .r-price-card__badge {
-    position: absolute;
-    top: 0;
-    left: 50%;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 16px;
-    border-radius: 999px;
-    translate: -50% -50%;
-    background: var(--r-accent);
-    color: var(--r-on-accent);
-    font-family: var(--font-label);
-    font-weight: 600;
-    font-size: 11px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    white-space: nowrap;
-    box-shadow: 0 0 20px rgba(var(--r-glow-rgb), 0.45);
-  }
-  .r-price-card__star {
-    width: 14px;
-    height: 14px;
-    fill: currentColor;
-  }
-  .r-price-card__label {
+  .r-package__label {
     font-family: var(--font-label);
     font-weight: 600;
     font-size: 10px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: rgba(var(--r-fg-rgb), 0.55);
+    color: rgba(var(--r-fg-rgb), 0.5);
   }
-  .r-price-card__name {
-    margin: 0;
-    font-size: 24px;
-    font-weight: 500;
-    color: var(--r-fg);
+  .r-package__badge {
+    font-family: var(--font-label);
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--r-on-accent);
+    background: var(--r-accent);
+    padding: 5px 12px;
+    border-radius: 2px;
+    clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+    box-shadow: 0 0 16px rgba(var(--r-glow-rgb), 0.55);
   }
-  .r-price-card__text {
+  .r-package__text {
     margin: 0;
     font-size: 15px;
-    line-height: 1.65;
+    line-height: 1.7;
     color: rgba(var(--r-fg-rgb), 0.62);
     text-wrap: pretty;
   }
-  .r-price-card__price {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    justify-content: center;
-    gap: 6px;
-    margin: 10px 0 0;
-  }
-  .r-price-card__amount {
-    font-size: clamp(40px, 5vw, 52px);
-    font-weight: 700;
-    line-height: 1;
-    letter-spacing: -0.02em;
-    color: var(--r-fg);
-    font-variant-numeric: tabular-nums;
-  }
-  .r-price-card__per {
-    font-size: 14px;
-    font-weight: 600;
-    color: rgba(var(--r-fg-rgb), 0.6);
-  }
-  .r-price-card__features {
-    align-self: stretch;
-    flex: 1 0 auto;
-    margin-bottom: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin: 14px 0 0;
+  .r-package ul {
+    margin: 0;
     padding: 0;
     list-style: none;
-    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     font-size: 14px;
     line-height: 1.5;
-    color: rgba(var(--r-fg-rgb), 0.78);
+    color: rgba(var(--r-fg-rgb), 0.75);
   }
-  .r-price-card__features li {
-    display: flex;
-    gap: 12px;
+  .r-package__note {
+    color: rgba(var(--r-fg-rgb), 0.45);
   }
-  .r-price-card__check {
-    flex: none;
-    width: 20px;
-    height: 20px;
-    color: var(--r-accent);
-  }
-  .r-price-card__note {
-    align-self: stretch;
-    margin: 0;
-    text-align: left;
-    font-size: 13px;
-    color: rgba(var(--r-fg-rgb), 0.5);
-  }
-  .r-price-card__cta {
-    align-self: stretch;
+  .r-package .r-btn {
     margin-top: auto;
     padding: 16px 24px;
     font-size: 11px;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .r-starfield > span {
-      animation: none;
-      opacity: 0.5;
-    }
-    .r-pricing__grid[data-armed] .r-price-card {
-      opacity: 1;
-      translate: none;
-    }
-    .r-price-card,
-    .r-pricing__grid[data-inview] .r-price-card {
-      transition: none;
-    }
   }
   .r-btn--outline {
     --edge: rgba(var(--r-line-rgb), 0.22);
@@ -2764,9 +2666,16 @@
       padding: 0 var(--r-side);
       transform: none;
     }
-    .r-slot.tl-frame,
+    .r-slot.tl-frame:not([data-filled]),
     .tl .tl-line {
       display: none;
+    }
+    /* a CMS image stays on phones: full width above the steps */
+    .tl .r-slot.tl-frame[data-filled] {
+      width: 100%;
+      height: auto;
+      aspect-ratio: 4 / 3;
+      margin-bottom: 32px;
     }
     .tl .tl-area {
       height: auto;
@@ -2885,12 +2794,10 @@
     border-radius: 16px;
     background: rgba(var(--r-line-rgb), 0.06);
   }
-  .tt-card__media :is(img, video) {
-    filter: grayscale(1);
-    transition: filter 300ms ease;
-  }
-  .tt-card__media:hover :is(img, video) {
-    filter: none;
+  /* owner request 2026-11-19: images in colour, and the row keeps running under the mouse /
+    finger (desktop + mobile); reduced-motion still stands still via the base marquee rules */
+  .r-marquee.tt-marquee:hover .r-marquee__track {
+    animation-play-state: running;
   }
   .tt-card__caption {
     position: absolute;

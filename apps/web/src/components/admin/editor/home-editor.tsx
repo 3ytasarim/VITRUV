@@ -559,14 +559,14 @@ export function HomeEditor({ value: v, onChange, errors }: EditorProps<'home'>) 
                   <TextField
                     label="Label oben rechts"
                     maxLength={40}
-                    hint="z. B. „6 Wochen“ oder „Beliebt“; beim hervorgehobenen Paket als Abzeichen oben auf der Karte."
+                    hint="z. B. „6 Wochen“; beim hervorgehobenen Paket als blaues Abzeichen."
                     value={item.label}
                     error={ie.label}
                     onChange={(label) => update({ label })}
                   />
                 </div>
                 <CheckboxField
-                  label="Hervorheben (blauer Rahmen, Abzeichen oben, leicht angehoben)"
+                  label="Hervorheben (blauer Rahmen + Leuchten)"
                   checked={item.featured}
                   onChange={(featured) => update({ featured })}
                 />
@@ -578,28 +578,10 @@ export function HomeEditor({ value: v, onChange, errors }: EditorProps<'home'>) 
                   error={ie.text}
                   onChange={(text) => update({ text })}
                 />
-                <div className="grid gap-5 md:grid-cols-2">
-                  <TextField
-                    label="Preis"
-                    maxLength={30}
-                    hint="z. B. „490 €“ — leer lassen = kein Preis auf der Karte."
-                    value={item.price}
-                    error={ie.price}
-                    onChange={(price) => update({ price })}
-                  />
-                  <TextField
-                    label="Zusatz zum Preis"
-                    maxLength={40}
-                    hint="z. B. „/ 6 Wochen“ oder „einmalig“."
-                    value={item.priceNote}
-                    error={ie.priceNote}
-                    onChange={(priceNote) => update({ priceNote })}
-                  />
-                </div>
                 <TextField
                   label="Leistungen — eine pro Zeile"
                   multiline
-                  hint="Erscheinen mit Häkchen davor."
+                  hint="Erscheinen mit „+“ davor."
                   value={item.features.join('\n')}
                   error={ie.features}
                   onChange={(text) => update({ features: toLines(text) })}
@@ -626,6 +608,12 @@ export function HomeEditor({ value: v, onChange, errors }: EditorProps<'home'>) 
       {/* ---- So läuft es ab ---- */}
       <Block title="So läuft es ab" hint="Schritte">
         <Heading value={v.steps} errors={e('steps')} onChange={(steps) => set('steps', steps)} />
+        <Media
+          legend="Bild links neben den Schritten"
+          value={v.steps.media ?? null}
+          errors={e('steps')}
+          onChange={(media) => set('steps', { ...v.steps, media })}
+        />
         <RepeatableList
           heading="Schritte"
           addLabel="Schritt hinzufügen"

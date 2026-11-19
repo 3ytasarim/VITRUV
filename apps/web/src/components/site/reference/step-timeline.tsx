@@ -1,6 +1,8 @@
 'use client';
 
+import type { ResolvedMediaSlot } from '@vitruv/contracts';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { CmsMedia } from '@/components/cms/cms-media';
 
 type Step = { id: string; title: string; text: string };
 
@@ -19,11 +21,14 @@ export function StepTimeline({
   eyebrow,
   steps,
   titleId,
+  media = null,
 }: {
   title: string;
   eyebrow?: string;
   steps: Step[];
   titleId: string;
+  /** CMS image/video of the leading frame (Admin → Startseite → So läuft es ab); empty frame if unset. */
+  media?: ResolvedMediaSlot | null;
 }) {
   const section = useRef<HTMLElement>(null);
   const track = useRef<HTMLDivElement>(null);
@@ -114,7 +119,9 @@ export function StepTimeline({
     >
       <div className="tl-pin">
         <div ref={track} className="tl-track">
-          <div aria-hidden className="r-slot tl-frame" />
+          <div aria-hidden className="r-slot tl-frame" data-filled={media ? '' : undefined}>
+            {media && <CmsMedia slot={media} sizes="(max-width: 760px) 100vw, 30vw" />}
+          </div>
           <div className="tl-area">
             <div className="tl-head">
               {eyebrow && <span className="r-eyebrow">{eyebrow}</span>}
