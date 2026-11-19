@@ -130,7 +130,10 @@ export function mountJourneyMap(root: HTMLElement): () => void {
   // 2026-11-18). "lite": blur filters become radial gradients, no glow filter on the route,
   // lighter reveal. Chrome/Firefox keep the original look.
   const ua = navigator.userAgent;
-  const lite = /AppleWebKit/.test(ua) && !/Chrome|Chromium|Edg|OPR|Android/.test(ua);
+  // `?weg-lite` forces it in any browser (QA of the Safari path from Chrome)
+  const lite =
+    (/AppleWebKit/.test(ua) && !/Chrome|Chromium|Edg|OPR|Android/.test(ua)) ||
+    new URLSearchParams(window.location.search).has('weg-lite');
   root.toggleAttribute('data-weg-lite', lite);
 
   // The map gets its OWN <svg> layer below the route svg, so moving the route never repaints
@@ -145,6 +148,88 @@ export function mountJourneyMap(root: HTMLElement): () => void {
   mapEl.setAttribute('data-weg-map', '');
   mapSvg.appendChild(mapEl);
   svg.querySelector('[data-weg-map]')?.remove();
+
+  // WebKit ("lite"): every scroll frame invalidates the area under the moving route, and WebKit
+  // then re-rasterises every vector of the ~850-element map below it (Chrome keeps it cached) —
+  // the stutter of owner report 2026-11-19. So in lite mode the static map (minus its labels)
+  // becomes a few bitmap tiles (<img> of the SVG, rasterised once and only blitted afterwards),
+  // the labels stay in the small live SVG (page font), and the route is cut into short pieces
+  // in their own small SVGs so a frame repaints only the piece that is growing.
+  const tiles = lite ? document.createElement('div') : null;
+  let tileUrls: string[] = [];
+  if (tiles) {
+    tiles.setAttribute('aria-hidden', 'true');
+    tiles.setAttribute('data-weg-tiles', '');
+    tiles.className = svg.getAttribute('class') ?? '';
+    mapSvg.before(tiles);
+  }
+  const paintTiles = (body: string, XL: number, VW: number, H: number) => {
+    if (!tiles) return;
+    for (const u of tileUrls) URL.revokeObjectURL(u);
+    tileUrls = [];
+    const imgs: HTMLImageElement[] = [];
+    const T = 1024;
+    for (let y0 = 0; y0 < H; y0 += T) {
+      const th = Math.min(T, H - y0);
+      const src = `<svg xmlns="${NS}" width="${VW}" height="${th}" viewBox="${XL} ${y0} ${VW} ${th}" preserveAspectRatio="none">${body}</svg>`;
+      const url = URL.createObjectURL(new Blob([src], { type: 'image/svg+xml' }));
+      tileUrls.push(url);
+      const img = document.createElement('img');
+      img.alt = '';
+      img.decoding = 'async';
+      img.draggable = false;
+      img.src = url;
+      img.style.cssText = `position:absolute;left:0;top:${y0}px;width:100%;height:${th}px;display:block;max-width:none`;
+      imgs.push(img);
+    }
+    tiles.replaceChildren(...imgs);
+  };
+  type Piece = { from: number; len: number; path: SVGPathElement; off: number };
+  let pieces: Piece[] = [];
+  const clearPieces = () => {
+    for (const p of pieces) p.path.ownerSVGElement?.remove();
+    pieces = [];
+  };
+  const buildPieces = () => {
+    clearPieces();
+    const STEP = 360;
+    let a = 0;
+    while (a < P.length - 1) {
+      let b = a + 1;
+      while (b < P.length - 1 && (C[b] as number) - (C[a] as number) < STEP) b++;
+      const seg = P.slice(a, b + 1);
+      const xs = seg.map((q) => q[0]),
+        ys = seg.map((q) => q[1]);
+      const pad = 8,
+        x0 = Math.min(...xs) - pad,
+        y0 = Math.min(...ys) - pad,
+        w = Math.max(...xs) + pad - x0,
+        h = Math.max(...ys) + pad - y0;
+      const box = document.createElementNS(NS, 'svg') as SVGSVGElement;
+      box.setAttribute('aria-hidden', 'true');
+      box.setAttribute(
+        'viewBox',
+        `${x0.toFixed(1)} ${y0.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`,
+      );
+      box.style.cssText = `position:absolute;left:${x0}px;top:${y0}px;width:${w}px;height:${h}px;z-index:1;overflow:visible;pointer-events:none`;
+      const path = document.createElementNS(NS, 'path') as SVGPathElement;
+      const len = (C[b] as number) - (C[a] as number);
+      path.setAttribute(
+        'd',
+        'M' + seg.map((q) => q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join(' L'),
+      );
+      path.setAttribute('fill', 'none');
+      path.setAttribute('class', line.getAttribute('class') ?? '');
+      path.setAttribute('stroke', line.getAttribute('stroke') ?? FALLBACK_ROUTE);
+      path.setAttribute('stroke-dasharray', `${(len + 1).toFixed(1)} ${(len + 2).toFixed(1)}`);
+      path.setAttribute('stroke-dashoffset', (len + 1).toFixed(1));
+      path.setAttribute('data-weg-piece', '');
+      box.appendChild(path);
+      svg.after(box);
+      pieces.push({ from: C[a] as number, len, path, off: len + 1 });
+      a = b;
+    }
+  };
 
   const drawMap = (H: number) => {
     if (!NET) return;
@@ -393,6 +478,21 @@ export function mountJourneyMap(root: HTMLElement): () => void {
     h += txt(sx0, sy - 6, '0', 8, 0.22) + txt(sx0 + 104, sy - 6, '2 KM', 8, 0.22);
     if (!mob)
       h += txt(sx0 + 140, sy + 5, 'VITRUV · ROUTE 01 · 1:25 000', 8, 0.18, ' letter-spacing="2"');
+    if (tiles) {
+      // labels stay live (page font), everything else becomes bitmap tiles; no reveal
+      const labels: string[] = [];
+      const body = h.replace(/<text\b[^>]*>[^<]*<\/text>/g, (t) => {
+        labels.push(t);
+        return '';
+      });
+      paintTiles(body, XL, XR - XL, H);
+      mapEl.innerHTML = labels.join('');
+      REV = [];
+      revI = 0;
+      ghost.setAttribute('stroke-dasharray', '3 7');
+      ghost.setAttribute('stroke-linecap', 'round');
+      return;
+    }
     mapEl.innerHTML = h;
     const list: [number, Element][] = [];
     mapEl.querySelectorAll('path,line,ellipse,circle,text,rect').forEach((el) => {
@@ -434,6 +534,11 @@ export function mountJourneyMap(root: HTMLElement): () => void {
     const VW = document.documentElement.clientWidth || W,
       XL = -r.left,
       XR = VW - r.left;
+    if (tiles) {
+      tiles.style.left = XL + 'px';
+      tiles.style.right = 'auto';
+      tiles.style.width = VW + 'px';
+    }
     for (const layer of [mapSvg, svg]) {
       layer.style.left = XL + 'px';
       layer.style.right = 'auto';
@@ -895,9 +1000,11 @@ export function mountJourneyMap(root: HTMLElement): () => void {
     // WebKit repaints a dash change reliably only as an SVG attribute (a style change could leave
     // the old, longer route on screen when scrolling back); others keep the style property.
     if (lite) {
+      // the full-length route stays empty; the short pieces carry the drawing
       line.style.removeProperty('stroke-dasharray');
       line.style.removeProperty('stroke-dashoffset');
-      line.setAttribute('stroke-dasharray', String(total));
+      line.setAttribute('d', '');
+      buildPieces();
     } else {
       line.removeAttribute('stroke-dasharray');
       line.removeAttribute('stroke-dashoffset');
@@ -911,8 +1018,16 @@ export function mountJourneyMap(root: HTMLElement): () => void {
     const r = root.getBoundingClientRect();
     const p = Math.max(0, Math.min(1, (window.innerHeight * 0.62 - r.top) / (r.height || 1)));
     const L = p * total;
-    if (lite) line.setAttribute('stroke-dashoffset', (total - L).toFixed(1));
-    else line.style.strokeDashoffset = String(total - L);
+    if (lite) {
+      // only pieces whose state changed are touched — usually just the one that is growing
+      for (const pc of pieces) {
+        const drawn = L >= pc.from + pc.len ? pc.len + 1 : Math.max(0, L - pc.from);
+        const off = Math.round((pc.len + 1 - drawn) * 2) / 2;
+        if (off === pc.off) continue;
+        pc.off = off;
+        pc.path.setAttribute('stroke-dashoffset', String(off));
+      }
+    } else line.style.strokeDashoffset = String(total - L);
     const pt = at(L);
     const ry = Math.max(pt[1], window.innerHeight * 0.62 - r.top) + 220;
     while (revI < REV.length && (REV[revI] as [number, Element])[0] < ry) {
@@ -977,6 +1092,9 @@ export function mountJourneyMap(root: HTMLElement): () => void {
     window.clearTimeout(late);
     if (raf) cancelAnimationFrame(raf);
     mapSvg.remove(); // the theme remount creates a fresh layer
+    tiles?.remove();
+    for (const u of tileUrls) URL.revokeObjectURL(u);
+    clearPieces();
     root.removeAttribute('data-weg-ready');
     root.removeAttribute('data-weg-lite');
   };

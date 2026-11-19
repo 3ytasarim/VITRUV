@@ -515,7 +515,7 @@
   /* Safari / iOS ("lite", set by the engine): no glow filter on the route and a plain short fade
      instead of hundreds of drawing strokes. No forced compositing layers: WebKit then left stale
      route/ring pixels behind when scrolling back up (owner report 2026-11-18). */
-  [data-weg-lite] [data-weg-line] {
+  [data-weg-lite] :is([data-weg-line], [data-weg-piece]) {
     filter: none;
     stroke-width: 3;
   }

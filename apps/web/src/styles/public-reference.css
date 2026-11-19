@@ -412,32 +412,41 @@
   .r-links__login {
     --r-stick-ink: color-mix(in srgb, var(--r-accent) 72%, black);
     pointer-events: auto;
+    position: relative;
+    isolation: isolate;
     display: inline-flex;
     align-items: center;
+    /* 48px tap target; the visible white tab is smaller (owner 2026-11-19: looked too big) */
     min-height: 48px;
     margin-left: clamp(4px, 0.6vw, 10px);
-    padding: 0 18px 0 20px;
-    clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px);
-    background: white;
+    padding: 0 14px 0 16px;
     color: var(--r-stick-ink);
-    box-shadow: 0 0 18px rgba(var(--r-glow-rgb), 0.25);
     font-family: var(--font-label);
     font-weight: 600;
-    font-size: 11px;
+    font-size: 10px;
     letter-spacing: 0.2em;
     text-transform: uppercase;
     white-space: nowrap;
     text-decoration: none;
     transition: padding-right 400ms var(--r-ease);
   }
+  .r-links__login::before {
+    content: '';
+    position: absolute;
+    inset: 8px 0;
+    z-index: -1;
+    clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px);
+    background: white;
+    box-shadow: 0 0 18px rgba(var(--r-glow-rgb), 0.25);
+  }
   .r-links__login:hover,
   .r-links__login:focus-visible {
     color: var(--r-stick-ink);
-    padding-right: 24px;
+    padding-right: 20px;
   }
   .r-links__login:focus-visible {
     outline: 2px solid var(--r-stick-ink);
-    outline-offset: -4px;
+    outline-offset: -10px;
   }
   @media (prefers-reduced-motion: reduce) {
     .r-links__login {
