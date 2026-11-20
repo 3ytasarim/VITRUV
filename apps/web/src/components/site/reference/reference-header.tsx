@@ -148,7 +148,11 @@ export function ReferenceHeader({
         </div>
         {open && (
           <nav id={menuId} className="r-mmenu" aria-label="Hauptnavigation">
-            {menu.map((item, i) => (
+            {/* phones hide the "Was drin ist" section (owner request 2026-11-20), so its link goes too */}
+            {(typeof window !== 'undefined' && window.matchMedia('(max-width: 820px)').matches
+              ? menu.filter((item) => !item.href.endsWith('#leistung'))
+              : menu
+            ).map((item, i) => (
               <a
                 key={item.href}
                 href={item.href}

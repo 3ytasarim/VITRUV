@@ -370,11 +370,40 @@
   .r-stick--light:focus-visible {
     outline-color: var(--r-stick-ink);
   }
+  /* phones (owner request 2026-11-20): the two tabs become a bar at the bottom, side by side,
+     sliding up from below instead of in from the right edge */
   @media (max-width: 820px) {
+    .r-sticks {
+      top: auto;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      flex-direction: row;
+      align-items: stretch;
+      gap: 8px;
+      padding: 0 12px calc(10px + env(safe-area-inset-bottom));
+      transform: none;
+    }
     .r-stick {
-      padding: 14px 14px 14px 18px;
-      font-size: 10px;
-      letter-spacing: 0.12em;
+      flex: 1 1 0;
+      justify-content: center;
+      min-height: 48px;
+      padding: 14px 10px;
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      clip-path: polygon(
+        10px 0,
+        100% 0,
+        100% calc(100% - 10px),
+        calc(100% - 10px) 100%,
+        0 100%,
+        0 10px
+      );
+      transform: translateY(calc(100% + 20px + env(safe-area-inset-bottom)));
+    }
+    .r-stick:hover,
+    .r-stick:focus-visible {
+      padding-right: 10px;
     }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -1236,6 +1265,14 @@
   .r-leistung {
     box-sizing: border-box;
     padding: 0 var(--r-side) 110px;
+  }
+  /* owner request 2026-11-20: "Was drin ist" stays on desktop only — hidden on phones, together
+     with the menu/footer links that point to it */
+  @media (max-width: 820px) {
+    .r-leistung,
+    .r-footer li:has(> a[href$='#leistung']) {
+      display: none;
+    }
   }
   .r-leistung .r-panel {
     gap: 36px;
