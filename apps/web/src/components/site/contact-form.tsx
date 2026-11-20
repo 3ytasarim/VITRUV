@@ -165,11 +165,7 @@ export function ContactForm({ startedAt }: { startedAt: number }) {
           />
           <label htmlFor={`${id}-consent`} className="type-body-sm text-fg-muted">
             Ich bin einverstanden, dass meine Angaben zur Beantwortung meiner Anfrage gespeichert
-            und verwendet werden. Mehr dazu in der{' '}
-            <a href="/datenschutz" className="text-accent-text underline underline-offset-4">
-              Datenschutzerklärung
-            </a>
-            . *
+            und verwendet werden. *
           </label>
         </div>
         {error('consent') && (

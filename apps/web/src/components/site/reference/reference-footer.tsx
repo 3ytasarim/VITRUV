@@ -16,7 +16,7 @@ const external = (href: string) =>
  * Footer = the "Dithered Footer" layout (MIT, @otatechie; owner request 2026-11-09) in the site
  * colours: brand column (logo, CMS "Bewerben" lead, the contact channels as buttons — anchor
  * #bewerben) + three link columns, the dithered dot band in the site blue with "VITRUV" cut out
- * of it, and the bottom bar (©, legal links, channel shortcuts, back to top).
+ * of it, and the bottom bar (©, channel shortcuts, back to top).
  */
 export function ReferenceFooter({
   logoSrc,
@@ -25,7 +25,7 @@ export function ReferenceFooter({
   apply,
 }: {
   logoSrc: string | null;
-  /** Legal / account links (Datenschutz, Login …). */
+  /** Account links (Login). */
   links: ReferenceLink[];
   /** Page sections (the blue eyebrows) for the "Seite" column. */
   sections?: ReferenceLink[];
@@ -37,7 +37,7 @@ export function ReferenceFooter({
   const columns: { label: string; items: ReferenceLink[] }[] = [
     { label: 'Coaching', items: sections.slice(0, half) },
     { label: 'Ablauf', items: sections.slice(half) },
-    { label: 'Rechtliches', items: links },
+    { label: 'Konto', items: links },
   ].filter((c) => c.items.length > 0);
 
   return (

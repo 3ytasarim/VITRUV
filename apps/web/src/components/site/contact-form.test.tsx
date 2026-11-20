@@ -27,10 +27,11 @@ describe('ContactForm markup', () => {
     expect(field('phone')).toContain('type="tel"');
   });
 
-  it('asks for explicit consent (never pre-checked) and links the privacy notice', () => {
+  it('asks for explicit consent (never pre-checked)', () => {
     expect(field('consent')).toContain('type="checkbox"');
     expect(field('consent')).not.toContain('checked');
-    expect(html).toContain('href="/datenschutz"');
+    // the /datenschutz page was removed on owner request 2026-11-20 — no dead link
+    expect(html).not.toContain('href="/datenschutz"');
   });
 
   it('hides the honeypot from people and assistive technology', () => {

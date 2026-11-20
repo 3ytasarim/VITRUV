@@ -15,12 +15,10 @@ export const dynamic = 'force-dynamic';
 
 type Home = Extract<PublicWebsitePage['sections'][number], { type: 'home' }>['content'];
 
-/** Footer legal/account links (the contact channels come from the CMS "Bewerben" block). */
+/** Footer account link (the contact channels come from the CMS "Bewerben" block). Impressum and
+ * Datenschutz were removed on owner request 2026-11-20. */
 function footerLinks(): ReferenceLink[] {
-  return [
-    { label: 'Datenschutz', href: '/datenschutz' },
-    { label: 'Login', href: '/login' },
-  ];
+  return [{ label: 'Login', href: '/login' }];
 }
 
 /** Centre header links = the page's blue section titles (CMS eyebrows), in page order. */

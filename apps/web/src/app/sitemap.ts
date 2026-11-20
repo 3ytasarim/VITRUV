@@ -6,8 +6,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * Indexable public routes only. Not listed: /admin, /design, previews, API routes and the legal
- * placeholder page (Datenschutz — noindex until the approved text exists); /impressum was removed
- * on owner request 2026-11-20.
+ * placeholder pages — /impressum and /datenschutz were removed on owner request 2026-11-20.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (!isIndexingEnabled()) return [];
