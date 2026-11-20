@@ -93,7 +93,6 @@ export function mountJourneyMap(root: HTMLElement): () => void {
   let P: Pt[] = [];
   let C: number[] = [];
   let total = 1;
-  let mL: number[] = [];
   let raf = 0;
   const at = (L: number): Pt => {
     for (let i = 1; i < P.length; i++)
@@ -992,7 +991,6 @@ export function mountJourneyMap(root: HTMLElement): () => void {
       C.push((C[i - 1] as number) + Math.hypot(b[0] - a[0], b[1] - a[1]));
     }
     total = C[C.length - 1] || 1;
-    mL = anchors.map((a) => C[a] as number);
     const d = 'M' + P.map((p) => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' L');
     ghost.setAttribute('d', d);
     line.setAttribute('d', d);
@@ -1040,8 +1038,14 @@ export function mountJourneyMap(root: HTMLElement): () => void {
     }
     dot.style.transform = `translate(${pt[0]}px,${pt[1]}px)`;
     pct.textContent = Math.round(p * 100) + '%';
-    ms.forEach((m, i) => {
-      const on = L >= (mL[i] ?? 0) - 60;
+    // owner 2026-11-20: a stage is fully shown (colour, no dimming) by the time it reaches the
+    // middle of the screen — it starts when its centre passes 84 % of the viewport height (the timing the left-hand stages already had) (the
+    // 1 s fade then ends around the middle). Position only, not the route: the winding route
+    // reached the left-hand images earlier than the right-hand ones (owner report).
+    const vh = window.innerHeight;
+    ms.forEach((m) => {
+      const b = m.getBoundingClientRect();
+      const on = b.top + b.height / 2 < vh * 0.84;
       if (m.dataset.on === String(on)) return;
       m.dataset.on = String(on);
     });
