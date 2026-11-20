@@ -18,7 +18,6 @@ type Home = Extract<PublicWebsitePage['sections'][number], { type: 'home' }>['co
 /** Footer legal/account links (the contact channels come from the CMS "Bewerben" block). */
 function footerLinks(): ReferenceLink[] {
   return [
-    { label: 'Impressum', href: '/impressum' },
     { label: 'Datenschutz', href: '/datenschutz' },
     { label: 'Login', href: '/login' },
   ];

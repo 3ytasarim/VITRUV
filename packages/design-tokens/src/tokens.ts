@@ -316,6 +316,9 @@ export const referencePalette = {
     credit: '#2f8bff', // text, 6.2:1 on the black footer
     creditShine: '#bfe0ff', // sweep highlight
     creditRgb: '0, 71, 171', // cobalt glow / underline
+    // owner 2026-11-20: 'Cantaloupe Orange' #FC734D as a sparse second accent (7.3:1 on #050505)
+    spark: '#fc734d',
+    sparkRgb: '252, 115, 77',
   },
   light: {
     bg: '#f6f6f3',
@@ -342,6 +345,8 @@ export const referencePalette = {
     credit: '#0047ab', // cobalt text on the light footer
     creditShine: '#1a5fd6',
     creditRgb: '0, 123, 255',
+    spark: '#b5401f', // darker cantaloupe for text on the light palette (5.3:1 on white)
+    sparkRgb: '252, 115, 77',
   },
 } as const;
 

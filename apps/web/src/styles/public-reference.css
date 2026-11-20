@@ -69,7 +69,9 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--r-accent);
+    /* owner 2026-11-20: cantaloupe orange as a sparse second accent */
+    background: var(--r-spark);
+    box-shadow: 0 0 8px rgba(var(--r-spark-rgb), 0.6);
   }
   .r-head--center .r-eyebrow,
   .tt-head .r-eyebrow,
@@ -86,6 +88,35 @@
     text-transform: uppercase;
     text-wrap: balance;
     color: var(--r-fg);
+  }
+  /* owner 2026-11-20: a soft cantaloupe cloud behind selected headings (like a blurred light
+     behind the text). Only a gradient inside the heading box — no overflow, no filter. */
+  :is(.r-weg-head, #leistung, #training, #pakete, #coach, #faq, .r-doubts__head) .r-h2 {
+    position: relative;
+    isolation: isolate;
+  }
+  /* left-aligned headings hug their text so the cloud sits right behind the words */
+  :is(.r-weg-head, #pakete, #coach, #faq, .r-doubts__head) .r-h2 {
+    width: fit-content;
+    max-width: 100%;
+  }
+  :is(.r-weg-head, #leistung, #training, #pakete, #coach, #faq, .r-doubts__head) .r-h2::before {
+    content: '';
+    position: absolute;
+    inset: -90px -8px;
+    z-index: -1;
+    pointer-events: none;
+    background: radial-gradient(
+      closest-side at 50% 55%,
+      rgba(var(--r-spark-rgb), 0.3),
+      rgba(var(--r-spark-rgb), 0.12) 55%,
+      transparent 100%
+    );
+  }
+  @media (min-width: 761px) {
+    :is(.r-weg-head, #leistung, #training, #pakete, #coach, #faq, .r-doubts__head) .r-h2::before {
+      inset: -130px -22%;
+    }
   }
   .r-lead {
     margin: 0;
@@ -767,6 +798,20 @@
   .r-video__frame {
     aspect-ratio: 16 / 7;
     border-radius: 28px;
+    /* owner 2026-11-20: a soft cantaloupe cloud around the frame */
+    border-color: rgba(var(--r-spark-rgb), 0.35);
+    box-shadow:
+      0 0 40px rgba(var(--r-spark-rgb), 0.22),
+      0 0 120px rgba(var(--r-spark-rgb), 0.16),
+      0 0 240px rgba(var(--r-spark-rgb), 0.1);
+  }
+  @media (max-width: 760px) {
+    .r-video__frame {
+      border-radius: 18px;
+      box-shadow:
+        0 0 24px rgba(var(--r-spark-rgb), 0.22),
+        0 0 70px rgba(var(--r-spark-rgb), 0.14);
+    }
   }
   .r-video__caption {
     text-align: center;
@@ -1845,7 +1890,9 @@
   }
   .r-faq__list details[open] .r-faq__plus {
     transform: rotate(45deg);
-    background: rgba(var(--r-glow-rgb), 0.14);
+    color: var(--r-spark);
+    border-color: rgba(var(--r-spark-rgb), 0.55);
+    background: rgba(var(--r-spark-rgb), 0.12);
   }
   .r-faq__list details p {
     margin: 0 0 24px 52px;
@@ -2636,7 +2683,7 @@
     font-weight: 600;
     font-size: 12px;
     letter-spacing: 0.18em;
-    color: var(--r-accent-text);
+    color: var(--r-spark);
   }
   .tl-step__title {
     margin: 0;
@@ -2781,8 +2828,10 @@
     height: 48px;
     margin-bottom: 8px;
     border-radius: 12px;
-    background: var(--r-accent);
+    /* owner 2026-11-20: orange accent */
+    background: var(--r-spark);
     color: var(--r-on-accent);
+    box-shadow: 0 0 28px rgba(var(--r-spark-rgb), 0.45);
   }
   .tt-row {
     position: relative;
@@ -2811,20 +2860,26 @@
     right: 0;
     bottom: 0;
     z-index: 1;
-    padding: 8px 10px;
+    padding: 10px 10px 12px;
     border-radius: 8px;
     background: color-mix(in srgb, var(--r-card) 82%, transparent);
+    text-align: center;
   }
+  /* owner 2026-11-20: only the bold title, centred, with a short orange rule */
   .tt-card__caption h3 {
     margin: 0;
     font-size: 16px;
     font-weight: 600;
     color: var(--r-fg);
   }
-  .tt-card__caption p {
-    margin: 2px 0 0;
-    font-size: 14px;
-    color: rgba(var(--r-fg-rgb), 0.6);
+  .tt-card__caption h3::after {
+    content: '';
+    display: block;
+    width: 22px;
+    height: 2px;
+    margin: 6px auto 0;
+    border-radius: 1px;
+    background: var(--r-spark);
   }
   .tt-fade {
     display: block;

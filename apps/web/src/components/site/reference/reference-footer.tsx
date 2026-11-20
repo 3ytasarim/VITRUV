@@ -25,7 +25,7 @@ export function ReferenceFooter({
   apply,
 }: {
   logoSrc: string | null;
-  /** Legal / account links (Impressum, Datenschutz, Login …). */
+  /** Legal / account links (Datenschutz, Login …). */
   links: ReferenceLink[];
   /** Page sections (the blue eyebrows) for the "Seite" column. */
   sections?: ReferenceLink[];

@@ -334,6 +334,40 @@ export function ReferenceHome({ content: c }: { content: HomeContent }) {
         </div>
       </section>
 
+      {/* ---- Im Training ---- */}
+      <section id="training" className="r-sec r-sec--rule" aria-labelledby="training-title">
+        <div className="r-wrap r-training__inner">
+          <div className="tt-head">
+            <span aria-hidden className="tt-head__icon">
+              <Dumbbell size={24} strokeWidth={2} />
+            </span>
+            {c.training.eyebrow && <span className="r-eyebrow">{c.training.eyebrow}</span>}
+            <h2 id="training-title" className="r-h2">
+              {c.training.title}
+            </h2>
+            {c.training.lead && <p className="r-lead">{c.training.lead}</p>}
+          </div>
+          <div className="tt-row">
+            <Marquee className="tt-marquee" seconds={Math.max(24, c.training.items.length * 8)}>
+              {[0, 1].flatMap((set) =>
+                c.training.items.map((t) => (
+                  <div key={`${set}-${t.id}`} className="tt-card">
+                    <MediaSlot slot={t.media} sizes="256px" className="tt-card__media">
+                      <div className="tt-card__caption">
+                        {/* owner 2026-11-20: only the bold title, centred */}
+                        <h3>{t.label}</h3>
+                      </div>
+                    </MediaSlot>
+                  </div>
+                )),
+              )}
+            </Marquee>
+            <div aria-hidden className="tm-fade tm-fade--left tt-fade" />
+            <div aria-hidden className="tm-fade tm-fade--right tt-fade" />
+          </div>
+        </div>
+      </section>
+
       {/* ---- Pakete ---- */}
       <section id="pakete" className="r-sec r-sec--rule" aria-labelledby="pakete-title">
         <div className="r-wrap r-pakete__inner">
@@ -388,40 +422,6 @@ export function ReferenceHome({ content: c }: { content: HomeContent }) {
         titleId="ablauf-title"
         media={c.steps.media ?? null}
       />
-
-      {/* ---- Im Training ---- */}
-      <section id="training" className="r-sec r-sec--rule" aria-labelledby="training-title">
-        <div className="r-wrap r-training__inner">
-          <div className="tt-head">
-            <span aria-hidden className="tt-head__icon">
-              <Dumbbell size={24} strokeWidth={2} />
-            </span>
-            {c.training.eyebrow && <span className="r-eyebrow">{c.training.eyebrow}</span>}
-            <h2 id="training-title" className="r-h2">
-              {c.training.title}
-            </h2>
-            {c.training.lead && <p className="r-lead">{c.training.lead}</p>}
-          </div>
-          <div className="tt-row">
-            <Marquee className="tt-marquee" seconds={Math.max(24, c.training.items.length * 8)}>
-              {[0, 1].flatMap((set) =>
-                c.training.items.map((t) => (
-                  <div key={`${set}-${t.id}`} className="tt-card">
-                    <MediaSlot slot={t.media} sizes="256px" className="tt-card__media">
-                      <div className="tt-card__caption">
-                        <h3>{t.label}</h3>
-                        <p>{t.text}</p>
-                      </div>
-                    </MediaSlot>
-                  </div>
-                )),
-              )}
-            </Marquee>
-            <div aria-hidden className="tm-fade tm-fade--left tt-fade" />
-            <div aria-hidden className="tm-fade tm-fade--right tt-fade" />
-          </div>
-        </div>
-      </section>
 
       {/* ---- Coach ---- */}
       <section id="coach" className="r-boxsec r-coach" aria-labelledby="coach-title">

@@ -99,6 +99,8 @@ function referenceVars(p: ReferenceMode, scheme: 'dark' | 'light'): string {
     ['--r-credit', p.credit],
     ['--r-credit-shine', p.creditShine],
     ['--r-credit-rgb', p.creditRgb],
+    ['--r-spark', p.spark],
+    ['--r-spark-rgb', p.sparkRgb],
     // shared roles: Impressum / Kontakt / Datenschutz and the Journey map engine
     ['--color-bg', p.bg],
     ['--color-surface', p.card],
