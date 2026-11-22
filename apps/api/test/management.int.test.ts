@@ -595,10 +595,28 @@ describe.skipIf(!databaseUrl)('coach & client management (integration, rolled ba
         expect(me.status).toBe(200);
         const profile = clientSelfProfileSchema.parse(me.body);
         expect(profile).toMatchObject({ id: client.id, coach: { displayName: 'Coach C' } });
+        // Owner decision 2026-10-28 (commit 827c2b2): the profile note is the coach's note FOR
+        // this client and is shown to them as `note` — only to them, never under its column name.
+        expect(profile.note).toBe('Vertrauliche Coach-Notiz 4711');
         const raw = JSON.stringify(me.body);
-        for (const secret of ['4711', 'internalNotes', 'passwordHash', 'account', 'Vertrauliche']) {
+        for (const secret of ['internalNotes', 'passwordHash', 'account']) {
           expect(raw).not.toContain(secret);
         }
+
+        // Regression (Sprint 3): the note never reaches ANOTHER client — same coach, own login.
+        const { client: other } = await t.createClientAs(coach.token);
+        const otherToken = (await t.login(must(other.username), CLIENT_PASSWORD, 'MOBILE'))
+          .accessToken;
+        const otherMe = await t.call('GET', '/v1/client/me', otherToken);
+        expect(otherMe.status).toBe(200);
+        expect(clientSelfProfileSchema.parse(otherMe.body).id).toBe(other.id);
+        for (const leaked of ['4711', 'Vertrauliche', client.id]) {
+          expect(JSON.stringify(otherMe.body)).not.toContain(leaked);
+        }
+        // …and not through the other client's admin-side read either (403 for CLIENT tokens).
+        expect((await t.call('GET', `/v1/admin/clients/${client.id}`, otherToken)).status).toBe(
+          403,
+        );
         expect((await t.call('GET', '/v1/client/me', admin.token)).status).toBe(404);
         expect((await t.call('GET', '/v1/client/me')).status).toBe(401);
       });
