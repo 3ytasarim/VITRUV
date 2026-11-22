@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../core/routing/app_routes.dart';
 import '../../core/theme/vitruv_tokens.g.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/format/training_format.dart';
@@ -10,8 +12,8 @@ import '../../shared/widgets/content_page.dart';
 import '../workout/workout_controller.dart';
 import '../workout/workout_models.dart';
 
-/// "Fortschritt" — Sprint 7: the plain workout history from `GET /v1/client/workouts` (summary
-/// rows only). Charts and analytics come later.
+/// "Fortschritt" — Sprint 7: the plain workout history from `GET /v1/client/workouts`. Sprint 5:
+/// a row opens the session with the reps actually done per set. Charts come later.
 class ProgressScreen extends ConsumerWidget {
   const ProgressScreen({super.key});
 
@@ -68,7 +70,10 @@ class _HistoryRow extends StatelessWidget {
       WorkoutStatus.abandoned => (l10n.statusAbandoned, VitruvTone.neutral),
       WorkoutStatus.inProgress => (l10n.statusInProgress, VitruvTone.accent),
     };
-    return VitruvCard(
+    return VitruvCard.tappable(
+      onTap: () => context.go(AppRoutes.historyEntry(item.id)),
+      semanticLabel:
+          '${l10n.historyOpen}: ${item.dayTitle}, ${material.formatMediumDate(local)}, $status',
       padding: VitruvCardPadding.sm,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

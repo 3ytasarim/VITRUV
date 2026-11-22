@@ -1255,6 +1255,120 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Zum Abhaken'**
   String get checklistItemLabel;
+
+  /// No description provided for @rxSetsMax.
+  ///
+  /// In de, this message translates to:
+  /// **'{sets} × MAX'**
+  String rxSetsMax(int sets);
+
+  /// No description provided for @rxMax.
+  ///
+  /// In de, this message translates to:
+  /// **'MAX'**
+  String get rxMax;
+
+  /// No description provided for @setRepsFor.
+  ///
+  /// In de, this message translates to:
+  /// **'Wiederholungen in Satz {number}'**
+  String setRepsFor(int number);
+
+  /// No description provided for @setRepsRequired.
+  ///
+  /// In de, this message translates to:
+  /// **'Bitte trage deine Wiederholungen ein.'**
+  String get setRepsRequired;
+
+  /// No description provided for @repsDecrease.
+  ///
+  /// In de, this message translates to:
+  /// **'Eine Wiederholung weniger'**
+  String get repsDecrease;
+
+  /// No description provided for @repsIncrease.
+  ///
+  /// In de, this message translates to:
+  /// **'Eine Wiederholung mehr'**
+  String get repsIncrease;
+
+  /// No description provided for @setActualReps.
+  ///
+  /// In de, this message translates to:
+  /// **'{reps} Wdh. geschafft'**
+  String setActualReps(int reps);
+
+  /// No description provided for @restStartFor.
+  ///
+  /// In de, this message translates to:
+  /// **'Pause starten · {clock}'**
+  String restStartFor(String clock);
+
+  /// No description provided for @restNotificationTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Pause vorbei'**
+  String get restNotificationTitle;
+
+  /// No description provided for @restNotificationBody.
+  ///
+  /// In de, this message translates to:
+  /// **'Weiter mit {exercise}.'**
+  String restNotificationBody(String exercise);
+
+  /// No description provided for @restNotificationBodyGeneric.
+  ///
+  /// In de, this message translates to:
+  /// **'Weiter geht’s mit dem nächsten Satz.'**
+  String get restNotificationBodyGeneric;
+
+  /// No description provided for @historyOpen.
+  ///
+  /// In de, this message translates to:
+  /// **'Einheit ansehen'**
+  String get historyOpen;
+
+  /// No description provided for @historyDetailTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Einheit'**
+  String get historyDetailTitle;
+
+  /// No description provided for @historySetResult.
+  ///
+  /// In de, this message translates to:
+  /// **'Satz {number}: {actual} von {target} Wdh.'**
+  String historySetResult(int number, int actual, int target);
+
+  /// No description provided for @historySetResultMax.
+  ///
+  /// In de, this message translates to:
+  /// **'Satz {number}: {actual} Wdh. (MAX)'**
+  String historySetResultMax(int number, int actual);
+
+  /// No description provided for @historySetResultPlain.
+  ///
+  /// In de, this message translates to:
+  /// **'Satz {number}: {actual} Wdh.'**
+  String historySetResultPlain(int number, int actual);
+
+  /// No description provided for @historySetDone.
+  ///
+  /// In de, this message translates to:
+  /// **'Satz {number}: erledigt'**
+  String historySetDone(int number);
+
+  /// No description provided for @historySetOpen.
+  ///
+  /// In de, this message translates to:
+  /// **'Satz {number}: nicht erledigt'**
+  String historySetOpen(int number);
+
+  /// No description provided for @historyExerciseOpen.
+  ///
+  /// In de, this message translates to:
+  /// **'Nicht erledigt'**
+  String get historyExerciseOpen;
 }
 
 class _AppLocalizationsDelegate

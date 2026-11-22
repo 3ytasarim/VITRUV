@@ -28,6 +28,11 @@ final class OtherWorkoutRunning extends StartResult {
   const OtherWorkoutRunning();
 }
 
+/// The day was already completed (server rule since Sprint 5) — it is not started again.
+final class AlreadyCompleted extends StartResult {
+  const AlreadyCompleted();
+}
+
 final class StartFailed extends StartResult {
   const StartFailed(this.failure);
 
@@ -82,6 +87,9 @@ class WorkoutController extends AsyncNotifier<WorkoutSession?> {
         unawaited(reload());
         return const OtherWorkoutRunning();
       }
+      if (failure.code == 'WORKOUT_ALREADY_COMPLETED') {
+        return const AlreadyCompleted();
+      }
       return StartFailed(failure);
     } on Object catch (failure) {
       return StartFailed(failure);
@@ -92,13 +100,16 @@ class WorkoutController extends AsyncNotifier<WorkoutSession?> {
   Future<AppFailure?> toggleSet(
     String exerciseId,
     int setNumber,
-    bool completed,
-  ) => _mutate(
+    bool completed, {
+    int? actualReps,
+  }) => _mutate(
     exerciseId,
     optimistic: (e) {
       final sets = [
         for (final s in e.sets)
-          s.setNumber == setNumber ? s.copyWith(completed: completed) : s,
+          s.setNumber == setNumber
+              ? s.copyWith(completed: completed, actualReps: actualReps)
+              : s,
       ];
       final done = sets.where((s) => s.completed).length;
       final status = done == sets.length
@@ -108,8 +119,13 @@ class WorkoutController extends AsyncNotifier<WorkoutSession?> {
                 : ExerciseStatus.pending);
       return e.copyWith(sets: sets, status: status);
     },
-    send: (session) =>
-        _api.updateSet(session, exerciseId, setNumber, completed: completed),
+    send: (session) => _api.updateSet(
+      session,
+      exerciseId,
+      setNumber,
+      completed: completed,
+      actualReps: actualReps,
+    ),
   );
 
   Future<AppFailure?> setStatus(
@@ -221,6 +237,13 @@ final lastWorkoutSummaryProvider =
     NotifierProvider<LastWorkoutSummary, WorkoutSummary?>(
       LastWorkoutSummary.new,
     );
+
+/// One finished (or abandoned) session with its recorded sets — history detail.
+final workoutDetailProvider = FutureProvider.autoDispose
+    .family<WorkoutSession, String>((ref, sessionId) {
+      ref.watch(signedInUserIdProvider);
+      return ref.watch(workoutApiProvider).get(sessionId);
+    }, retry: (retryCount, error) => null);
 
 final workoutHistoryProvider = FutureProvider<List<WorkoutSummary>>((ref) {
   ref.watch(signedInUserIdProvider);

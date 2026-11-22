@@ -728,4 +728,81 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get checklistItemLabel => 'Tick off';
+
+  @override
+  String rxSetsMax(int sets) {
+    return '$sets × MAX';
+  }
+
+  @override
+  String get rxMax => 'MAX';
+
+  @override
+  String setRepsFor(int number) {
+    return 'Reps in set $number';
+  }
+
+  @override
+  String get setRepsRequired => 'Please enter your reps.';
+
+  @override
+  String get repsDecrease => 'One rep less';
+
+  @override
+  String get repsIncrease => 'One rep more';
+
+  @override
+  String setActualReps(int reps) {
+    return '$reps reps done';
+  }
+
+  @override
+  String restStartFor(String clock) {
+    return 'Start rest · $clock';
+  }
+
+  @override
+  String get restNotificationTitle => 'Rest over';
+
+  @override
+  String restNotificationBody(String exercise) {
+    return 'Continue with $exercise.';
+  }
+
+  @override
+  String get restNotificationBodyGeneric => 'On to the next set.';
+
+  @override
+  String get historyOpen => 'View session';
+
+  @override
+  String get historyDetailTitle => 'Session';
+
+  @override
+  String historySetResult(int number, int actual, int target) {
+    return 'Set $number: $actual of $target reps';
+  }
+
+  @override
+  String historySetResultMax(int number, int actual) {
+    return 'Set $number: $actual reps (MAX)';
+  }
+
+  @override
+  String historySetResultPlain(int number, int actual) {
+    return 'Set $number: $actual reps';
+  }
+
+  @override
+  String historySetDone(int number) {
+    return 'Set $number: done';
+  }
+
+  @override
+  String historySetOpen(int number) {
+    return 'Set $number: not done';
+  }
+
+  @override
+  String get historyExerciseOpen => 'Not done';
 }

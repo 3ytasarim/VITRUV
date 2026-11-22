@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +18,8 @@ import '../../shared/widgets/content_page.dart';
 import '../training/exercise_media.dart';
 import 'countdown.dart';
 import 'countdown_panel.dart';
+import 'rest_alert.dart';
+import 'rest_timer_store.dart';
 import 'timer_sync/countdown_sync.dart';
 import 'timer_sync/synced_timer.dart';
 import 'timer_sync/timer_sync_providers.dart';
@@ -29,7 +33,10 @@ import 'workout_models.dart';
 ///   a Warm-up of CHECKLIST items is one page: all items below each other, tick off, then
 ///   "Training fortsetzen" to the next section (or "Training abschließen" if nothing follows)
 /// - execution controls by mode: sets (tick each set), total reps, timed, custom (mark done)
-/// - the rest timer starts after a set/exercise with rest; it never blocks the screen
+/// - Strength (sets × reps): each set records the reps actually done (prefilled with the target;
+///   MAX starts empty). The rest timer starts ONLY with "Pause starten" — completing a set offers
+///   it, never starts it. Other modes keep the rest after "Übung abschließen". It never blocks
+///   the screen
 /// - rest and exercise countdowns are mirrored to a paired Apple Watch through [CountdownSync]
 ///   (no-op without a watch / with the switch off — the iPhone timer works the same either way)
 /// - leaving the screen keeps the session IN_PROGRESS on the server ("Training fortsetzen")
@@ -48,11 +55,23 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
   late final CountdownSync _restSync;
   late final CountdownSync _workSync;
   late final AppLifecycleListener _lifecycle;
+  late final RestAlertBinding _restAlert;
+  late final RestTimerPersistence _restPersistence;
   final Map<String, TextEditingController> _reps = {};
   int? _index;
 
   /// The exercise whose rest is counting down (for the watch: "Pause nach …").
   WorkoutExercise? _restExercise;
+
+  /// Strength: the exercise whose set was just completed — "Pause starten" is offered for it
+  /// until the client starts the rest or completes the next set.
+  WorkoutExercise? _restOffer;
+
+  /// Exercise whose active set was submitted without reps (MAX) → inline hint.
+  String? _repsMissingFor;
+
+  /// Reps entry per Strength set ("exerciseId/setNumber").
+  final Map<String, TextEditingController> _setReps = {};
 
   @override
   void initState() {
@@ -90,6 +109,35 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
         );
       },
     );
+    // lock screen / background: the OS fires the end-of-rest notification (iOS)
+    _restAlert = RestAlertBinding(
+      countdown: _rest,
+      scheduler: ref.read(restAlertSchedulerProvider),
+      texts: () {
+        final l10n = AppLocalizations.of(context);
+        final name = _restExercise?.name;
+        return (
+          title: l10n.restNotificationTitle,
+          body: name == null
+              ? l10n.restNotificationBodyGeneric
+              : l10n.restNotificationBody(name),
+        );
+      },
+    );
+    // app killed during a rest → restored from the saved absolute end time
+    _restPersistence = RestTimerPersistence(
+      countdown: _rest,
+      store: ref.read(restTimerStoreProvider),
+      clock: clock,
+      context: () {
+        final session = ref.read(workoutControllerProvider).value;
+        final exercise = _restExercise;
+        return session == null || exercise == null
+            ? null
+            : (sessionId: session.id, exerciseId: exercise.id);
+      },
+    );
+    unawaited(_restoreRest());
     // back from the background: the watch may have missed a change → send the state again
     _lifecycle = AppLifecycleListener(
       onResume: () {
@@ -97,6 +145,22 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
         _workSync.republish();
       },
     );
+  }
+
+  Future<void> _restoreRest() async {
+    final WorkoutSession? session;
+    try {
+      session = await ref.read(workoutControllerProvider.future);
+    } on Object {
+      return;
+    }
+    if (session == null || !mounted) return;
+    final saved = await ref.read(restTimerStoreProvider).load();
+    if (!mounted || saved == null) return;
+    final index = session.indexOf(saved.exerciseId);
+    // context for the restored run (watch + notification text) before it starts
+    if (index >= 0) _restExercise = session.exercises[index];
+    await _restPersistence.restore(session.id);
   }
 
   TimerSyncContext? _timerContext(
@@ -118,11 +182,13 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
   @override
   void dispose() {
     _lifecycle.dispose();
+    _restAlert.dispose();
+    _restPersistence.dispose();
     _restSync.dispose();
     _workSync.dispose();
     _rest.dispose();
     _work.dispose();
-    for (final c in _reps.values) {
+    for (final c in [..._reps.values, ..._setReps.values]) {
       c.dispose();
     }
     super.dispose();
@@ -150,6 +216,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
     final seconds = exercise.target.restSeconds ?? 0;
     if (seconds <= 0) return;
     _restExercise = exercise;
+    if (_restOffer != null) setState(() => _restOffer = null);
     _rest.start(Duration(seconds: seconds));
   }
 
@@ -175,14 +242,35 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
     WorkoutExercise exercise,
     WorkoutSet set,
   ) {
-    HapticFeedback.selectionClick();
     final completing = !set.completed;
-    _run(() => _controller.toggleSet(exercise.id, set.setNumber, completing));
-    if (!completing) return;
+    if (!completing) {
+      HapticFeedback.selectionClick();
+      _run(() => _controller.toggleSet(exercise.id, set.setNumber, false));
+      return;
+    }
+    final reps = int.tryParse(_setRepsController(exercise, set).text.trim());
+    if (reps == null) {
+      // MAX (or a cleared field): the actual reps are required — nothing is saved.
+      setState(() => _repsMissingFor = exercise.id);
+      return;
+    }
+    HapticFeedback.selectionClick();
+    _run(
+      () => _controller.toggleSet(
+        exercise.id,
+        set.setNumber,
+        true,
+        actualReps: reps,
+      ),
+    );
     final allDone = exercise.sets.every(
       (s) => s.setNumber == set.setNumber || s.completed,
     );
-    _startRest(exercise);
+    setState(() {
+      _repsMissingFor = null;
+      // Rest is offered, never started automatically (Strength).
+      _restOffer = (exercise.target.restSeconds ?? 0) > 0 ? exercise : null;
+    });
     if (allDone) _advance(session);
   }
 
@@ -237,6 +325,18 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
     final current = _currentIndex(session);
     if (current < session.exercises.length - 1) _goTo(current + 1);
   }
+
+  /// Reps actually done in one Strength set: the recorded value, else the target; empty for MAX.
+  TextEditingController _setRepsController(
+    WorkoutExercise exercise,
+    WorkoutSet set,
+  ) => _setReps.putIfAbsent(
+    '${exercise.id}/${set.setNumber}',
+    () => TextEditingController(
+      text:
+          '${set.actualReps ?? (exercise.target.repsMax ? '' : set.targetReps ?? '')}',
+    ),
+  );
 
   TextEditingController _repsController(WorkoutExercise exercise) =>
       _reps.putIfAbsent(
@@ -447,12 +547,28 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
               const SizedBox(height: VitruvSpace.s4),
               ListenableBuilder(
                 listenable: _rest,
-                builder: (context, _) => _rest.phase == CountdownPhase.idle
-                    ? const SizedBox.shrink()
-                    : Padding(
-                        padding: const EdgeInsets.only(bottom: VitruvSpace.s4),
-                        child: CountdownPanel(countdown: _rest),
+                builder: (context, _) {
+                  final offer = _restOffer;
+                  if (_rest.phase != CountdownPhase.idle) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: VitruvSpace.s4),
+                      child: CountdownPanel(countdown: _rest),
+                    );
+                  }
+                  if (offer == null) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: VitruvSpace.s4),
+                    child: VitruvButton(
+                      label: l10n.restStartFor(
+                        clock(offer.target.restSeconds ?? 0),
                       ),
+                      variant: VitruvButtonVariant.secondary,
+                      leadingIcon: Icons.timer_outlined,
+                      fullWidth: true,
+                      onPressed: () => _startRest(offer),
+                    ),
+                  );
+                },
               ),
               if (exercise.media != null) ...[
                 ExerciseMedia(
@@ -465,6 +581,8 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
                 exercise: exercise,
                 work: _work,
                 repsController: _repsController(exercise),
+                setRepsController: (set) => _setRepsController(exercise, set),
+                repsMissing: _repsMissingFor == exercise.id,
                 onToggleSet: (set) => _toggleSet(session, exercise, set),
                 onComplete: () => _complete(session, exercise),
                 onSkip: () =>
@@ -547,6 +665,8 @@ class _Execution extends StatelessWidget {
     required this.exercise,
     required this.work,
     required this.repsController,
+    required this.setRepsController,
+    required this.repsMissing,
     required this.onToggleSet,
     required this.onComplete,
     required this.onSkip,
@@ -557,6 +677,10 @@ class _Execution extends StatelessWidget {
   final WorkoutExercise exercise;
   final Countdown work;
   final TextEditingController repsController;
+  final TextEditingController Function(WorkoutSet set) setRepsController;
+
+  /// The active set was submitted without reps (MAX).
+  final bool repsMissing;
   final void Function(WorkoutSet set) onToggleSet;
   final VoidCallback onComplete;
   final VoidCallback onSkip;
@@ -568,16 +692,27 @@ class _Execution extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final pending = exercise.status == ExerciseStatus.pending;
     final hasRest = (exercise.target.restSeconds ?? 0) > 0;
+    final activeSet = exercise.sets.where((s) => !s.completed).firstOrNull;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (exercise.mode == ExecutionMode.setsReps)
           for (final set in exercise.sets) ...[
-            _SetRow(
-              exercise: exercise,
-              set: set,
-              onToggle: () => onToggleSet(set),
-            ),
+            if (set == activeSet)
+              _ActiveSet(
+                exercise: exercise,
+                set: set,
+                controller: setRepsController(set),
+                repsMissing: repsMissing,
+                onComplete: () => onToggleSet(set),
+              )
+            else
+              _SetRow(
+                exercise: exercise,
+                set: set,
+                // completed sets can be reopened; later sets wait for the active one
+                onToggle: set.completed ? () => onToggleSet(set) : null,
+              ),
             const SizedBox(height: VitruvSpace.s2),
           ],
         if (exercise.mode == ExecutionMode.totalReps && pending) ...[
@@ -655,61 +790,205 @@ class _SetRow extends StatelessWidget {
 
   final WorkoutExercise exercise;
   final WorkoutSet set;
-  final VoidCallback onToggle;
+
+  /// Null = not tappable (a later set while an earlier one is still open).
+  final VoidCallback? onToggle;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final format = TrainingFormat(l10n);
     final theme = Theme.of(context);
     final c = VitruvTheme.of(context);
-    final detail = [
-      if (set.targetReps != null) l10n.rxReps(set.targetReps!),
-      if (set.targetDurationSeconds != null)
-        format.duration(set.targetDurationSeconds!),
-      if (set.targetWeight != null) format.weight(set.targetWeight!),
-    ].join(' · ');
-    final label = set.completed
-        ? l10n.setReopenAction(set.setNumber)
-        : l10n.setCompleteAction(set.setNumber);
-    return VitruvCard.tappable(
-      onTap: onToggle,
-      semanticLabel: [
-        l10n.setLabel(set.setNumber),
-        if (detail.isNotEmpty) detail,
-        if (set.completed) l10n.setDoneState,
-        label,
-      ].join(', '),
-      tone: set.completed ? VitruvCardTone.accent : VitruvCardTone.standard,
-      padding: VitruvCardPadding.sm,
-      child: Row(
-        children: [
-          Icon(
-            set.completed ? Icons.check_circle : Icons.radio_button_unchecked,
-            color: set.completed ? c.success : c.fgSubtle,
-          ),
-          const SizedBox(width: VitruvSpace.s3),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+    final detail = setTargetDetail(l10n, exercise, set);
+    final actual = set.completed && set.actualReps != null
+        ? l10n.setActualReps(set.actualReps!)
+        : null;
+    final semantics = [
+      l10n.setLabel(set.setNumber),
+      if (detail.isNotEmpty) detail,
+      if (set.completed) l10n.setDoneState,
+      ?actual,
+      if (onToggle != null)
+        set.completed
+            ? l10n.setReopenAction(set.setNumber)
+            : l10n.setCompleteAction(set.setNumber),
+    ].join(', ');
+    final row = Row(
+      children: [
+        Icon(
+          set.completed ? Icons.check_circle : Icons.radio_button_unchecked,
+          color: set.completed ? c.success : c.fgSubtle,
+        ),
+        const SizedBox(width: VitruvSpace.s3),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                [
+                  l10n.setLabel(set.setNumber),
+                  if (detail.isNotEmpty) detail,
+                ].join(' · '),
+                style: theme.textTheme.titleMedium,
+              ),
+              if (set.completed)
                 Text(
-                  [
-                    l10n.setLabel(set.setNumber),
-                    if (detail.isNotEmpty) detail,
-                  ].join(' · '),
-                  style: theme.textTheme.titleMedium,
+                  actual ?? l10n.setDoneState,
+                  style: theme.textTheme.bodySmall?.copyWith(color: c.success),
                 ),
-                if (set.completed)
-                  Text(
-                    l10n.setDoneState,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: c.success,
-                    ),
-                  ),
-              ],
-            ),
+            ],
           ),
+        ),
+      ],
+    );
+    final tone = set.completed
+        ? VitruvCardTone.accent
+        : VitruvCardTone.standard;
+    final toggle = onToggle;
+    if (toggle == null) {
+      return Semantics(
+        container: true,
+        label: semantics,
+        excludeSemantics: true,
+        child: VitruvCard(
+          tone: tone,
+          padding: VitruvCardPadding.sm,
+          child: row,
+        ),
+      );
+    }
+    return VitruvCard.tappable(
+      onTap: toggle,
+      semanticLabel: semantics,
+      tone: tone,
+      padding: VitruvCardPadding.sm,
+      child: row,
+    );
+  }
+}
+
+/// "12 Wdh." / "MAX" (+ duration, weight) of one planned set.
+String setTargetDetail(
+  AppLocalizations l10n,
+  WorkoutExercise exercise,
+  WorkoutSet set,
+) {
+  final format = TrainingFormat(l10n);
+  return [
+    if (exercise.target.repsMax && set.targetReps == null)
+      l10n.rxMax
+    else if (set.targetReps != null)
+      l10n.rxReps(set.targetReps!),
+    if (set.targetDurationSeconds != null)
+      format.duration(set.targetDurationSeconds!),
+    if (set.targetWeight != null) format.weight(set.targetWeight!),
+  ].join(' · ');
+}
+
+/// The set to do now: target, reps actually done (−/+ or typed), "Satz N abschließen".
+class _ActiveSet extends StatelessWidget {
+  const _ActiveSet({
+    required this.exercise,
+    required this.set,
+    required this.controller,
+    required this.repsMissing,
+    required this.onComplete,
+  });
+
+  static const _maxReps = 9999;
+
+  final WorkoutExercise exercise;
+  final WorkoutSet set;
+  final TextEditingController controller;
+  final bool repsMissing;
+  final VoidCallback onComplete;
+
+  void _step(int delta) {
+    final current = int.tryParse(controller.text.trim()) ?? 0;
+    final next = (current + delta).clamp(0, _maxReps);
+    controller.text = '$next';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final c = VitruvTheme.of(context);
+    final detail = setTargetDetail(l10n, exercise, set);
+    return VitruvCard(
+      tone: VitruvCardTone.outline,
+      padding: VitruvCardPadding.sm,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            [
+              l10n.setLabel(set.setNumber),
+              if (detail.isNotEmpty) detail,
+            ].join(' · '),
+            style: theme.textTheme.titleMedium,
+          ),
+          const SizedBox(height: VitruvSpace.s3),
+          Row(
+            children: [
+              IconButton(
+                tooltip: l10n.repsDecrease,
+                constraints: const BoxConstraints(
+                  minWidth: VitruvSpace.s12,
+                  minHeight: VitruvSpace.s12,
+                ),
+                icon: const Icon(Icons.remove),
+                onPressed: () => _step(-1),
+              ),
+              const SizedBox(width: VitruvSpace.s2),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(4),
+                  ],
+                  style: theme.textTheme.headlineSmall,
+                  decoration: InputDecoration(
+                    labelText: l10n.setRepsFor(set.setNumber),
+                    errorText: repsMissing ? l10n.setRepsRequired : null,
+                  ),
+                ),
+              ),
+              const SizedBox(width: VitruvSpace.s2),
+              IconButton(
+                tooltip: l10n.repsIncrease,
+                constraints: const BoxConstraints(
+                  minWidth: VitruvSpace.s12,
+                  minHeight: VitruvSpace.s12,
+                ),
+                icon: const Icon(Icons.add),
+                onPressed: () => _step(1),
+              ),
+            ],
+          ),
+          const SizedBox(height: VitruvSpace.s3),
+          VitruvButton(
+            label: l10n.setCompleteAction(set.setNumber),
+            semanticLabel: [
+              l10n.setLabel(set.setNumber),
+              if (detail.isNotEmpty) detail,
+              l10n.setCompleteAction(set.setNumber),
+            ].join(', '),
+            leadingIcon: Icons.check,
+            fullWidth: true,
+            onPressed: onComplete,
+          ),
+          if (exercise.target.repsMax) ...[
+            const SizedBox(height: VitruvSpace.s1),
+            Text(
+              l10n.rxMax,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(color: c.fgMuted),
+            ),
+          ],
         ],
       ),
     );

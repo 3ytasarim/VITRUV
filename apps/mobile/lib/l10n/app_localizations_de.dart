@@ -735,4 +735,82 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get checklistItemLabel => 'Zum Abhaken';
+
+  @override
+  String rxSetsMax(int sets) {
+    return '$sets × MAX';
+  }
+
+  @override
+  String get rxMax => 'MAX';
+
+  @override
+  String setRepsFor(int number) {
+    return 'Wiederholungen in Satz $number';
+  }
+
+  @override
+  String get setRepsRequired => 'Bitte trage deine Wiederholungen ein.';
+
+  @override
+  String get repsDecrease => 'Eine Wiederholung weniger';
+
+  @override
+  String get repsIncrease => 'Eine Wiederholung mehr';
+
+  @override
+  String setActualReps(int reps) {
+    return '$reps Wdh. geschafft';
+  }
+
+  @override
+  String restStartFor(String clock) {
+    return 'Pause starten · $clock';
+  }
+
+  @override
+  String get restNotificationTitle => 'Pause vorbei';
+
+  @override
+  String restNotificationBody(String exercise) {
+    return 'Weiter mit $exercise.';
+  }
+
+  @override
+  String get restNotificationBodyGeneric =>
+      'Weiter geht’s mit dem nächsten Satz.';
+
+  @override
+  String get historyOpen => 'Einheit ansehen';
+
+  @override
+  String get historyDetailTitle => 'Einheit';
+
+  @override
+  String historySetResult(int number, int actual, int target) {
+    return 'Satz $number: $actual von $target Wdh.';
+  }
+
+  @override
+  String historySetResultMax(int number, int actual) {
+    return 'Satz $number: $actual Wdh. (MAX)';
+  }
+
+  @override
+  String historySetResultPlain(int number, int actual) {
+    return 'Satz $number: $actual Wdh.';
+  }
+
+  @override
+  String historySetDone(int number) {
+    return 'Satz $number: erledigt';
+  }
+
+  @override
+  String historySetOpen(int number) {
+    return 'Satz $number: nicht erledigt';
+  }
+
+  @override
+  String get historyExerciseOpen => 'Nicht erledigt';
 }

@@ -649,14 +649,33 @@ describe('Training v2 on real PostgreSQL (isolated)', () => {
     const after = workoutSessionSchema.parse(ok(await clientA('GET', `${W}/${session.id}`)));
     expect(strip(after)).toEqual(strip(completed));
 
-    const next = startWorkoutResponseSchema.parse(
-      ok(await clientA('POST', W, { trainingDayId: dayOf(plan).id }), 201),
+    // Sprint 5: a completed day can not be started again (no second session, no new snapshot) …
+    const again = await clientA('POST', W, { trainingDayId: dayOf(plan).id });
+    expect(again.status).toBe(409);
+    expect(again.body).toMatchObject({
+      error: {
+        code: 'WORKOUT_ALREADY_COMPLETED',
+        details: [{ path: 'sessionId', message: session.id }],
+      },
+    });
+    const sessions = await handle.db.execute(
+      sql`select count(*)::int as n from workout_sessions where client_user_id = ${ids.clientA}`,
     );
-    expect(next.session.id).not.toBe(session.id);
-    expect(exerciseNamed(next.session, 'Klimmzüge').target.reps).toBe(5);
-    expect(exerciseNamed(next.session, 'Liegestütze').target.totalReps).toBe(100);
-    expect(next.session.exercises).toHaveLength(5);
-    ok(await clientA('POST', `${W}/${next.session.id}/abandon`));
+    expect(sessions.rows[0]).toEqual({ n: 1 });
+    // … while the live plan the client reads already carries the coach's edits.
+    const active = clientActiveTrainingResponseSchema.parse(
+      ok(await clientA('GET', '/v1/client/training/active')),
+    );
+    const liveDay = must(
+      must(active.program)
+        .weeks.flatMap((w) => w.days)
+        .find((d) => d.id === dayOf(plan).id),
+    );
+    expect(liveDay.workoutStatus).toBe('COMPLETED');
+    const liveExercises = liveDay.sections.flatMap((s) => s.exercises);
+    expect(liveExercises.find((e) => e.name.startsWith('Klimmzüge'))?.reps).toBe(5);
+    expect(liveExercises.find((e) => e.name.startsWith('Liegestütze'))?.totalReps).toBe(100);
+    expect(liveExercises).toHaveLength(5);
   });
 
   it('authorization: other client 404, unassigned coach 404, client on admin routes 403', async () => {
@@ -1171,11 +1190,40 @@ describe('legacy data on an upgraded database (0000–0021 + legacy rows → 002
   });
 
   it('starting a legacy day snapshots with the old derivation rules', async () => {
+    const asClient = api(handle, 'CLIENT', LEGACY.clientA);
+    // Sprint 5: day A already has a COMPLETED legacy session → it is locked like any other day.
+    const locked = await asClient('POST', W, { trainingDayId: LEGACY.dayA });
+    expect(locked.status).toBe(409);
+    expect(locked.body).toMatchObject({
+      error: {
+        code: 'WORKOUT_ALREADY_COMPLETED',
+        details: [{ path: 'sessionId', message: LEGACY.completedSession }],
+      },
+    });
+    // An untouched copy of day A (every column of its legacy sections/assignments, as upgraded by
+    // 0022–0023) in this throw-away database starts with the old derivation rules.
+    const dayCopy = '10000000-0000-4000-8000-000000000089';
+    await handle.db.execute(
+      sql.raw(`
+        insert into training_days (id, week_id, sort_order, title, scheduled_weekday)
+          select '${dayCopy}', week_id, 9, 'Legacy Tag A (Kopie)', null
+          from training_days where id = '${LEGACY.dayA}';
+        create temp table s5_sections on commit drop as
+          select * from training_sections where day_id = '${LEGACY.dayA}';
+        create temp table s5_assignments on commit drop as
+          select a.* from training_exercise_assignments a
+          join s5_sections s on s.id = a.section_id;
+        alter table s5_sections add column new_id uuid default gen_random_uuid();
+        update s5_assignments a set section_id = s.new_id from s5_sections s where s.id = a.section_id;
+        update s5_assignments set id = gen_random_uuid();
+        update s5_sections set id = new_id, day_id = '${dayCopy}';
+        alter table s5_sections drop column new_id;
+        insert into training_sections select * from s5_sections;
+        insert into training_exercise_assignments select * from s5_assignments;
+      `),
+    );
     const started = startWorkoutResponseSchema.parse(
-      ok(
-        await api(handle, 'CLIENT', LEGACY.clientA)('POST', W, { trainingDayId: LEGACY.dayA }),
-        201,
-      ),
+      ok(await asClient('POST', W, { trainingDayId: dayCopy }), 201),
     );
     expect(started.session.exercises.map((e) => e.executionMode)).toEqual([
       'CUSTOM',

@@ -119,6 +119,9 @@ class FakeBackend implements HttpClientAdapter {
   Map<String, Object?>? program = demoProgram();
   Map<String, Object?>? current;
   final history = <Map<String, Object?>>[];
+
+  /// Finished sessions with all exercises and sets (GET /v1/client/workouts/:id).
+  final finishedSessions = <String, Map<String, Object?>>{};
   final mutationBodies = <Map<String, Object?>>[];
 
   // ---------------------------------------------------------------- transport
@@ -289,6 +292,10 @@ class FakeBackend implements HttpClientAdapter {
     if (method == 'POST' && path == base) {
       final dayId = json['trainingDayId'];
       final running = current;
+      // Like the API (Sprint 5): a completed day can not be started again.
+      if (completedDayIds.contains(dayId) && running?['dayId'] != dayId) {
+        return _error(409, 'WORKOUT_ALREADY_COMPLETED');
+      }
       if (running != null) {
         if (running['dayId'] == dayId) {
           return (status: 200, body: {'session': running, 'resumed': true});
@@ -304,6 +311,16 @@ class FakeBackend implements HttpClientAdapter {
     final match = RegExp(
       r'^/v1/client/workouts/([^/]+)(?:/exercises/([^/]+)(?:/sets/(\d+))?)?(?:/(complete|abandon))?$',
     ).firstMatch(path);
+    if (method == 'GET' &&
+        match != null &&
+        match.group(2) == null &&
+        match.group(4) == null) {
+      final id = match.group(1);
+      final found = current?['id'] == id ? current : finishedSessions[id];
+      return found == null
+          ? _error(404, 'NOT_FOUND')
+          : (status: 200, body: {'session': found});
+    }
     final session = current;
     if (match == null || session == null || session['id'] != match.group(1)) {
       return _error(404, 'NOT_FOUND');
@@ -331,6 +348,9 @@ class FakeBackend implements HttpClientAdapter {
           (s) => s['setNumber'] == int.parse(setNumber),
         );
         set['completed'] = json['completed'];
+        if (json.containsKey('actualReps')) {
+          set['actualReps'] = json['actualReps'];
+        }
         final done = sets.where((s) => s['completed'] == true).length;
         exercise['status'] = done == sets.length ? 'COMPLETED' : 'PENDING';
       } else {
@@ -367,6 +387,13 @@ class FakeBackend implements HttpClientAdapter {
         'exercisesSkipped': progress['skipped'],
       };
       history.insert(0, summary);
+      finishedSessions[session['id']! as String] = {
+        ...session,
+        'status': summary['status'],
+        'completedAt': summary['completedAt'],
+        'abandonedAt': summary['abandonedAt'],
+        'durationSeconds': summary['durationSeconds'],
+      };
       if (!abandon && session['dayId'] is String) {
         completedDayIds.add(session['dayId']! as String);
       }
@@ -423,6 +450,7 @@ class FakeBackend implements HttpClientAdapter {
                   'targetWeight',
                   'weightUnit',
                   'prescriptionText',
+                  'repsMax',
                 ])
                   k: e[k],
               },
@@ -496,6 +524,7 @@ Map<String, Object?> _exercise(
   String? instructions,
   String? executionType,
   Map<String, Object?>? media,
+  bool? repsMax,
 }) => {
   'assignmentId': 'a-$id',
   'exerciseId': 'e-$id',
@@ -513,6 +542,68 @@ Map<String, Object?> _exercise(
   'prescriptionText': prescriptionText,
   'instructions': instructions,
   'executionType': ?executionType,
+  'repsMax': ?repsMax,
+};
+
+/// Fictional Strength plan (Sprint 5): Oberkörper (Mo) with a MAX exercise and Unterkörper (Th,
+/// = harness "today"), each with rest between sets. Starts Monday 2026-10-12.
+Map<String, Object?> strengthProgram() => {
+  'id': 'p-3',
+  'title': 'Kraftblock',
+  'description': null,
+  'startsOn': '2026-10-12',
+  'endsOn': null,
+  'currentWeekId': 'w-k',
+  'weeks': [
+    {
+      'id': 'w-k',
+      'order': 0,
+      'title': null,
+      'notes': null,
+      'days': [
+        _day('d-ok', 0, 'Oberkörper', 1, [
+          _section('s-ok', 'MAIN', [
+            _exercise(
+              'ok1',
+              'Bankdrücken',
+              sets: 3,
+              reps: 10,
+              restSeconds: 90,
+              executionType: 'STRENGTH',
+            ),
+            _exercise(
+              'ok2',
+              'Klimmzüge',
+              sets: 3,
+              repsMax: true,
+              restSeconds: 120,
+              executionType: 'STRENGTH',
+            ),
+          ]),
+        ]),
+        _day('d-uk', 1, 'Unterkörper', 4, [
+          _section('s-uk', 'MAIN', [
+            _exercise(
+              'uk1',
+              'Kniebeugen',
+              sets: 4,
+              reps: 8,
+              restSeconds: 120,
+              executionType: 'STRENGTH',
+            ),
+            _exercise(
+              'uk2',
+              'Ausfallschritte',
+              sets: 3,
+              reps: 12,
+              restSeconds: 60,
+              executionType: 'STRENGTH',
+            ),
+          ]),
+        ]),
+      ],
+    },
+  ],
 };
 
 /// Fictional technique video (resolved delivery URL, never a storage key).

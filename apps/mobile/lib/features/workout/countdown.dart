@@ -61,6 +61,28 @@ class Countdown extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Continues a saved run after an app restart — from its ABSOLUTE times, never from a stored
+  /// "seconds left". [endsAt] in the past → it reports `finished` at the next [sync].
+  void restore({
+    required DateTime startedAt,
+    required Duration total,
+    DateTime? endsAt,
+    Duration? pausedRemaining,
+  }) {
+    if (total <= Duration.zero) return;
+    _total = total;
+    _startedAt = startedAt;
+    _generation++;
+    if (endsAt != null) {
+      _endsAt = endsAt;
+      _phase = CountdownPhase.running;
+    } else {
+      _pausedRemaining = pausedRemaining ?? Duration.zero;
+      _phase = CountdownPhase.paused;
+    }
+    notifyListeners();
+  }
+
   void pause() {
     if (_phase != CountdownPhase.running) return;
     _pausedRemaining = remaining;

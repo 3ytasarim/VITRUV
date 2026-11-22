@@ -19,10 +19,10 @@ Future<void> _workout(WidgetTester tester, AppHarness h) async {
     tester,
     find.text('NÄCHSTE ÜBUNG').hitTestable(),
   ); // Klimmzüge (sets)
-  await tapOn(
-    tester,
-    find.bySemanticsLabel(RegExp('^Satz 1, ')),
-  ); // rest timer visible
+  await tapOn(tester, find.bySemanticsLabel(RegExp('^Satz 1, ')));
+  // Sprint 5: Strength rest starts only on request
+  await tapOn(tester, find.textContaining('PAUSE STARTEN ·'));
+  // rest timer visible
 }
 
 final Map<String, ({bool signedIn, Open open})> screens = {

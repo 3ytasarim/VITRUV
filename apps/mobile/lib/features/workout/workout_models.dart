@@ -96,12 +96,12 @@ class WorkoutSet {
   final double? actualWeight;
   final bool completed;
 
-  WorkoutSet copyWith({bool? completed}) => WorkoutSet(
+  WorkoutSet copyWith({bool? completed, int? actualReps}) => WorkoutSet(
     setNumber: setNumber,
     targetReps: targetReps,
     targetDurationSeconds: targetDurationSeconds,
     targetWeight: targetWeight,
-    actualReps: actualReps,
+    actualReps: actualReps ?? this.actualReps,
     actualWeight: actualWeight,
     completed: completed ?? this.completed,
   );

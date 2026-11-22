@@ -514,5 +514,106 @@
   "videoBadge": "Video",
   "videoUnsupported": "Dieses Video kann auf diesem Gerät nicht abgespielt werden.",
   "closeLabel": "Schließen",
-  "checklistItemLabel": "Zum Abhaken"
+  "checklistItemLabel": "Zum Abhaken",
+  "rxSetsMax": "{sets} × MAX",
+  "@rxSetsMax": {
+    "placeholders": {
+      "sets": {
+        "type": "int"
+      }
+    }
+  },
+  "rxMax": "MAX",
+  "setRepsFor": "Wiederholungen in Satz {number}",
+  "@setRepsFor": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "setRepsRequired": "Bitte trage deine Wiederholungen ein.",
+  "repsDecrease": "Eine Wiederholung weniger",
+  "repsIncrease": "Eine Wiederholung mehr",
+  "setActualReps": "{reps} Wdh. geschafft",
+  "@setActualReps": {
+    "placeholders": {
+      "reps": {
+        "type": "int"
+      }
+    }
+  },
+  "restStartFor": "Pause starten · {clock}",
+  "@restStartFor": {
+    "placeholders": {
+      "clock": {
+        "type": "String"
+      }
+    }
+  },
+  "restNotificationTitle": "Pause vorbei",
+  "restNotificationBody": "Weiter mit {exercise}.",
+  "@restNotificationBody": {
+    "placeholders": {
+      "exercise": {
+        "type": "String"
+      }
+    }
+  },
+  "restNotificationBodyGeneric": "Weiter geht’s mit dem nächsten Satz.",
+  "historyOpen": "Einheit ansehen",
+  "historyDetailTitle": "Einheit",
+  "historySetResult": "Satz {number}: {actual} von {target} Wdh.",
+  "@historySetResult": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "actual": {
+        "type": "int"
+      },
+      "target": {
+        "type": "int"
+      }
+    }
+  },
+  "historySetResultMax": "Satz {number}: {actual} Wdh. (MAX)",
+  "@historySetResultMax": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "actual": {
+        "type": "int"
+      }
+    }
+  },
+  "historySetResultPlain": "Satz {number}: {actual} Wdh.",
+  "@historySetResultPlain": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "actual": {
+        "type": "int"
+      }
+    }
+  },
+  "historySetDone": "Satz {number}: erledigt",
+  "@historySetDone": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "historySetOpen": "Satz {number}: nicht erledigt",
+  "@historySetOpen": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "historyExerciseOpen": "Nicht erledigt"
 }

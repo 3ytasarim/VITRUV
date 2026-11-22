@@ -14,6 +14,8 @@ export const API_ERROR_CODES = [
   'ACTIVATION_INVALID',
   /** A different workout is still IN_PROGRESS — finish or abandon it first (details: sessionId). */
   'WORKOUT_IN_PROGRESS',
+  /** Sprint 5: this training day was already completed — it is not started again (details: sessionId). */
+  'WORKOUT_ALREADY_COMPLETED',
   'SERVICE_UNAVAILABLE',
   'INTERNAL_ERROR',
 ] as const;

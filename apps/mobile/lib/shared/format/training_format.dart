@@ -25,6 +25,8 @@ class TrainingFormat {
     final sets = p.sets;
     final reps = p.reps;
     final duration = p.durationSeconds;
+    // Strength MAX: as many reps as possible in every set (never a number).
+    if (p.repsMax) return sets != null ? l10n.rxSetsMax(sets) : l10n.rxMax;
     if (sets != null && reps != null) return l10n.rxSetsReps(sets, reps);
     if (sets != null && duration != null) {
       return l10n.rxSetsDuration(sets, this.duration(duration));

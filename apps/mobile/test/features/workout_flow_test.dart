@@ -64,8 +64,19 @@ void main() {
       );
     }
     expect(h.backend.requests.where((r) => r.contains('/sets/')), hasLength(4));
+    // every set carries the reps actually done (prefilled with the target)
+    expect(
+      h.backend.mutationBodies.where((b) => b.containsKey('actualReps')),
+      hasLength(4),
+    );
     expect(find.text('3 / 4'), findsOneWidget);
     expect(find.text('LIEGESTÜTZE'), findsOneWidget);
+    // Sprint 5: Strength rest is offered, not started — the 30 s rest of the previous exercise is
+    // still the only running timer; once it is skipped, "Pause starten" starts the 01:00 rest
+    expect(find.text('01:00'), findsNothing);
+    await tapOn(tester, button('PAUSE ÜBERSPRINGEN'));
+    expect(find.byType(CountdownPanel), findsNothing);
+    await tapOn(tester, find.textContaining('PAUSE STARTEN ·'));
     expect(
       find.text('01:00'),
       findsOneWidget,

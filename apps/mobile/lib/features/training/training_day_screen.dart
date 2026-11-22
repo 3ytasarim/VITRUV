@@ -55,6 +55,12 @@ class _TrainingDayScreenState extends ConsumerState<TrainingDayScreen> {
       case OtherWorkoutRunning():
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(l10n.otherWorkoutRunning)));
+      case AlreadyCompleted():
+        // the plan was stale (e.g. finished on another device): refresh → "Abgeschlossen"
+        ref.invalidate(activeTrainingProvider);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.workoutAlreadyCompleted)));
       case StartFailed(:final failure):
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(ErrorView.messageFor(l10n, failure))),

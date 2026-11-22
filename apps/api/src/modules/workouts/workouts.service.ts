@@ -430,6 +430,27 @@ export async function startWorkout(
       // The plan can not change between this check and the snapshot below.
       .for('share', { of: P });
     if (!day) throw notFound();
+    // Sprint 5: a completed day is done — it can not be started a second time (by accident or
+    // replay). An ABANDONED day stays startable. Same advisory lock as above → no race.
+    const [completed] = await tx
+      .select({ id: WS.id })
+      .from(WS)
+      .where(
+        and(
+          eq(WS.clientUserId, actor.userId),
+          eq(WS.trainingDayId, trainingDayId),
+          eq(WS.status, 'COMPLETED'),
+        ),
+      )
+      .limit(1);
+    if (completed) {
+      throw new AppError(
+        409,
+        'WORKOUT_ALREADY_COMPLETED',
+        'Dieses Training hast du bereits abgeschlossen.',
+        [{ path: 'sessionId', message: completed.id }],
+      );
+    }
     if (current) {
       throw new AppError(
         409,

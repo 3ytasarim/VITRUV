@@ -36,6 +36,9 @@ void main() {
       tester,
       find.bySemanticsLabel(RegExp('^Satz 1, 12 Wdh\\., Satz 1 abschließen')),
     );
+    // Strength: the rest is started manually ("Pause starten"), never by the set
+    expect(watch.watchState, isNull);
+    await tapOn(tester, find.textContaining('PAUSE STARTEN ·'));
     return (h, watch);
   }
 

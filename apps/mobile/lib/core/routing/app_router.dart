@@ -10,6 +10,7 @@ import '../../features/home/home_screen.dart';
 import '../../features/nutrition/nutrition_screen.dart';
 import '../../features/profile/profile_screen.dart';
 import '../../features/progress/progress_screen.dart';
+import '../../features/progress/workout_detail_screen.dart';
 import '../../features/training/training_day_screen.dart';
 import '../../features/training/training_screen.dart';
 import '../../features/workout/workout_complete_screen.dart';
@@ -76,7 +77,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
           _branch(AppRoutes.nutrition, const NutritionScreen()),
-          _branch(AppRoutes.progress, const ProgressScreen()),
+          _branch(
+            AppRoutes.progress,
+            const ProgressScreen(),
+            routes: [
+              GoRoute(
+                path: 'einheit/:sessionId',
+                builder: (context, state) => WorkoutDetailScreen(
+                  sessionId: state.pathParameters['sessionId']!,
+                ),
+              ),
+            ],
+          ),
           _branch(AppRoutes.profile, const ProfileScreen()),
         ],
       ),

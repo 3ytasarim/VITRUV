@@ -102,6 +102,7 @@ class Prescription {
     this.targetWeight,
     this.weightUnit,
     this.prescriptionText,
+    this.repsMax = false,
   });
 
   factory Prescription.fromJson(JsonReader json) => Prescription(
@@ -113,6 +114,7 @@ class Prescription {
     targetWeight: json.numberOrNull('targetWeight'),
     weightUnit: json.stringOrNull('weightUnit'),
     prescriptionText: json.stringOrNull('prescriptionText'),
+    repsMax: json.booleanOrNull('repsMax') ?? false,
   );
 
   final int? sets;
@@ -123,6 +125,10 @@ class Prescription {
   final double? targetWeight;
   final String? weightUnit;
   final String? prescriptionText;
+
+  /// Strength MAX (Sprint 2): as many reps as possible per set — `reps` is null then. Old
+  /// payloads without the field read as false.
+  final bool repsMax;
 }
 
 @immutable

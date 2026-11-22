@@ -46,9 +46,16 @@ class WorkoutApi {
     String exerciseId,
     int setNumber, {
     required bool completed,
+    int? actualReps,
   }) => _update('$_base/$sessionId/exercises/$exerciseId/sets/$setNumber', {
     'completed': completed,
+    'actualReps': ?actualReps,
   });
+
+  /// One of the client's own sessions with all exercises and recorded sets (history detail).
+  Future<WorkoutSession> get(String sessionId) async => WorkoutSession.fromJson(
+    JsonReader(await _client.getJson('$_base/$sessionId')).object('session'),
+  );
 
   Future<WorkoutSummary> complete(String sessionId) =>
       _finish(sessionId, 'complete');
