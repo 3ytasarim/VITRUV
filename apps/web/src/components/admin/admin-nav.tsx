@@ -7,6 +7,7 @@ import {
   FileText,
   Images,
   LayoutDashboard,
+  Library,
   Settings2,
   ShieldCheck,
   UserCog,
@@ -56,6 +57,12 @@ const GROUPS: {
         label: 'Übungen',
         icon: Dumbbell,
         permission: 'training.exercises.read',
+      },
+      {
+        href: '/admin/training/workouts',
+        label: 'Workout-Bibliothek',
+        icon: Library,
+        permission: 'training.templates.read',
       },
       {
         href: '/admin/willkommen',
