@@ -45,7 +45,11 @@ function main() {
     auth: createAuthResolver(env, database.db, logger),
     clientIp: createClientIpResolver(env.TRUSTED_PROXY_IPS),
     management: { db: database.db },
-    training: { db: database.db, urls },
+    training: {
+      db: database.db,
+      urls,
+      extendedTypes: env.TRAINING_EXTENDED_TYPES === 'enabled',
+    },
     sessions: {
       db: database.db,
       // Temporary brakes, never permanent lockouts (docs/AUTH-ARCHITECTURE.md → Rate limiting).

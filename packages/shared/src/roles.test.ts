@@ -86,6 +86,11 @@ describe('roles', () => {
     expect(roleHasPermission('CLIENT', 'training.sessions.read')).toBe(false);
     expect(roleHasPermission('COACH', 'training.sessions.read')).toBe(true);
     expect(roleHasPermission('ADMIN', 'training.sessions.read')).toBe(true);
+    for (const permission of ['training.templates.read', 'training.templates.write'] as const) {
+      expect(roleHasPermission('ADMIN', permission)).toBe(true);
+      expect(roleHasPermission('COACH', permission)).toBe(true);
+      expect(roleHasPermission('CLIENT', permission)).toBe(false);
+    }
     expect(roleHasPermission('CLIENT', 'admin.access')).toBe(false);
   });
 });

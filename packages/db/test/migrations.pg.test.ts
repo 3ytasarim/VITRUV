@@ -15,7 +15,7 @@ import {
 import * as schema from '../src/schema/index';
 
 /**
- * Sprint 2.5 — migrations 0000–0023 on a REAL, ISOLATED PostgreSQL (never production).
+ * Sprint 2.5 (+ Sprint 3: 0024) — migrations 0000–0024 on a REAL, ISOLATED PostgreSQL (never production).
  *  A. fresh: every migration on an empty database + Drizzle schema parity
  *  B. upgrade: 0000–0021 → synthetic legacy rows → 0022–0023 → legacy rows intact
  */
@@ -53,9 +53,9 @@ describe('A. fresh database — all migrations', () => {
 
   it('applies every journal entry exactly once, in order', async () => {
     const journal = migrationJournal();
-    expect(journal).toHaveLength(24);
+    expect(journal).toHaveLength(25);
     expect(journal.map((entry) => entry.idx)).toEqual(journal.map((_, index) => index));
-    expect(applied).toBe(24);
+    expect(applied).toBe(25);
     const { rows } = await db.query(
       'select created_at::bigint as at from drizzle.__drizzle_migrations order by id',
     );
@@ -304,7 +304,12 @@ const LEGACY_TABLES = [
 
 /** New columns added by 0022, with the value every existing row must get. */
 const NEW_COLUMNS: Record<string, Record<string, unknown>> = {
-  training_days: { source_template_id: null, source_template_version: null },
+  training_days: {
+    source_template_id: null,
+    source_template_version: null,
+    // Sprint 3 (0024)
+    assignment_request_id: null,
+  },
   training_exercise_assignments: { execution_type: null, reps_max: false },
   workout_exercise_sets: {
     client_set_id: null,
@@ -345,9 +350,9 @@ describe('B. upgrade — 0000–0021 + legacy data, then 0022–0023', () => {
   });
   afterAll(async () => db?.end());
 
-  it('stopped at 0021, then applied exactly 0022 and 0023', () => {
+  it('stopped at 0021, then applied exactly 0022, 0023 and 0024', () => {
     expect(appliedBefore).toBe(22);
-    expect(appliedAfter).toBe(24);
+    expect(appliedAfter).toBe(25);
   });
 
   it('legacy fixture is present (sanity)', () => {

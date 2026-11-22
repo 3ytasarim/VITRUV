@@ -102,6 +102,13 @@ export const apiEnvSchema = z
     DEV_AUTH: z.enum(['enabled', 'disabled']).default('disabled'),
     DEV_AUTH_TOKEN: z.string().min(32, 'must be at least 32 characters').optional(),
     DEV_AUTH_EMAIL: z.email().optional(),
+    /**
+     * Sprint 3 feature flag — the extended training types INTERVAL (Core) and CHECKLIST (Warm-up)
+     * plus Strength MAX. DEFAULT disabled: the API then REJECTS writing them (assignments,
+     * templates, template assignment). Enable only after an app build with capability level 2 is the
+     * enforced minimum version in both stores (docs/ios-training-sprint3-rollout-plan.md).
+     */
+    TRAINING_EXTENDED_TYPES: z.enum(['enabled', 'disabled']).default('disabled'),
   })
   .superRefine((env, ctx) => {
     if (env.STORAGE_DRIVER === 's3') {

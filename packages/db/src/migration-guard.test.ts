@@ -84,10 +84,24 @@ describe('Sprint 2 migrations (iOS training v2)', () => {
       expect(sql).not.toMatch(/training_assignments_meaningful/);
     }
     const journal = JSON.parse(read('meta/_journal.json')) as { entries: { tag: string }[] };
-    expect(journal.entries.slice(-2).map((entry) => entry.tag)).toEqual([
+    expect(journal.entries.slice(-3, -1).map((entry) => entry.tag)).toEqual([
       '0022_training_v2',
       '0023_workout_templates',
     ]);
+  });
+
+  it('0024 (Sprint 3) is additive only, uses no new enum value and is a separate file', () => {
+    const sql = read('0024_sprint3_template_library.sql');
+    expect(findDestructiveStatements(sql)).toEqual([]);
+    expect(sql).not.toMatch(/\binsert\s+into\b|\bupdate\s+"/i);
+    // No ALTER TYPE … ADD VALUE (drizzle applies pending migrations in ONE transaction).
+    expect(sql).not.toMatch(/alter\s+type/i);
+    // Only nullable columns → existing rows stay valid without a backfill.
+    for (const line of sql.split('\n').filter((l) => /ADD COLUMN/.test(l))) {
+      expect(line).not.toMatch(/NOT NULL/);
+    }
+    const journal = JSON.parse(read('meta/_journal.json')) as { entries: { tag: string }[] };
+    expect(journal.entries.at(-1)?.tag).toBe('0024_sprint3_template_library');
   });
 
   it('new columns are nullable or defaulted — existing rows stay valid without a backfill', () => {

@@ -1,5 +1,7 @@
 import {
+  assignTemplateRequestSchema,
   createAssignmentRequestSchema,
+  createTemplateRequestSchema,
   createDayRequestSchema,
   createExerciseCategoryRequestSchema,
   createExerciseRequestSchema,
@@ -8,11 +10,15 @@ import {
   exerciseListQuerySchema,
   reorderRequestSchema,
   saveClientPlanRequestSchema,
+  templateListQuerySchema,
+  trainingWeekQuerySchema,
   updateAssignmentRequestSchema,
+  updateClientWorkoutRequestSchema,
   updateDayRequestSchema,
   updateExerciseRequestSchema,
   updateProgramRequestSchema,
   updateSectionRequestSchema,
+  updateTemplateRequestSchema,
   updateWeekRequestSchema,
   weekInputSchema,
 } from '@vitruv/contracts';
@@ -34,8 +40,10 @@ import {
   updateExercise,
   type TrainingDeps,
 } from './exercises.service';
+import { trainingCapabilities } from './capabilities';
 import * as plan from './plan.service';
 import * as programs from './programs.service';
+import * as templates from './templates.service';
 
 const idParam = z.object({ id: z.uuid() });
 const clientParam = z.object({ clientId: z.uuid() });
@@ -389,6 +397,98 @@ export function adminTrainingRoutes(deps: TrainingDeps) {
   );
   r.delete('/assignments/:id', update, validate('param', idParam), async (c) =>
     c.json(await programs.deleteAssignment(deps, actorOf(c), c.req.valid('param').id)),
+  );
+
+  // ---- Sprint 3: Workout-Bibliothek (owner-scoped templates) + capability flag
+  const templatesRead = requirePermission('training.templates.read');
+  const templatesWrite = requirePermission('training.templates.write');
+  r.get('/capabilities', templatesRead, (c) => c.json(trainingCapabilities(deps)));
+  r.get('/templates', templatesRead, validate('query', templateListQuerySchema), async (c) =>
+    c.json(await templates.listTemplates(deps, actorOf(c), c.req.valid('query'))),
+  );
+  r.post('/templates', templatesWrite, validate('json', createTemplateRequestSchema), async (c) =>
+    c.json(await templates.createTemplate(deps, actorOf(c), c.req.valid('json')), 201),
+  );
+  r.get('/templates/:id', templatesRead, validate('param', idParam), async (c) =>
+    c.json(await templates.getTemplate(deps, actorOf(c), c.req.valid('param').id)),
+  );
+  r.put(
+    '/templates/:id',
+    templatesWrite,
+    validate('param', idParam),
+    validate('json', updateTemplateRequestSchema),
+    async (c) =>
+      c.json(
+        await templates.updateTemplate(
+          deps,
+          actorOf(c),
+          c.req.valid('param').id,
+          c.req.valid('json'),
+        ),
+      ),
+  );
+  r.post('/templates/:id/duplicate', templatesWrite, validate('param', idParam), async (c) =>
+    c.json(await templates.duplicateTemplate(deps, actorOf(c), c.req.valid('param').id), 201),
+  );
+  for (const [path, archived] of [
+    ['/templates/:id/archive', true],
+    ['/templates/:id/restore', false],
+  ] as const) {
+    r.post(path, templatesWrite, validate('param', idParam), async (c) =>
+      c.json(
+        await templates.setTemplateArchived(deps, actorOf(c), c.req.valid('param').id, archived),
+      ),
+    );
+  }
+  // Assigning writes into a client's program → needs the program permission as well.
+  r.post(
+    '/templates/:id/assign',
+    templatesRead,
+    update,
+    validate('param', idParam),
+    validate('json', assignTemplateRequestSchema),
+    async (c) => {
+      const result = await templates.assignTemplate(
+        deps,
+        actorOf(c),
+        c.req.valid('param').id,
+        c.req.valid('json'),
+      );
+      return c.json(result, result.created ? 201 : 200);
+    },
+  );
+  r.get(
+    '/clients/:clientId/week',
+    read,
+    validate('param', clientParam),
+    validate('query', trainingWeekQuerySchema),
+    async (c) =>
+      c.json(
+        await templates.clientWeek(
+          deps,
+          actorOf(c),
+          c.req.valid('param').clientId,
+          c.req.valid('query').date,
+        ),
+      ),
+  );
+  r.get('/days/:id/workout', read, validate('param', idParam), async (c) =>
+    c.json(await templates.getClientWorkout(deps, actorOf(c), c.req.valid('param').id)),
+  );
+  r.put(
+    '/days/:id/workout',
+    update,
+    validate('param', idParam),
+    validate('json', updateClientWorkoutRequestSchema),
+    async (c) =>
+      c.json(
+        await templates.updateClientWorkout(
+          deps,
+          actorOf(c),
+          c.req.valid('param').id,
+          c.req.valid('json'),
+        ),
+      ),
   );
 
   return r;

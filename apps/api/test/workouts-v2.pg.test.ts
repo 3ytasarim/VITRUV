@@ -86,6 +86,8 @@ function api(handle: DatabaseHandle, role: UserRole, userId: string) {
     storageDir,
     bodyLimitBytes: 1_048_576,
     auth: principalResolver(role, userId),
+    // Sprint 2 types are exercised here as in staging/test (production default stays OFF).
+    extendedTypes: true,
   });
   return async (method: string, path: string, body?: unknown): Promise<Res> => {
     const res = await app.request(path, {

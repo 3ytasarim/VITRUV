@@ -186,9 +186,17 @@ export const trainingDays = pgTable(
      */
     sourceTemplateId: uuid('source_template_id'),
     sourceTemplateVersion: integer('source_template_version'),
+    /**
+     * Sprint 3 (0024): idempotency key of the "Teilnehmer zuweisen" request that created this day
+     * (client-generated uuid). A retried request finds the existing day instead of copying twice.
+     */
+    assignmentRequestId: uuid('assignment_request_id'),
     ...timestamps,
   },
   (table) => [
+    uniqueIndex('training_days_assignment_request_unique')
+      .on(table.assignmentRequestId)
+      .where(sql`${table.assignmentRequestId} is not null`),
     unique('training_days_order_unique').on(table.weekId, table.sortOrder),
     check('training_days_order_nonnegative', sql`${table.sortOrder} >= 0`),
     check('training_days_title_length', sql`char_length(${table.title}) between 1 and 120`),

@@ -5,6 +5,7 @@ import {
   TRAINING_SECTION_TYPES,
   WEIGHT_UNITS,
   WORKOUT_DAY_STATUSES,
+  WORKOUT_TEMPLATE_CATEGORIES,
 } from '@vitruv/shared';
 import { z } from 'zod';
 import { resolvedMediaSchema } from './cms/media';
@@ -398,6 +399,9 @@ export const adminDaySchema = z.object({
   title: z.string(),
   notes: z.string().nullable(),
   scheduledWeekday: z.number().int().nullable(),
+  /** Sprint 3 (additive): the library template this day was copied from (lineage only). */
+  sourceTemplateId: z.uuid().nullable().optional(),
+  sourceTemplateVersion: z.number().int().nullable().optional(),
   sections: z.array(adminSectionSchema),
 });
 export type AdminDay = z.infer<typeof adminDaySchema>;
@@ -569,3 +573,308 @@ export const clientPlanSchema = z.object({
   updatedAt: isoDate.nullable(),
 });
 export type ClientPlan = z.infer<typeof clientPlanSchema>;
+
+// ---------------------------------------------------------------- Sprint 3: Workout-Bibliothek
+
+export const workoutTemplateCategorySchema = z.enum(WORKOUT_TEMPLATE_CATEGORIES);
+export const WORKOUT_MAX_SECTIONS = 10;
+export const WORKOUT_MAX_EXERCISES_PER_SECTION = 60;
+export const TEMPLATE_PAGE_SIZE_MAX = 100;
+
+const addPrescriptionIssues = (
+  value: Parameters<typeof prescriptionIssues>[0],
+  ctx: z.RefinementCtx,
+) => {
+  for (const issue of prescriptionIssues(value)) {
+    ctx.addIssue({ code: 'custom', path: [issue.path], message: issue.message });
+  }
+};
+
+/** One exercise inside a library template — the execution type is REQUIRED (no legacy rows). */
+export const templateExerciseInputSchema = z
+  .object({ exerciseId: id, ...prescriptionShape, executionType: trainingExecutionTypeSchema })
+  .strict()
+  .superRefine(addPrescriptionIssues);
+export type TemplateExerciseInput = z.input<typeof templateExerciseInputSchema>;
+
+const templateSectionInputSchema = z
+  .object({
+    type: trainingSectionTypeSchema,
+    title: optionalLine(120).nullable().optional(),
+    exercises: z.array(templateExerciseInputSchema).max(WORKOUT_MAX_EXERCISES_PER_SECTION),
+  })
+  .strict();
+
+const workoutHeader = {
+  title: line(120),
+  category: workoutTemplateCategorySchema.nullable().optional(),
+  description: longText(2000).nullable().optional(),
+};
+
+const atLeastOneExercise = (sections: { exercises: unknown[] }[]) =>
+  sections.some((section) => section.exercises.length > 0);
+
+/** POST /v1/admin/training/templates — the complete template (sections in order, exercises in order). */
+export const createTemplateRequestSchema = z
+  .object({
+    ...workoutHeader,
+    sections: z.array(templateSectionInputSchema).min(1).max(WORKOUT_MAX_SECTIONS),
+  })
+  .strict()
+  .refine((value) => atLeastOneExercise(value.sections), {
+    path: ['sections'],
+    message: 'Bitte mindestens eine Übung hinzufügen.',
+  });
+export type CreateTemplateRequest = z.input<typeof createTemplateRequestSchema>;
+
+/**
+ * PUT /v1/admin/training/templates/:id — replaces the whole template content. `expectedVersion`
+ * is the version the editor loaded: a different stored version answers 409 (no silent overwrite).
+ * Every save bumps the version; existing client copies are never touched.
+ */
+export const updateTemplateRequestSchema = z
+  .object({
+    expectedVersion: z.number().int().min(1),
+    ...workoutHeader,
+    sections: z.array(templateSectionInputSchema).min(1).max(WORKOUT_MAX_SECTIONS),
+  })
+  .strict()
+  .refine((value) => atLeastOneExercise(value.sections), {
+    path: ['sections'],
+    message: 'Bitte mindestens eine Übung hinzufügen.',
+  });
+export type UpdateTemplateRequest = z.input<typeof updateTemplateRequestSchema>;
+
+export const templateListQuerySchema = z.object({
+  q: z.string().trim().max(120).optional(),
+  category: workoutTemplateCategorySchema.optional(),
+  status: z.enum(['active', 'archived']).default('active'),
+  page: z.coerce.number().int().min(1).max(10_000).default(1),
+  pageSize: z.coerce.number().int().min(1).max(TEMPLATE_PAGE_SIZE_MAX).default(24),
+});
+export type TemplateListQuery = z.input<typeof templateListQuerySchema>;
+
+/** One exercise row as the editors show it (template row or a client's assignment row). */
+export const workoutExerciseSchema = z.object({
+  id: z.uuid(),
+  order: z.number().int(),
+  exercise: z.object({
+    id: z.uuid(),
+    name: z.string(),
+    active: z.boolean(),
+    hasMedia: z.boolean(),
+  }),
+  sets: z.number().int().nullable(),
+  reps: z.number().int().nullable(),
+  repsMax: z.boolean(),
+  totalReps: z.number().int().nullable(),
+  durationSeconds: z.number().int().nullable(),
+  restSeconds: z.number().int().nullable(),
+  targetWeight: z.number().nullable(),
+  weightUnit: weightUnitSchema.nullable(),
+  prescriptionText: z.string().nullable(),
+  instructionsOverride: z.string().nullable(),
+  executionType: trainingExecutionTypeSchema.nullable(),
+});
+export type WorkoutExercise = z.infer<typeof workoutExerciseSchema>;
+
+export const workoutSectionSchema = z.object({
+  id: z.uuid(),
+  order: z.number().int(),
+  type: trainingSectionTypeSchema,
+  title: z.string().nullable(),
+  exercises: z.array(workoutExerciseSchema),
+});
+export type WorkoutSection = z.infer<typeof workoutSectionSchema>;
+
+export const workoutTemplateSummarySchema = z.object({
+  id: z.uuid(),
+  title: z.string(),
+  category: workoutTemplateCategorySchema.nullable(),
+  description: z.string().nullable(),
+  version: z.number().int(),
+  archivedAt: isoDate.nullable(),
+  createdAt: isoDate,
+  updatedAt: isoDate,
+  exerciseCount: z.number().int(),
+  executionTypes: z.array(trainingExecutionTypeSchema),
+  /** Display name of the owning coach/admin (ADMIN sees all templates). */
+  ownerName: z.string(),
+  ownedByMe: z.boolean(),
+});
+export type WorkoutTemplateSummary = z.infer<typeof workoutTemplateSummarySchema>;
+
+export const workoutTemplateListSchema = z.object({
+  items: z.array(workoutTemplateSummarySchema),
+  total: z.number().int(),
+  page: z.number().int(),
+  pageSize: z.number().int(),
+});
+export type WorkoutTemplateList = z.infer<typeof workoutTemplateListSchema>;
+
+export const workoutTemplateSchema = workoutTemplateSummarySchema.extend({
+  sections: z.array(workoutSectionSchema),
+});
+export type WorkoutTemplate = z.infer<typeof workoutTemplateSchema>;
+
+/**
+ * POST /v1/admin/training/templates/:id/assign — copies the template into ONE client's program
+ * (a new, independent training day). Target: a calendar `date` (week from the program start +
+ * weekday) OR an existing `weekId` (+ optional weekday). `requestId` is generated once per
+ * "Zuweisen" action by the caller: retries with the same id return the first result.
+ */
+export const assignTemplateRequestSchema = z
+  .object({
+    clientId: id,
+    requestId: id,
+    date: calendarDate.optional(),
+    weekId: id.optional(),
+    scheduledWeekday: z.number().int().min(1).max(7).nullable().optional(),
+    title: line(120).optional(),
+  })
+  .strict()
+  .refine((value) => Boolean(value.date) !== Boolean(value.weekId), {
+    path: ['date'],
+    message: 'Bitte ein Datum oder eine Trainingswoche wählen.',
+  });
+export type AssignTemplateRequest = z.input<typeof assignTemplateRequestSchema>;
+
+export const assignTemplateResponseSchema = z.object({
+  /** false = this requestId was already processed; the stored result is returned unchanged. */
+  created: z.boolean(),
+  clientId: z.uuid(),
+  programId: z.uuid(),
+  programTitle: z.string(),
+  programStatus: trainingProgramStatusSchema,
+  programCreated: z.boolean(),
+  weekId: z.uuid(),
+  dayId: z.uuid(),
+  title: z.string(),
+  date: calendarDate.nullable(),
+  scheduledWeekday: z.number().int().nullable(),
+  sourceTemplateId: z.uuid(),
+  sourceTemplateVersion: z.number().int(),
+});
+export type AssignTemplateResponse = z.infer<typeof assignTemplateResponseSchema>;
+
+/** A client's own copy (one training day) as the "Für Teilnehmer bearbeiten" editor loads it. */
+export const clientWorkoutSchema = z.object({
+  dayId: z.uuid(),
+  clientId: z.uuid(),
+  programId: z.uuid(),
+  programTitle: z.string(),
+  programStatus: trainingProgramStatusSchema,
+  weekId: z.uuid(),
+  weekOrder: z.number().int(),
+  title: z.string(),
+  notes: z.string().nullable(),
+  scheduledWeekday: z.number().int().nullable(),
+  /** Calendar date when the program has a start date and the day a weekday; else null. */
+  date: calendarDate.nullable(),
+  /** Optimistic-concurrency token (the program's last change); send it back on save. */
+  version: z.string(),
+  editable: z.boolean(),
+  sourceTemplate: z
+    .object({ id: z.uuid(), version: z.number().int(), title: z.string().nullable() })
+    .nullable(),
+  /** Workouts of this day the client already started / finished (they keep their snapshot). */
+  sessions: z.object({ inProgress: z.number().int(), completed: z.number().int() }),
+  sections: z.array(workoutSectionSchema),
+});
+export type ClientWorkout = z.infer<typeof clientWorkoutSchema>;
+
+const clientWorkoutExerciseInputSchema = z
+  .object({ id: id.optional(), exerciseId: id, ...prescriptionShape })
+  .strict()
+  .superRefine(addPrescriptionIssues);
+
+/**
+ * PUT /v1/admin/training/days/:dayId/workout — replaces this ONE client day's content. Rows with
+ * an `id` are updated in place (ids stay stable), rows without are new, missing rows are removed.
+ * Never writes the template or any other copy; sessions keep their snapshot.
+ */
+export const updateClientWorkoutRequestSchema = z
+  .object({
+    expectedVersion: z.string().min(1).max(64),
+    title: line(120),
+    notes: longText(2000).nullable().optional(),
+    sections: z
+      .array(
+        z
+          .object({
+            id: id.optional(),
+            type: trainingSectionTypeSchema,
+            title: optionalLine(120).nullable().optional(),
+            exercises: z
+              .array(clientWorkoutExerciseInputSchema)
+              .max(WORKOUT_MAX_EXERCISES_PER_SECTION),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(WORKOUT_MAX_SECTIONS),
+  })
+  .strict();
+export type UpdateClientWorkoutRequest = z.input<typeof updateClientWorkoutRequestSchema>;
+
+export const trainingWeekQuerySchema = z.object({ date: calendarDate.optional() });
+
+const weekWorkoutSchema = z.object({
+  dayId: z.uuid(),
+  title: z.string(),
+  scheduledWeekday: z.number().int().nullable(),
+  sourceTemplateId: z.uuid().nullable(),
+  sourceTemplateVersion: z.number().int().nullable(),
+  exerciseCount: z.number().int(),
+  executionTypes: z.array(trainingExecutionTypeSchema),
+  workoutStatus: z.enum(WORKOUT_DAY_STATUSES),
+});
+export type WeekWorkout = z.infer<typeof weekWorkoutSchema>;
+
+/**
+ * GET /v1/admin/training/clients/:clientId/week?date= — "Trainingswoche": the canonical program's
+ * week containing `date` (ACTIVE program, otherwise the newest DRAFT) plus the legacy exercise
+ * list (client_plans) as a separate, clearly labelled block — it is shown, never converted.
+ */
+export const clientTrainingWeekSchema = z.object({
+  clientId: z.uuid(),
+  weekStart: calendarDate,
+  weekEnd: calendarDate,
+  program: z
+    .object({
+      id: z.uuid(),
+      title: z.string(),
+      status: trainingProgramStatusSchema,
+      startsOn: calendarDate.nullable(),
+      endsOn: calendarDate.nullable(),
+    })
+    .nullable(),
+  /** 0-based program week for this calendar week (null: no program / no start date / outside). */
+  weekIndex: z.number().int().nullable(),
+  weekId: z.uuid().nullable(),
+  days: z.array(
+    z.object({
+      date: calendarDate,
+      weekday: z.number().int(),
+      workouts: z.array(weekWorkoutSchema),
+    }),
+  ),
+  /** Workouts of that program week without a weekday. */
+  unscheduled: z.array(weekWorkoutSchema),
+  legacyPlan: z
+    .object({
+      itemCount: z.number().int(),
+      startsOn: calendarDate.nullable(),
+      endsOn: calendarDate.nullable(),
+      updatedAt: isoDate.nullable(),
+    })
+    .nullable(),
+});
+export type ClientTrainingWeek = z.infer<typeof clientTrainingWeekSchema>;
+
+/** GET /v1/admin/training/capabilities — what the coach UI may offer (server flag, read-only). */
+export const trainingCapabilitiesSchema = z.object({
+  extendedExecutionTypes: z.boolean(),
+  requiredAppCapabilityLevel: z.number().int(),
+});
+export type TrainingCapabilities = z.infer<typeof trainingCapabilitiesSchema>;

@@ -39,6 +39,8 @@ export const workoutTemplates = pgTable(
       .references(() => users.id, { onDelete: 'restrict' }),
     title: text('title').notNull(),
     description: text('description'),
+    /** Sprint 3 (0024): coach-facing "Typ" (UPPER_BODY / LOWER_BODY / TOTAL_REPS / CORE); null = ohne Typ. */
+    category: text('category'),
     /** Increased on every content change; copies record the version they were made from. */
     version: integer('version').notNull().default(1),
     /** Archived templates stay readable for lineage; they are not offered for new copies. */
@@ -53,6 +55,10 @@ export const workoutTemplates = pgTable(
       sql`${table.description} is null or char_length(${table.description}) <= 2000`,
     ),
     check('workout_templates_version_positive', sql`${table.version} >= 1`),
+    check(
+      'workout_templates_category_valid',
+      sql`${table.category} is null or ${table.category} in ('UPPER_BODY', 'LOWER_BODY', 'TOTAL_REPS', 'CORE')`,
+    ),
   ],
 );
 

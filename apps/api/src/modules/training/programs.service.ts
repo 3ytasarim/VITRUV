@@ -20,6 +20,7 @@ import { AppError, pgErrorCode } from '../../lib/errors';
 import { recordEvent } from '../auth/auth.service';
 import { clientAccessible } from '../management/management.service';
 import type { TrainingDeps } from './exercises.service';
+import { assertExtendedTypesAllowed } from './capabilities';
 import { storagePrescription, type PrescriptionInput } from './prescription-storage';
 import { nextPosition, normalize, placeAfter, reorder, type Level } from './ordering';
 
@@ -54,7 +55,12 @@ const DEFAULT_SECTIONS: TrainingSectionType[] = ['WARMUP', 'MAIN', 'FINISHER'];
 // Scoped lookups
 // ---------------------------------------------------------------------------------------------
 
-async function scopedProgram(db: DbExecutor, actor: Principal, programId: string, lock = false) {
+export async function scopedProgram(
+  db: DbExecutor,
+  actor: Principal,
+  programId: string,
+  lock = false,
+) {
   const query = db
     .select()
     .from(P)
@@ -66,7 +72,7 @@ async function scopedProgram(db: DbExecutor, actor: Principal, programId: string
 }
 
 /** Resolves a nested id to its program — through the scope — and returns the owning program id. */
-async function programOf(db: DbExecutor, actor: Principal, level: Level, id: string) {
+export async function programOf(db: DbExecutor, actor: Principal, level: Level, id: string) {
   const scope = clientAccessible(actor, P.clientUserId);
   let rows: { programId: string; parentId: string }[];
   if (level === 'week') {
@@ -109,7 +115,7 @@ async function programOf(db: DbExecutor, actor: Principal, level: Level, id: str
   return row;
 }
 
-function assertEditable(program: ProgramRow) {
+export function assertEditable(program: ProgramRow) {
   if (program.status !== 'DRAFT' && program.status !== 'ACTIVE') {
     throw AppError.conflict('Abgeschlossene oder archivierte Pläne sind schreibgeschützt.');
   }
@@ -119,7 +125,7 @@ function assertEditable(program: ProgramRow) {
  * Runs a structural change: program row locked, editability checked, changes applied, program
  * `updated_at` touched — all in one transaction. Returns the fresh tree.
  */
-async function mutate(
+export async function mutate(
   deps: TrainingDeps,
   actor: Principal,
   programId: string,
@@ -244,6 +250,8 @@ function toAdminProgram(program: ProgramRow, tree: Tree): AdminProgram {
         title: day.title,
         notes: day.notes,
         scheduledWeekday: day.scheduledWeekday,
+        sourceTemplateId: day.sourceTemplateId,
+        sourceTemplateVersion: day.sourceTemplateVersion,
         sections: (sectionsByDay.get(day.id) ?? []).map((section) => ({
           id: section.id,
           order: section.sortOrder,
@@ -257,7 +265,7 @@ function toAdminProgram(program: ProgramRow, tree: Tree): AdminProgram {
 }
 
 /** Today's date in Europe/Berlin as YYYY-MM-DD. */
-const berlinToday = (now: Date) =>
+export const berlinToday = (now: Date) =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(now);
 
 /**
@@ -369,14 +377,14 @@ function visiblePrescription(type: TrainingExecutionType | null | undefined, tex
 }
 
 /** Consistent snapshot for multi-query reads (never a half-applied change). */
-const snapshot = <T>(deps: TrainingDeps, read: (tx: DbExecutor) => Promise<T>) =>
+export const snapshot = <T>(deps: TrainingDeps, read: (tx: DbExecutor) => Promise<T>) =>
   deps.db.transaction(read, { isolationLevel: 'repeatable read', accessMode: 'read only' });
 
 // ---------------------------------------------------------------------------------------------
 // Programs
 // ---------------------------------------------------------------------------------------------
 
-async function requireClientInScope(db: DbExecutor, actor: Principal, clientId: string) {
+export async function requireClientInScope(db: DbExecutor, actor: Principal, clientId: string) {
   const [client] = await db
     .select({ id: users.id })
     .from(users)
@@ -962,6 +970,7 @@ export async function addAssignment(
   input: { exerciseId: string } & PrescriptionInput,
 ) {
   const { programId } = await programOf(deps.db, actor, 'section', sectionId);
+  assertExtendedTypesAllowed(deps, [input]);
   await requireAssignableExercise(deps.db, input.exerciseId);
   return mutate(deps, actor, programId, async (tx) => {
     const prescription = pickPrescription(input);
@@ -992,6 +1001,13 @@ export async function updateAssignment(
     const merged = { ...current, ...patch };
     const issues = prescriptionIssues(merged);
     if (issues.length > 0) throw AppError.validation(issues);
+    // Flag off: no NEW extended type/MAX (an untouched existing row created while it was on stays).
+    if (
+      merged.executionType !== current.executionType ||
+      Boolean(merged.repsMax) !== current.repsMax
+    ) {
+      assertExtendedTypesAllowed(deps, [merged]);
+    }
     await tx
       .update(A)
       .set({

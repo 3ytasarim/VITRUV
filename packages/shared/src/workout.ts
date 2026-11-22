@@ -99,3 +99,42 @@ export function executionModeOf(prescription: {
   if (prescription.durationSeconds !== null) return 'DURATION';
   return 'CUSTOM';
 }
+
+/**
+ * Sprint 3 — Workout-Bibliothek categories (the coach's "Typ" of a template; filter + label only,
+ * the executable behaviour still comes from each exercise's execution type).
+ */
+export const WORKOUT_TEMPLATE_CATEGORIES = [
+  'UPPER_BODY',
+  'LOWER_BODY',
+  'TOTAL_REPS',
+  'CORE',
+] as const;
+export type WorkoutTemplateCategory = (typeof WORKOUT_TEMPLATE_CATEGORIES)[number];
+
+/**
+ * Sprint 3 — capability contract for clients. Execution types/fields an installed app may not know:
+ * an app older than the Sprint 2 build throws on the session modes INTERVAL / CHECKLIST and
+ * ignores `repsMax` (it would show "3 × –"). They are only writable while the server flag
+ * `TRAINING_EXTENDED_TYPES=enabled` is set — which the operator may do ONLY after an app build
+ * with `TRAINING_CAPABILITY_LEVEL` ≥ 2 is the enforced minimum version in both stores.
+ * STRENGTH and TOTAL_REPS map to the old modes SETS_REPS / TOTAL_REPS and are always allowed.
+ */
+export const EXTENDED_EXECUTION_TYPES = [
+  'INTERVAL',
+  'CHECKLIST',
+] as const satisfies readonly TrainingExecutionType[];
+export const TRAINING_CAPABILITY_LEVEL = 2;
+
+/** True when a prescription uses something only capability level ≥ 2 apps understand. */
+export function usesExtendedTraining(value: {
+  executionType?: TrainingExecutionType | null;
+  repsMax?: boolean | null;
+}): boolean {
+  return (
+    value.repsMax === true ||
+    (value.executionType !== null &&
+      value.executionType !== undefined &&
+      (EXTENDED_EXECUTION_TYPES as readonly string[]).includes(value.executionType))
+  );
+}

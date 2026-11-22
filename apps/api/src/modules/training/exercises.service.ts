@@ -17,6 +17,11 @@ export interface TrainingDeps {
   logger: Logger;
   urls: MediaUrlResolver;
   now?: () => Date;
+  /**
+   * Sprint 3 flag (env TRAINING_EXTENDED_TYPES, default off): may INTERVAL / CHECKLIST / Strength
+   * MAX be written? Off → every write path rejects them with 409 (server-side, not only the UI).
+   */
+  extendedTypes?: boolean;
 }
 
 const {
