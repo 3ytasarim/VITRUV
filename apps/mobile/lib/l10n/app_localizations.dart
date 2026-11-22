@@ -1369,6 +1369,251 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Nicht erledigt'**
   String get historyExerciseOpen;
+
+  /// No description provided for @totalGoal.
+  ///
+  /// In de, this message translates to:
+  /// **'Gesamtziel'**
+  String get totalGoal;
+
+  /// No description provided for @totalDone.
+  ///
+  /// In de, this message translates to:
+  /// **'Bereits geschafft'**
+  String get totalDone;
+
+  /// No description provided for @totalOpen.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch offen'**
+  String get totalOpen;
+
+  /// No description provided for @totalCurrentSet.
+  ///
+  /// In de, this message translates to:
+  /// **'Aktueller Satz {number}'**
+  String totalCurrentSet(int number);
+
+  /// No description provided for @totalRepsInput.
+  ///
+  /// In de, this message translates to:
+  /// **'Wiederholungen eintragen'**
+  String get totalRepsInput;
+
+  /// No description provided for @totalSaveSet.
+  ///
+  /// In de, this message translates to:
+  /// **'Satz speichern'**
+  String get totalSaveSet;
+
+  /// No description provided for @totalSaving.
+  ///
+  /// In de, this message translates to:
+  /// **'Wird gespeichert …'**
+  String get totalSaving;
+
+  /// No description provided for @totalGoalReached.
+  ///
+  /// In de, this message translates to:
+  /// **'Ziel erreicht'**
+  String get totalGoalReached;
+
+  /// No description provided for @totalProgressValue.
+  ///
+  /// In de, this message translates to:
+  /// **'{done} von {target} Wdh.'**
+  String totalProgressValue(int done, int target);
+
+  /// No description provided for @totalSetSaved.
+  ///
+  /// In de, this message translates to:
+  /// **'Satz {number} gespeichert'**
+  String totalSetSaved(int number);
+
+  /// No description provided for @totalSetNotSaved.
+  ///
+  /// In de, this message translates to:
+  /// **'Satz nicht gespeichert. Es läuft keine Pause.'**
+  String get totalSetNotSaved;
+
+  /// No description provided for @totalRepsRange.
+  ///
+  /// In de, this message translates to:
+  /// **'Bitte mindestens 1 Wiederholung eintragen.'**
+  String get totalRepsRange;
+
+  /// No description provided for @historyTotalResult.
+  ///
+  /// In de, this message translates to:
+  /// **'Gesamt: {done} von {target} Wdh.'**
+  String historyTotalResult(int done, int target);
+
+  /// No description provided for @historyRoundResult.
+  ///
+  /// In de, this message translates to:
+  /// **'Runde {number}: {seconds} Sek.'**
+  String historyRoundResult(int number, int seconds);
+
+  /// No description provided for @historyRoundOpen.
+  ///
+  /// In de, this message translates to:
+  /// **'Runde {number}: nicht erledigt'**
+  String historyRoundOpen(int number);
+
+  /// No description provided for @coreRoundOf.
+  ///
+  /// In de, this message translates to:
+  /// **'Runde {round} von {rounds}'**
+  String coreRoundOf(int round, int rounds);
+
+  /// No description provided for @corePhaseWork.
+  ///
+  /// In de, this message translates to:
+  /// **'TRAINING'**
+  String get corePhaseWork;
+
+  /// No description provided for @corePhaseRest.
+  ///
+  /// In de, this message translates to:
+  /// **'PAUSE'**
+  String get corePhaseRest;
+
+  /// No description provided for @corePlan.
+  ///
+  /// In de, this message translates to:
+  /// **'{rounds} Runden · {work} Training · {rest} Pause'**
+  String corePlan(int rounds, String work, String rest);
+
+  /// No description provided for @coreStart.
+  ///
+  /// In de, this message translates to:
+  /// **'Core starten'**
+  String get coreStart;
+
+  /// No description provided for @coreStartFrom.
+  ///
+  /// In de, this message translates to:
+  /// **'Ab Runde {round} starten'**
+  String coreStartFrom(int round);
+
+  /// No description provided for @corePause.
+  ///
+  /// In de, this message translates to:
+  /// **'Anhalten'**
+  String get corePause;
+
+  /// No description provided for @coreResume.
+  ///
+  /// In de, this message translates to:
+  /// **'Fortsetzen'**
+  String get coreResume;
+
+  /// No description provided for @coreCancel.
+  ///
+  /// In de, this message translates to:
+  /// **'Abbrechen'**
+  String get coreCancel;
+
+  /// No description provided for @coreNextRound.
+  ///
+  /// In de, this message translates to:
+  /// **'Nächste Runde'**
+  String get coreNextRound;
+
+  /// No description provided for @coreDone.
+  ///
+  /// In de, this message translates to:
+  /// **'Training abgeschlossen'**
+  String get coreDone;
+
+  /// No description provided for @corePaused.
+  ///
+  /// In de, this message translates to:
+  /// **'Angehalten'**
+  String get corePaused;
+
+  /// No description provided for @coreRoundsSaved.
+  ///
+  /// In de, this message translates to:
+  /// **'{done} von {rounds} Runden gespeichert'**
+  String coreRoundsSaved(int done, int rounds);
+
+  /// No description provided for @coreRoundsUnsaved.
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Runde ist noch nicht gespeichert.} other{{count} Runden sind noch nicht gespeichert.}}'**
+  String coreRoundsUnsaved(int count);
+
+  /// No description provided for @coreSaveRounds.
+  ///
+  /// In de, this message translates to:
+  /// **'Runden speichern'**
+  String get coreSaveRounds;
+
+  /// No description provided for @coreRemainingSemantics.
+  ///
+  /// In de, this message translates to:
+  /// **'{phase}, Runde {round} von {rounds}, noch {clock}'**
+  String coreRemainingSemantics(
+    String phase,
+    int round,
+    int rounds,
+    String clock,
+  );
+
+  /// No description provided for @coreAnnounceWork.
+  ///
+  /// In de, this message translates to:
+  /// **'Training, Runde {round}'**
+  String coreAnnounceWork(int round);
+
+  /// No description provided for @coreAnnounceRest.
+  ///
+  /// In de, this message translates to:
+  /// **'Pause'**
+  String get coreAnnounceRest;
+
+  /// No description provided for @coreOtherRunning.
+  ///
+  /// In de, this message translates to:
+  /// **'Eine andere Core-Routine läuft gerade.'**
+  String get coreOtherRunning;
+
+  /// No description provided for @coreNotifyRestTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Pause'**
+  String get coreNotifyRestTitle;
+
+  /// No description provided for @coreNotifyRestBody.
+  ///
+  /// In de, this message translates to:
+  /// **'Runde {round} geschafft – kurz durchatmen.'**
+  String coreNotifyRestBody(int round);
+
+  /// No description provided for @coreNotifyWorkTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Training'**
+  String get coreNotifyWorkTitle;
+
+  /// No description provided for @coreNotifyWorkBody.
+  ///
+  /// In de, this message translates to:
+  /// **'Runde {round} von {rounds} startet.'**
+  String coreNotifyWorkBody(int round, int rounds);
+
+  /// No description provided for @coreNotifyDoneTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Training abgeschlossen'**
+  String get coreNotifyDoneTitle;
+
+  /// No description provided for @coreNotifyDoneBody.
+  ///
+  /// In de, this message translates to:
+  /// **'{exercise} ist geschafft.'**
+  String coreNotifyDoneBody(String exercise);
 }
 
 class _AppLocalizationsDelegate

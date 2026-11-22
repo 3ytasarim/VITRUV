@@ -124,6 +124,17 @@ class FakeBackend implements HttpClientAdapter {
   final finishedSessions = <String, Map<String, Object?>>{};
   final mutationBodies = <Map<String, Object?>>[];
 
+  /// Sprint 6 API: sessions carry `timer` / `totalReps`, INTERVAL has one row per round and
+  /// TOTAL_REPS sets are recorded via `POST …/sets`. Off → the older contract (no engines).
+  bool engines = false;
+
+  /// `POST …/sets`: fail before storing (no set) / store it, then lose the reply (retry case).
+  int failSetRecords = 0;
+  int loseSetReplies = 0;
+
+  /// Bodies of `POST …/sets` (also the failed ones).
+  final setRequests = <Map<String, Object?>>[];
+
   // ---------------------------------------------------------------- transport
   @override
   Future<ResponseBody> fetch(
@@ -308,6 +319,12 @@ class FakeBackend implements HttpClientAdapter {
       if (session == null) return _error(404, 'NOT_FOUND');
       return (status: 201, body: {'session': session, 'resumed': false});
     }
+    final record = RegExp(
+      r'^/v1/client/workouts/([^/]+)/exercises/([^/]+)/sets$',
+    ).firstMatch(path);
+    if (method == 'POST' && record != null) {
+      return _recordSet(record.group(1)!, record.group(2)!, json, path);
+    }
     final match = RegExp(
       r'^/v1/client/workouts/([^/]+)(?:/exercises/([^/]+)(?:/sets/(\d+))?)?(?:/(complete|abandon))?$',
     ).firstMatch(path);
@@ -344,12 +361,22 @@ class FakeBackend implements HttpClientAdapter {
       final setNumber = match.group(3);
       if (setNumber != null) {
         final sets = (exercise['sets']! as List).cast<Map<String, Object?>>();
-        final set = sets.firstWhere(
-          (s) => s['setNumber'] == int.parse(setNumber),
-        );
+        final set = sets
+            .where((s) => s['setNumber'] == int.parse(setNumber))
+            .firstOrNull;
+        if (set == null) return _error(404, 'NOT_FOUND');
+        // like the API: the first completion time is kept (a repeated round changes nothing)
+        if (json['completed'] == true) {
+          set['completedAt'] ??= _now().toUtc().toIso8601String();
+        } else {
+          set['completedAt'] = null;
+        }
         set['completed'] = json['completed'];
         if (json.containsKey('actualReps')) {
           set['actualReps'] = json['actualReps'];
+        }
+        if (json.containsKey('actualDurationSeconds')) {
+          set['actualDurationSeconds'] = json['actualDurationSeconds'];
         }
         final done = sets.where((s) => s['completed'] == true).length;
         exercise['status'] = done == sets.length ? 'COMPLETED' : 'PENDING';
@@ -473,7 +500,24 @@ class FakeBackend implements HttpClientAdapter {
                       'completed': false,
                       'completedAt': null,
                     },
+                // Sprint 6: one row per Core round (target = work seconds)
+                if (engines && mode == 'INTERVAL')
+                  for (var n = 1; n <= _interval(e)['rounds']!; n++)
+                    {
+                      'setNumber': n,
+                      'targetReps': null,
+                      'targetDurationSeconds': _interval(e)['workSeconds'],
+                      'targetWeight': null,
+                      'actualReps': null,
+                      'actualWeight': null,
+                      'actualDurationSeconds': null,
+                      'completed': false,
+                      'completedAt': null,
+                    },
               ],
+              if (engines) 'timer': _timerOf(mode, e),
+              if (engines && mode == 'TOTAL_REPS')
+                'totalReps': _totalOf((e['totalReps'] as int?) ?? 0, const []),
             });
           }
         }
@@ -497,6 +541,140 @@ class FakeBackend implements HttpClientAdapter {
       }
     }
     return null;
+  }
+
+  // ---------------------------------------------------------------- Sprint 6 engines
+
+  /// Core config like the shared engine: sets = rounds, duration = work, rest; defaults 5/40/20
+  /// only for empty values.
+  static Map<String, int> _interval(Map<String, Object?> e) => {
+    'rounds': (e['sets'] as int?) ?? 5,
+    'workSeconds': (e['durationSeconds'] as int?) ?? 40,
+    'restSeconds': (e['restSeconds'] as int?) ?? 20,
+  };
+
+  /// `timerConfigOf` of the shared engine.
+  static Map<String, Object?> _timerOf(String mode, Map<String, Object?> e) {
+    final rest = e['restSeconds'] as int?;
+    final r = rest != null && rest > 0 ? rest : null;
+    const none = {'mode': 'NONE', 'restSeconds': null, 'interval': null};
+    return switch (mode) {
+      'CHECKLIST' => none,
+      'INTERVAL' => {
+        'mode': 'INTERVAL',
+        'restSeconds': null,
+        'interval': _interval(e),
+      },
+      'SETS_REPS' || 'TOTAL_REPS' =>
+        r == null
+            ? none
+            : {'mode': 'AUTO_REST', 'restSeconds': r, 'interval': null},
+      _ =>
+        r == null
+            ? none
+            : {'mode': 'MANUAL_REST', 'restSeconds': r, 'interval': null},
+    };
+  }
+
+  static Map<String, Object?> _totalOf(int target, List<int> reps) {
+    final done = reps.fold(0, (a, b) => a + b);
+    return {
+      'target': target,
+      'done': done,
+      'remaining': done >= target ? 0 : target - done,
+      'reached': done >= target,
+      'setCount': reps.length,
+    };
+  }
+
+  /// `POST …/exercises/:id/sets` (TOTAL_REPS): idempotent per clientSetId, 409 once the target is
+  /// reached or when the id is reused for other values; rest only while the target is open.
+  ({int status, Object? body}) _recordSet(
+    String sessionId,
+    String exerciseId,
+    Map<String, Object?> json,
+    String path,
+  ) {
+    setRequests.add(json);
+    if (finishedSessions.containsKey(sessionId)) {
+      return _error(409, 'CONFLICT');
+    }
+    final session = current;
+    if (session == null || session['id'] != sessionId) {
+      return _error(404, 'NOT_FOUND');
+    }
+    if (failSetRecords > 0) {
+      failSetRecords--;
+      throw DioException(
+        requestOptions: RequestOptions(path: path),
+        type: DioExceptionType.connectionError,
+      );
+    }
+    final exercises = (session['exercises']! as List)
+        .cast<Map<String, Object?>>();
+    final exercise = exercises.where((e) => e['id'] == exerciseId).firstOrNull;
+    if (exercise == null) return _error(404, 'NOT_FOUND');
+    if (exercise['executionMode'] != 'TOTAL_REPS') {
+      return _error(409, 'CONFLICT');
+    }
+    final target =
+        ((exercise['target']! as Map)['totalReps'] as int?) ??
+        ((exercise['totalReps'] as Map?)?['target'] as int?) ??
+        0;
+    final rest = (exercise['timer'] as Map?)?['restSeconds'] as int?;
+    final sets = (exercise['sets']! as List).cast<Map<String, Object?>>();
+    final id = json['clientSetId'];
+    final reps = json['actualReps']! as int;
+    var set = sets.where((s) => s['clientSetId'] == id).firstOrNull;
+    var created = false;
+    if (set != null) {
+      if (set['actualReps'] != reps) return _error(409, 'CONFLICT');
+    } else {
+      if (exercise['status'] != 'PENDING') return _error(409, 'CONFLICT');
+      set = {
+        'setNumber': sets.length + 1,
+        'targetReps': null,
+        'targetDurationSeconds': null,
+        'targetWeight': null,
+        'actualReps': reps,
+        'actualWeight': null,
+        'actualDurationSeconds': null,
+        'completed': true,
+        'completedAt': _now().toUtc().toIso8601String(),
+        'clientSetId': id,
+      };
+      sets.add(set);
+      created = true;
+    }
+    final all = [for (final s in sets) s['actualReps']! as int];
+    final total = _totalOf(target, all);
+    exercise['totalReps'] = total;
+    exercise['actualReps'] = total['done'];
+    if (total['reached'] == true && exercise['status'] == 'PENDING') {
+      exercise['status'] = 'COMPLETED';
+      exercise['completedAt'] = _now().toUtc().toIso8601String();
+    }
+    session['progress'] = progressOf(exercises);
+    // rest after this set only while the target is still open after it
+    final upTo = all.take(set['setNumber']! as int).fold(0, (a, b) => a + b);
+    final restSeconds = upTo >= target ? null : rest;
+    if (loseSetReplies > 0) {
+      loseSetReplies--;
+      throw DioException(
+        requestOptions: RequestOptions(path: path),
+        type: DioExceptionType.connectionError,
+      );
+    }
+    return (
+      status: created ? 201 : 200,
+      body: {
+        'exercise': exercise,
+        'progress': session['progress'],
+        'set': set,
+        'created': created,
+        'restSeconds': restSeconds,
+      },
+    );
   }
 
   static Map<String, Object?> progressOf(
@@ -879,3 +1057,107 @@ Map<String, Object?> demoProgram({String? currentWeekId, int? weekday}) => {
     },
   ],
 };
+
+/// Fictional Sprint 6 plan (all engines; the harness "today" is Thursday 2026-10-15):
+/// - "Klimmzug-Ziel" (Mo): Warm-up checklist + Total reps Klimmzüge 60 (auto rest 60 s)
+/// - "Core-Tag" (We): Warm-up + Core-Routine INTERVAL without values (→ 5 × 40/20 defaults)
+/// - "Ganzkörper Mix" (Th): Warm-up + Strength Bankdrücken 2 × 10 (manual rest 90 s) + Total reps
+///   Liegestütze 20 (rest 45 s) + Core-Routine 3 × 30/15 — sections and order as the coach set them
+Map<String, Object?> enginesProgram() => {
+  'id': 'p-6',
+  'title': 'Zielblock',
+  'description': null,
+  'startsOn': '2026-10-12',
+  'endsOn': null,
+  'currentWeekId': 'w-z',
+  'weeks': [
+    {
+      'id': 'w-z',
+      'order': 0,
+      'title': null,
+      'notes': null,
+      'days': [
+        _day(
+          'd-kz',
+          0,
+          'Klimmzug-Ziel',
+          1,
+          _ordered([
+            _section('s-kz-w', 'WARMUP', [
+              _exercise('kzw1', 'Schulterkreisen', executionType: 'CHECKLIST'),
+              _exercise('kzw2', 'Armkreisen', executionType: 'CHECKLIST'),
+            ], title: 'Aufwärmen'),
+            _section('s-kz-m', 'MAIN', [
+              _exercise(
+                'kz1',
+                'Klimmzüge',
+                totalReps: 60,
+                restSeconds: 60,
+                executionType: 'TOTAL_REPS',
+              ),
+            ]),
+          ]),
+        ),
+        _day(
+          'd-core',
+          1,
+          'Core-Tag',
+          3,
+          _ordered([
+            _section('s-core-w', 'WARMUP', [
+              _exercise('cw1', 'Hüftmobilisation', executionType: 'CHECKLIST'),
+              _exercise('cw2', 'Katze-Kuh', executionType: 'CHECKLIST'),
+            ], title: 'Aufwärmen'),
+            _section('s-core-f', 'FINISHER', [
+              _exercise('core1', 'Core-Routine', executionType: 'INTERVAL'),
+            ]),
+          ]),
+        ),
+        _day(
+          'd-mix',
+          2,
+          'Ganzkörper Mix',
+          4,
+          _ordered([
+            _section('s-mix-w', 'WARMUP', [
+              _exercise('mxw1', 'Armkreisen', executionType: 'CHECKLIST'),
+              _exercise('mxw2', 'Katze-Kuh', executionType: 'CHECKLIST'),
+            ], title: 'Aufwärmen'),
+            _section('s-mix-m', 'MAIN', [
+              _exercise(
+                'mx1',
+                'Bankdrücken',
+                sets: 2,
+                reps: 10,
+                restSeconds: 90,
+                executionType: 'STRENGTH',
+              ),
+              _exercise(
+                'mx2',
+                'Liegestütze',
+                totalReps: 20,
+                restSeconds: 45,
+                executionType: 'TOTAL_REPS',
+              ),
+            ]),
+            _section('s-mix-f', 'FINISHER', [
+              _exercise(
+                'mx3',
+                'Core-Routine',
+                sets: 3,
+                durationSeconds: 30,
+                restSeconds: 15,
+                executionType: 'INTERVAL',
+              ),
+            ]),
+          ]),
+        ),
+      ],
+    },
+  ],
+};
+
+/// Sections in the coach's order (0, 1, 2 …) like the API snapshot.
+List<Map<String, Object?>> _ordered(List<Map<String, Object?>> sections) => [
+  for (var i = 0; i < sections.length; i++) {...sections[i], 'order': i},
+];

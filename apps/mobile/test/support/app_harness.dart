@@ -8,6 +8,7 @@ import 'package:vitruv_mobile/app.dart';
 import 'package:vitruv_mobile/auth/token_store.dart';
 import 'package:vitruv_mobile/core/config/app_config.dart';
 import 'package:vitruv_mobile/core/time/clock.dart';
+import 'package:vitruv_mobile/features/workout/interval_runner.dart';
 import 'package:vitruv_mobile/features/workout/rest_alert.dart';
 import 'package:vitruv_mobile/features/workout/rest_timer_store.dart';
 
@@ -33,6 +34,9 @@ class AppHarness {
   /// Scheduled end-of-rest notifications (what iOS would get).
   final restAlerts = FakeRestAlertScheduler();
 
+  /// Saved Core routine — survives a "cold start" like [restStore].
+  final intervalStore = MemoryIntervalStore();
+
   List<Override> get overrides => [
     appConfigProvider.overrideWithValue(
       AppConfig(
@@ -45,6 +49,7 @@ class AppHarness {
     clockProvider.overrideWithValue(clock),
     restTimerStoreProvider.overrideWithValue(restStore),
     restAlertSchedulerProvider.overrideWithValue(restAlerts),
+    intervalStoreProvider.overrideWithValue(intervalStore),
     apiHealthProvider.overrideWith(
       (ref) async => const ApiHealth(status: 'ok', version: 'test'),
     ),
@@ -105,5 +110,20 @@ class FakeRestAlertScheduler implements RestAlertScheduler {
   Future<void> cancel() async {
     scheduled = null;
     log.add('cancel');
+  }
+
+  /// Core phase-change notifications (the active series; empty = none).
+  List<PlannedAlert> series = const [];
+
+  @override
+  Future<void> scheduleSeries(List<PlannedAlert> alerts) async {
+    series = List.of(alerts);
+    log.add('series:${alerts.length}');
+  }
+
+  @override
+  Future<void> cancelSeries() async {
+    series = const [];
+    log.add('cancelSeries');
   }
 }

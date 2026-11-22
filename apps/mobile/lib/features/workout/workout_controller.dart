@@ -149,6 +149,77 @@ class WorkoutController extends AsyncNotifier<WorkoutSession?> {
     ),
   );
 
+  /// Total reps: records one set. NOT optimistic — the set (and the automatic rest that follows
+  /// it) only counts once the server stored it. A retry must reuse the same [clientSetId]: the
+  /// server then returns the stored set instead of a second one.
+  Future<({RecordedSet? recorded, AppFailure? failure})> recordTotalSet(
+    String exerciseId, {
+    required String clientSetId,
+    required int actualReps,
+  }) => _confirmedWrite(
+    exerciseId,
+    (sessionId) => _api.recordSet(
+      sessionId,
+      exerciseId,
+      clientSetId: clientSetId,
+      actualReps: actualReps,
+    ),
+    (r) => (exercise: r.exercise, progress: r.progress),
+  ).then((r) => (recorded: r.value, failure: r.failure));
+
+  /// Core: one finished round (its row: completed + seconds trained). NOT optimistic — a round
+  /// is shown as saved only after the server stored it. Repeating it is harmless (the server
+  /// keeps the first record).
+  Future<AppFailure?> completeRound(
+    String exerciseId,
+    int round, {
+    required int seconds,
+  }) => _confirmedWrite(
+    exerciseId,
+    (sessionId) => _api.updateSet(
+      sessionId,
+      exerciseId,
+      round,
+      completed: true,
+      actualDurationSeconds: seconds,
+    ),
+    (r) => r,
+  ).then((r) => r.failure);
+
+  /// Runs [send] after the pending mutations and applies the server answer (no optimistic step).
+  Future<({T? value, AppFailure? failure})> _confirmedWrite<T>(
+    String exerciseId,
+    Future<T> Function(String sessionId) send,
+    ({WorkoutExercise exercise, WorkoutProgress progress}) Function(T value)
+    applied,
+  ) {
+    final session = state.value;
+    if (session == null || session.indexOf(exerciseId) < 0) {
+      return Future.value((value: null, failure: const UnknownFailure()));
+    }
+    final completer = Completer<({T? value, AppFailure? failure})>();
+    _queue = _queue.then((_) async {
+      try {
+        final value = await send(session.id);
+        final result = applied(value);
+        _confirmed[exerciseId] = result.exercise;
+        final current = state.value;
+        if (current != null && current.id == session.id) {
+          state = AsyncData(
+            current.withExercise(result.exercise, result.progress),
+          );
+        }
+        completer.complete((value: value, failure: null));
+      } on Object catch (error) {
+        completer.complete((
+          value: null,
+          failure: error is AppFailure ? error : UnknownFailure(error),
+        ));
+      }
+    });
+    return completer.future;
+  }
+
   Future<AppFailure?> _mutate(
     String exerciseId, {
     required WorkoutExercise Function(WorkoutExercise current) optimistic,

@@ -2,6 +2,14 @@ import '../../api/api_client.dart';
 import '../../core/json/json_reader.dart';
 import 'workout_models.dart';
 
+typedef RecordedSet = ({
+  WorkoutExercise exercise,
+  WorkoutProgress progress,
+  int setNumber,
+  bool created,
+  int? restSeconds,
+});
+
 /// `/v1/client/workouts` — the signed-in client's own workouts (self context).
 class WorkoutApi {
   const WorkoutApi(this._client);
@@ -47,10 +55,37 @@ class WorkoutApi {
     int setNumber, {
     required bool completed,
     int? actualReps,
+    int? actualDurationSeconds,
   }) => _update('$_base/$sessionId/exercises/$exerciseId/sets/$setNumber', {
     'completed': completed,
     'actualReps': ?actualReps,
+    'actualDurationSeconds': ?actualDurationSeconds,
   });
+
+  /// Total reps: appends one set (`POST …/sets`). Idempotent per [clientSetId] — a retry with the
+  /// same id returns the stored set (`created: false`) and the rest that belonged to it.
+  /// `restSeconds` is null once the total is reached (no rest after the last set).
+  Future<RecordedSet> recordSet(
+    String sessionId,
+    String exerciseId, {
+    required String clientSetId,
+    required int actualReps,
+  }) async {
+    final json = JsonReader(
+      await _client.sendJson(
+        'POST',
+        '$_base/$sessionId/exercises/$exerciseId/sets',
+        {'clientSetId': clientSetId, 'actualReps': actualReps},
+      ),
+    );
+    return (
+      exercise: WorkoutExercise.fromJson(json.object('exercise')),
+      progress: WorkoutProgress.fromJson(json.object('progress')),
+      setNumber: json.object('set').integer('setNumber'),
+      created: json.boolean('created'),
+      restSeconds: json.intOrNull('restSeconds'),
+    );
+  }
 
   /// One of the client's own sessions with all exercises and recorded sets (history detail).
   Future<WorkoutSession> get(String sessionId) async => WorkoutSession.fromJson(

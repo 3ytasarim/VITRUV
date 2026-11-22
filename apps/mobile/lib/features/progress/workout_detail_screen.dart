@@ -60,9 +60,30 @@ class _ExerciseResult extends StatelessWidget {
     final theme = Theme.of(context);
     final c = VitruvTheme.of(context);
     final target = format.target(exercise.target);
+    final total = exercise.mode == ExecutionMode.totalReps
+        ? exercise.totalProgress
+        : null;
     final lines = [
       if (exercise.mode == ExecutionMode.setsReps)
         for (final set in exercise.sets) setResult(l10n, exercise, set)
+      // Total reps with recorded sets (Sprint 6): every set + "60 von 60 Wdh."
+      else if (total != null && exercise.sets.isNotEmpty) ...[
+        for (final set in [
+          ...exercise.sets,
+        ]..sort((a, b) => a.setNumber.compareTo(b.setNumber)))
+          l10n.historySetResultPlain(set.setNumber, set.actualReps ?? 0),
+        l10n.historyTotalResult(total.done, total.target),
+      ]
+      // Core: one line per round (stored or open)
+      else if (exercise.mode == ExecutionMode.interval &&
+          exercise.sets.isNotEmpty)
+        for (final set in exercise.sets)
+          set.completed
+              ? l10n.historyRoundResult(
+                  set.setNumber,
+                  set.actualDurationSeconds ?? set.targetDurationSeconds ?? 0,
+                )
+              : l10n.historyRoundOpen(set.setNumber)
       else if (exercise.status == ExerciseStatus.completed &&
           exercise.actualReps != null)
         l10n.rxReps(exercise.actualReps!)

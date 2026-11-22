@@ -805,4 +805,167 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get historyExerciseOpen => 'Not done';
+
+  @override
+  String get totalGoal => 'Total target';
+
+  @override
+  String get totalDone => 'Done so far';
+
+  @override
+  String get totalOpen => 'Still open';
+
+  @override
+  String totalCurrentSet(int number) {
+    return 'Current set $number';
+  }
+
+  @override
+  String get totalRepsInput => 'Enter reps';
+
+  @override
+  String get totalSaveSet => 'Save set';
+
+  @override
+  String get totalSaving => 'Saving …';
+
+  @override
+  String get totalGoalReached => 'Target reached';
+
+  @override
+  String totalProgressValue(int done, int target) {
+    return '$done of $target reps';
+  }
+
+  @override
+  String totalSetSaved(int number) {
+    return 'Set $number saved';
+  }
+
+  @override
+  String get totalSetNotSaved => 'Set not saved. No rest was started.';
+
+  @override
+  String get totalRepsRange => 'Please enter at least 1 rep.';
+
+  @override
+  String historyTotalResult(int done, int target) {
+    return 'Total: $done of $target reps';
+  }
+
+  @override
+  String historyRoundResult(int number, int seconds) {
+    return 'Round $number: $seconds s';
+  }
+
+  @override
+  String historyRoundOpen(int number) {
+    return 'Round $number: not done';
+  }
+
+  @override
+  String coreRoundOf(int round, int rounds) {
+    return 'Round $round of $rounds';
+  }
+
+  @override
+  String get corePhaseWork => 'TRAINING';
+
+  @override
+  String get corePhaseRest => 'REST';
+
+  @override
+  String corePlan(int rounds, String work, String rest) {
+    return '$rounds rounds · $work training · $rest rest';
+  }
+
+  @override
+  String get coreStart => 'Start core';
+
+  @override
+  String coreStartFrom(int round) {
+    return 'Start from round $round';
+  }
+
+  @override
+  String get corePause => 'Pause';
+
+  @override
+  String get coreResume => 'Resume';
+
+  @override
+  String get coreCancel => 'Cancel';
+
+  @override
+  String get coreNextRound => 'Next round';
+
+  @override
+  String get coreDone => 'Training complete';
+
+  @override
+  String get corePaused => 'Paused';
+
+  @override
+  String coreRoundsSaved(int done, int rounds) {
+    return '$done of $rounds rounds saved';
+  }
+
+  @override
+  String coreRoundsUnsaved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count rounds are not saved yet.',
+      one: '1 round is not saved yet.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get coreSaveRounds => 'Save rounds';
+
+  @override
+  String coreRemainingSemantics(
+    String phase,
+    int round,
+    int rounds,
+    String clock,
+  ) {
+    return '$phase, round $round of $rounds, $clock left';
+  }
+
+  @override
+  String coreAnnounceWork(int round) {
+    return 'Training, round $round';
+  }
+
+  @override
+  String get coreAnnounceRest => 'Rest';
+
+  @override
+  String get coreOtherRunning => 'Another core routine is running.';
+
+  @override
+  String get coreNotifyRestTitle => 'Rest';
+
+  @override
+  String coreNotifyRestBody(int round) {
+    return 'Round $round done – take a breath.';
+  }
+
+  @override
+  String get coreNotifyWorkTitle => 'Training';
+
+  @override
+  String coreNotifyWorkBody(int round, int rounds) {
+    return 'Round $round of $rounds starts.';
+  }
+
+  @override
+  String get coreNotifyDoneTitle => 'Training complete';
+
+  @override
+  String coreNotifyDoneBody(String exercise) {
+    return '$exercise is done.';
+  }
 }

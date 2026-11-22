@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -18,13 +19,17 @@ import '../../shared/widgets/content_page.dart';
 import '../training/exercise_media.dart';
 import 'countdown.dart';
 import 'countdown_panel.dart';
+import 'interval_panel.dart';
+import 'interval_runner.dart';
 import 'rest_alert.dart';
 import 'rest_timer_store.dart';
+import 'total_reps_panel.dart';
 import 'timer_sync/countdown_sync.dart';
 import 'timer_sync/synced_timer.dart';
 import 'timer_sync/timer_sync_providers.dart';
 import 'warmup_checklist.dart';
 import 'workout_controller.dart';
+import 'workout_engine.dart';
 import 'workout_models.dart';
 
 /// The live workout of the current session.
@@ -33,6 +38,12 @@ import 'workout_models.dart';
 ///   a Warm-up of CHECKLIST items is one page: all items below each other, tick off, then
 ///   "Training fortsetzen" to the next section (or "Training abschließen" if nothing follows)
 /// - execution controls by mode: sets (tick each set), total reps, timed, custom (mark done)
+/// - Total reps (Sprint 6): unlimited sets until the target; every set is stored first (POST
+///   with a client set id — a retry never doubles it) and only THEN the rest starts by itself;
+///   none after the set that reaches the target, none when the save failed
+/// - Core (Sprint 6): rounds × work/rest run by [IntervalRunner] on absolute times; phases change
+///   by themselves, every finished round is stored (idempotent); a running routine survives
+///   background and an app kill
 /// - Strength (sets × reps): each set records the reps actually done (prefilled with the target;
 ///   MAX starts empty). The rest timer starts ONLY with "Pause starten" — completing a set offers
 ///   it, never starts it. Other modes keep the rest after "Übung abschließen". It never blocks
@@ -72,6 +83,24 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
 
   /// Reps entry per Strength set ("exerciseId/setNumber").
   final Map<String, TextEditingController> _setReps = {};
+
+  /// Total reps: the set being saved / not yet confirmed per exercise. Its client set id is kept
+  /// for a retry with the same reps (the server answers with the stored set, never a second).
+  final Map<String, ({String id, int reps})> _pendingSet = {};
+  String? _savingSetFor;
+
+  /// Client set id whose automatic rest was already started (a replayed answer starts no 2nd).
+  String? _restStartedForSet;
+  final Random _random = Random.secure();
+
+  /// Core routine (one at a time) with its watch mirror, notifications and persistence.
+  IntervalRunner? _core;
+  String? _coreExerciseId;
+  CountdownSync? _coreSync;
+  IntervalAlertBinding? _coreAlert;
+  IntervalPersistence? _corePersistence;
+  Timer? _coreTicker;
+  final Set<int> _unsavedRounds = {};
 
   @override
   void initState() {
@@ -138,11 +167,15 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
       },
     );
     unawaited(_restoreRest());
-    // back from the background: the watch may have missed a change → send the state again
+    unawaited(_restoreCore());
+    // back from the background: the watch may have missed a change → send the state again;
+    // a Core routine catches up with the wall clock (Dart was possibly suspended)
     _lifecycle = AppLifecycleListener(
       onResume: () {
+        _syncCore();
         _restSync.republish();
         _workSync.republish();
+        _coreSync?.republish();
       },
     );
   }
@@ -182,6 +215,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
   @override
   void dispose() {
     _lifecycle.dispose();
+    _disposeCore();
     _restAlert.dispose();
     _restPersistence.dispose();
     _restSync.dispose();
@@ -218,6 +252,244 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
     _restExercise = exercise;
     if (_restOffer != null) setState(() => _restOffer = null);
     _rest.start(Duration(seconds: seconds));
+  }
+
+  // ------------------------------------------------------------------ Total reps
+
+  /// RFC 4122 v4 (the API requires a UUID as client set id).
+  String _newClientSetId() {
+    final b = List<int>.generate(16, (_) => _random.nextInt(256));
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    final h = [for (final x in b) x.toRadixString(16).padLeft(2, '0')].join();
+    return '${h.substring(0, 8)}-${h.substring(8, 12)}-${h.substring(12, 16)}-'
+        '${h.substring(16, 20)}-${h.substring(20)}';
+  }
+
+  Future<void> _saveTotalSet(WorkoutExercise exercise) async {
+    if (_savingSetFor != null) return; // one at a time — no double submit
+    final reps = int.tryParse(_repsController(exercise).text.trim());
+    if (reps == null || reps < 1) {
+      setState(() => _repsMissingFor = exercise.id);
+      return;
+    }
+    // same reps as the unconfirmed attempt → same id (retry); changed reps → a new set
+    final pending = _pendingSet[exercise.id];
+    final id = pending != null && pending.reps == reps
+        ? pending.id
+        : _newClientSetId();
+    _pendingSet[exercise.id] = (id: id, reps: reps);
+    setState(() {
+      _repsMissingFor = null;
+      _savingSetFor = exercise.id;
+    });
+    final result = await _controller.recordTotalSet(
+      exercise.id,
+      clientSetId: id,
+      actualReps: reps,
+    );
+    if (!mounted) return;
+    setState(() => _savingSetFor = null);
+    final failure = result.failure;
+    final recorded = result.recorded;
+    if (failure != null || recorded == null) {
+      // NOT stored → no rest, the entry stays; "Erneut versuchen" resends the same set id
+      final l10n = AppLocalizations.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${failure is NetworkFailure ? l10n.errorNetwork : l10n.saveFailed} '
+            '${l10n.totalSetNotSaved}',
+          ),
+          action: SnackBarAction(
+            label: l10n.retry,
+            onPressed: () => _saveTotalSet(exercise),
+          ),
+        ),
+      );
+      return;
+    }
+    _pendingSet.remove(exercise.id);
+    _repsController(exercise).clear();
+    unawaited(HapticFeedback.selectionClick());
+    final rest = recorded.restSeconds;
+    if (rest != null && rest > 0 && _restStartedForSet != id) {
+      _restStartedForSet = id;
+      _restExercise = recorded.exercise;
+      if (_restOffer != null) setState(() => _restOffer = null);
+      _rest.start(Duration(seconds: rest));
+    }
+  }
+
+  // ------------------------------------------------------------------ Core interval
+
+  IntervalRunner _coreFor(WorkoutSession session, WorkoutExercise exercise) {
+    final config = exercise.intervalConfig!;
+    final existing = _core;
+    if (existing != null &&
+        _coreExerciseId == exercise.id &&
+        existing.config == config) {
+      return existing;
+    }
+    _disposeCore();
+    final clock = ref.read(clockProvider);
+    final runner = IntervalRunner(clock, config);
+    _core = runner;
+    _coreExerciseId = exercise.id;
+    _coreSync = CountdownSync(
+      countdown: runner.phase,
+      transport: ref.read(timerSyncTransportProvider),
+      clock: clock,
+      revisions: ref.read(timerRevisionSourceProvider),
+      describe: () => _timerContext(
+        exercise,
+        SyncedTimerKind.interval,
+        runner.current?.kind == IntervalPhaseKind.rest
+            ? SyncedTimerPhase.rest
+            : SyncedTimerPhase.work,
+      ),
+    );
+    _coreAlert = IntervalAlertBinding(
+      runner: runner,
+      scheduler: ref.read(restAlertSchedulerProvider),
+      texts: (next, round) {
+        final l10n = AppLocalizations.of(context);
+        return switch (next) {
+          IntervalSignal.rest => (
+            title: l10n.coreNotifyRestTitle,
+            body: l10n.coreNotifyRestBody(round),
+          ),
+          IntervalSignal.work => (
+            title: l10n.coreNotifyWorkTitle,
+            body: l10n.coreNotifyWorkBody(round, config.rounds),
+          ),
+          IntervalSignal.done => (
+            title: l10n.coreNotifyDoneTitle,
+            body: l10n.coreNotifyDoneBody(exercise.name),
+          ),
+        };
+      },
+    );
+    _corePersistence = IntervalPersistence(
+      runner: runner,
+      store: ref.read(intervalStoreProvider),
+      sessionId: session.id,
+      exerciseId: exercise.id,
+    );
+    runner.addListener(_onCoreChange);
+    return runner;
+  }
+
+  void _disposeCore() {
+    _coreTicker?.cancel();
+    _coreTicker = null;
+    final runner = _core;
+    if (runner == null) return;
+    runner.removeListener(_onCoreChange);
+    _coreAlert?.dispose();
+    _corePersistence?.dispose();
+    _coreSync?.dispose();
+    runner.dispose();
+    _core = null;
+    _coreExerciseId = null;
+    _coreSync = null;
+    _coreAlert = null;
+    _corePersistence = null;
+  }
+
+  /// The phase logic runs here (not in the panel) so rounds are stored even while another
+  /// exercise is on screen.
+  void _onCoreChange() {
+    if (_core?.status == IntervalStatus.running) {
+      _coreTicker ??= Timer.periodic(
+        const Duration(milliseconds: 250),
+        (_) => _syncCore(),
+      );
+    } else {
+      _coreTicker?.cancel();
+      _coreTicker = null;
+    }
+  }
+
+  void _syncCore() {
+    final runner = _core;
+    if (runner == null) return;
+    final rounds = runner.sync();
+    if (rounds.isNotEmpty) unawaited(_recordRounds(rounds));
+  }
+
+  void _startCore(
+    WorkoutSession session,
+    WorkoutExercise exercise,
+    int fromRound,
+  ) {
+    HapticFeedback.selectionClick();
+    if (_rest.isActive) _rest.skip(); // the routine has its own rests
+    setState(() => _coreFor(session, exercise).start(fromRound: fromRound));
+  }
+
+  /// Stores finished rounds (idempotent on the server). A failed round stays visible as "not
+  /// saved" with a retry — it is never shown as stored.
+  Future<void> _recordRounds(Iterable<int> rounds) async {
+    final exerciseId = _coreExerciseId;
+    final runner = _core;
+    if (exerciseId == null || runner == null) return;
+    for (final round in rounds) {
+      final failure = await _controller.completeRound(
+        exerciseId,
+        round,
+        seconds: runner.config.workSeconds,
+      );
+      if (!mounted) return;
+      setState(() {
+        if (failure == null) {
+          _unsavedRounds.remove(round);
+        } else {
+          _unsavedRounds.add(round);
+        }
+      });
+    }
+  }
+
+  Future<void> _restoreCore() async {
+    final WorkoutSession? session;
+    try {
+      session = await ref.read(workoutControllerProvider.future);
+    } on Object {
+      return;
+    }
+    if (session == null || !mounted) return;
+    final store = ref.read(intervalStoreProvider);
+    final saved = await store.load();
+    if (!mounted || saved == null) return;
+    final index = session.indexOf(saved.exerciseId);
+    final exercise = index < 0 ? null : session.exercises[index];
+    if (exercise == null ||
+        exercise.mode != ExecutionMode.interval ||
+        exercise.status != ExerciseStatus.pending) {
+      await store.clear();
+      return;
+    }
+    final runner = _coreFor(session, exercise);
+    final passed = IntervalPersistence.restoreInto(
+      runner,
+      saved,
+      sessionId: session.id,
+      exerciseId: exercise.id,
+      clock: ref.read(clockProvider),
+    );
+    if (passed == null) {
+      await store.clear();
+      return;
+    }
+    setState(() {});
+    // rounds that ended while the app was away (each stored at most once on the server)
+    final open = {
+      for (final s in exercise.sets)
+        if (!s.completed) s.setNumber,
+    };
+    final missing = passed.where(open.contains).toList();
+    if (missing.isNotEmpty) await _recordRounds(missing);
   }
 
   Future<void> _run(Future<AppFailure?> Function() mutation) async {
@@ -338,11 +610,15 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
     ),
   );
 
+  /// Total reps entry. Legacy single-field flow: prefilled with the total; per-set flow
+  /// (Sprint 6): empty — the client types the reps of THIS set.
   TextEditingController _repsController(WorkoutExercise exercise) =>
       _reps.putIfAbsent(
         exercise.id,
         () => TextEditingController(
-          text: '${exercise.actualReps ?? exercise.target.totalReps ?? ''}',
+          text: exercise.serverTotalReps != null
+              ? ''
+              : '${exercise.actualReps ?? exercise.target.totalReps ?? ''}',
         ),
       );
 
@@ -402,6 +678,37 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
       return;
     }
     context.go(AppRoutes.workoutDone);
+  }
+
+  /// Sprint 6 engines; null → the generic controls of the mode. Total reps uses the new flow only
+  /// when the API sends its progress, Core only with its round rows (an older API keeps the
+  /// single "Übung abschließen").
+  Widget? _engineFor(WorkoutSession session, WorkoutExercise exercise) {
+    if (exercise.mode == ExecutionMode.totalReps &&
+        exercise.serverTotalReps != null) {
+      return TotalRepsPanel(
+        exercise: exercise,
+        controller: _repsController(exercise),
+        saving: _savingSetFor == exercise.id,
+        repsMissing: _repsMissingFor == exercise.id,
+        onSave: () => _saveTotalSet(exercise),
+      );
+    }
+    // Core: only with the Sprint 6 contract (timer + one row per round to store into)
+    if (exercise.mode == ExecutionMode.interval &&
+        exercise.timer != null &&
+        exercise.sets.isNotEmpty) {
+      final mine = _coreExerciseId == exercise.id ? _core : null;
+      return IntervalPanel(
+        exercise: exercise,
+        runner: mine,
+        unsavedRounds: mine == null ? const {} : _unsavedRounds,
+        otherRunning: mine == null && (_core?.isActive ?? false),
+        onStart: (round) => _startCore(session, exercise, round),
+        onSaveRounds: () => _recordRounds([..._unsavedRounds]..sort()),
+      );
+    }
+    return null;
   }
 
   @override
@@ -579,6 +886,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
               ],
               _Execution(
                 exercise: exercise,
+                engine: _engineFor(session, exercise),
                 work: _work,
                 repsController: _repsController(exercise),
                 setRepsController: (set) => _setRepsController(exercise, set),
@@ -663,6 +971,7 @@ class _ExerciseHeader extends StatelessWidget {
 class _Execution extends StatelessWidget {
   const _Execution({
     required this.exercise,
+    required this.engine,
     required this.work,
     required this.repsController,
     required this.setRepsController,
@@ -675,6 +984,9 @@ class _Execution extends StatelessWidget {
   });
 
   final WorkoutExercise exercise;
+
+  /// Sprint 6 engine (Total reps / Core) — replaces the mode controls when set.
+  final Widget? engine;
   final Countdown work;
   final TextEditingController repsController;
   final TextEditingController Function(WorkoutSet set) setRepsController;
@@ -691,12 +1003,17 @@ class _Execution extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final pending = exercise.status == ExerciseStatus.pending;
-    final hasRest = (exercise.target.restSeconds ?? 0) > 0;
+    final engine = this.engine;
+    final hasRest = engine == null && (exercise.target.restSeconds ?? 0) > 0;
     final activeSet = exercise.sets.where((s) => !s.completed).firstOrNull;
+    // Engines decide completion themselves (target reached / last round stored); while something
+    // is recorded, "skip" and "reopen" would contradict the stored sets/rounds.
+    final recorded = engine != null && exercise.sets.any((s) => s.completed);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (exercise.mode == ExecutionMode.setsReps)
+        ?engine,
+        if (engine == null && exercise.mode == ExecutionMode.setsReps)
           for (final set in exercise.sets) ...[
             if (set == activeSet)
               _ActiveSet(
@@ -715,7 +1032,9 @@ class _Execution extends StatelessWidget {
               ),
             const SizedBox(height: VitruvSpace.s2),
           ],
-        if (exercise.mode == ExecutionMode.totalReps && pending) ...[
+        if (engine == null &&
+            exercise.mode == ExecutionMode.totalReps &&
+            pending) ...[
           TextField(
             controller: repsController,
             keyboardType: TextInputType.number,
@@ -741,7 +1060,9 @@ class _Execution extends StatelessWidget {
           ),
           const SizedBox(height: VitruvSpace.s4),
         ],
-        if (pending && exercise.mode != ExecutionMode.setsReps)
+        if (engine == null &&
+            pending &&
+            exercise.mode != ExecutionMode.setsReps)
           VitruvButton(
             label: l10n.completeExercise,
             leadingIcon: Icons.check,
@@ -754,7 +1075,9 @@ class _Execution extends StatelessWidget {
           spacing: VitruvSpace.s2,
           runSpacing: VitruvSpace.s2,
           children: [
-            if (pending)
+            if (recorded)
+              const SizedBox.shrink()
+            else if (pending)
               VitruvButton(
                 label: l10n.skipExercise,
                 variant: VitruvButtonVariant.ghost,

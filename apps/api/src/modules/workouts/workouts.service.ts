@@ -651,10 +651,18 @@ export async function updateWorkoutSet(
     const session = await ownRunningSession(tx, actor, sessionId);
     const exercise = await sessionExercise(tx, session.id, exerciseId);
     const now = nowOf(deps);
+    // Sprint 6: a repeated "completed" (network retry, a Core round reported twice) keeps the
+    // first completedAt — the set/round is never "completed again" (idempotent, like Sprint 4).
+    const [before] = await tx
+      .select({ completedAt: WSET.completedAt })
+      .from(WSET)
+      .where(and(eq(WSET.sessionExerciseId, exercise.id), eq(WSET.setNumber, setNumber)));
     const [set] = await tx
       .update(WSET)
       .set({
-        ...(input.completed !== undefined ? { completedAt: input.completed ? now : null } : {}),
+        ...(input.completed !== undefined
+          ? { completedAt: input.completed ? (before?.completedAt ?? now) : null }
+          : {}),
         ...(input.actualReps !== undefined ? { actualReps: input.actualReps } : {}),
         ...(input.actualWeight !== undefined ? { actualWeight: input.actualWeight } : {}),
         ...(input.actualDurationSeconds !== undefined

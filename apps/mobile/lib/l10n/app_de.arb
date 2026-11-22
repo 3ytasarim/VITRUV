@@ -615,5 +615,190 @@
       }
     }
   },
-  "historyExerciseOpen": "Nicht erledigt"
+  "historyExerciseOpen": "Nicht erledigt",
+  "totalGoal": "Gesamtziel",
+  "totalDone": "Bereits geschafft",
+  "totalOpen": "Noch offen",
+  "totalCurrentSet": "Aktueller Satz {number}",
+  "@totalCurrentSet": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "totalRepsInput": "Wiederholungen eintragen",
+  "totalSaveSet": "Satz speichern",
+  "totalSaving": "Wird gespeichert …",
+  "totalGoalReached": "Ziel erreicht",
+  "totalProgressValue": "{done} von {target} Wdh.",
+  "@totalProgressValue": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "target": {
+        "type": "int"
+      }
+    }
+  },
+  "totalSetSaved": "Satz {number} gespeichert",
+  "@totalSetSaved": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "totalSetNotSaved": "Satz nicht gespeichert. Es läuft keine Pause.",
+  "totalRepsRange": "Bitte mindestens 1 Wiederholung eintragen.",
+  "historyTotalResult": "Gesamt: {done} von {target} Wdh.",
+  "@historyTotalResult": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "target": {
+        "type": "int"
+      }
+    }
+  },
+  "historyRoundResult": "Runde {number}: {seconds} Sek.",
+  "@historyRoundResult": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "historyRoundOpen": "Runde {number}: nicht erledigt",
+  "@historyRoundOpen": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "coreRoundOf": "Runde {round} von {rounds}",
+  "@coreRoundOf": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      },
+      "rounds": {
+        "type": "int"
+      }
+    }
+  },
+  "corePhaseWork": "TRAINING",
+  "corePhaseRest": "PAUSE",
+  "corePlan": "{rounds} Runden · {work} Training · {rest} Pause",
+  "@corePlan": {
+    "placeholders": {
+      "rounds": {
+        "type": "int"
+      },
+      "work": {
+        "type": "String"
+      },
+      "rest": {
+        "type": "String"
+      }
+    }
+  },
+  "coreStart": "Core starten",
+  "coreStartFrom": "Ab Runde {round} starten",
+  "@coreStartFrom": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      }
+    }
+  },
+  "corePause": "Anhalten",
+  "coreResume": "Fortsetzen",
+  "coreCancel": "Abbrechen",
+  "coreNextRound": "Nächste Runde",
+  "coreDone": "Training abgeschlossen",
+  "corePaused": "Angehalten",
+  "coreRoundsSaved": "{done} von {rounds} Runden gespeichert",
+  "@coreRoundsSaved": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "rounds": {
+        "type": "int"
+      }
+    }
+  },
+  "coreRoundsUnsaved": "{count, plural, =1{1 Runde ist noch nicht gespeichert.} other{{count} Runden sind noch nicht gespeichert.}}",
+  "@coreRoundsUnsaved": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "coreSaveRounds": "Runden speichern",
+  "coreRemainingSemantics": "{phase}, Runde {round} von {rounds}, noch {clock}",
+  "@coreRemainingSemantics": {
+    "placeholders": {
+      "phase": {
+        "type": "String"
+      },
+      "round": {
+        "type": "int"
+      },
+      "rounds": {
+        "type": "int"
+      },
+      "clock": {
+        "type": "String"
+      }
+    }
+  },
+  "coreAnnounceWork": "Training, Runde {round}",
+  "@coreAnnounceWork": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      }
+    }
+  },
+  "coreAnnounceRest": "Pause",
+  "coreOtherRunning": "Eine andere Core-Routine läuft gerade.",
+  "coreNotifyRestTitle": "Pause",
+  "coreNotifyRestBody": "Runde {round} geschafft – kurz durchatmen.",
+  "@coreNotifyRestBody": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      }
+    }
+  },
+  "coreNotifyWorkTitle": "Training",
+  "coreNotifyWorkBody": "Runde {round} von {rounds} startet.",
+  "@coreNotifyWorkBody": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      },
+      "rounds": {
+        "type": "int"
+      }
+    }
+  },
+  "coreNotifyDoneTitle": "Training abgeschlossen",
+  "coreNotifyDoneBody": "{exercise} ist geschafft.",
+  "@coreNotifyDoneBody": {
+    "placeholders": {
+      "exercise": {
+        "type": "String"
+      }
+    }
+  }
 }

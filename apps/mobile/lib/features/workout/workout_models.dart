@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../core/errors/app_failure.dart';
 import '../../core/json/json_reader.dart';
 import '../training/training_models.dart';
+import 'workout_engine.dart';
 
 /// Mirrors packages/contracts/src/workout.ts. Every TARGET value is the snapshot taken when the
 /// session started — never the live plan.
@@ -27,8 +28,7 @@ enum ExecutionMode {
   duration,
   custom,
 
-  /// Sprint 2 (API): Core interval — rounds × work/rest. The dedicated UI is a later sprint;
-  /// until then it is shown like [custom] (tick off), never as an error.
+  /// Core interval — rounds × work/rest (Sprint 6: own timer UI, one row per round).
   interval,
 
   /// Sprint 2 (API): Warm-up checklist item — tick off only.
@@ -76,6 +76,8 @@ class WorkoutSet {
     required this.actualReps,
     required this.actualWeight,
     required this.completed,
+    this.actualDurationSeconds,
+    this.clientSetId,
   });
 
   factory WorkoutSet.fromJson(JsonReader json) => WorkoutSet(
@@ -86,6 +88,8 @@ class WorkoutSet {
     actualReps: json.intOrNull('actualReps'),
     actualWeight: json.numberOrNull('actualWeight'),
     completed: json.boolean('completed'),
+    actualDurationSeconds: json.intOrNull('actualDurationSeconds'),
+    clientSetId: json.stringOrNull('clientSetId'),
   );
 
   final int setNumber;
@@ -96,6 +100,12 @@ class WorkoutSet {
   final double? actualWeight;
   final bool completed;
 
+  /// Core round: seconds actually trained (one row per round).
+  final int? actualDurationSeconds;
+
+  /// Total reps: the id the app generated for this set (idempotent retries).
+  final String? clientSetId;
+
   WorkoutSet copyWith({bool? completed, int? actualReps}) => WorkoutSet(
     setNumber: setNumber,
     targetReps: targetReps,
@@ -104,6 +114,8 @@ class WorkoutSet {
     actualReps: actualReps ?? this.actualReps,
     actualWeight: actualWeight,
     completed: completed ?? this.completed,
+    actualDurationSeconds: actualDurationSeconds,
+    clientSetId: clientSetId,
   );
 }
 
@@ -124,6 +136,8 @@ class WorkoutExercise {
     required this.actualDurationSeconds,
     required this.sets,
     this.sectionOrder = 0,
+    this.timer,
+    this.serverTotalReps,
   });
 
   factory WorkoutExercise.fromJson(JsonReader json) => WorkoutExercise(
@@ -141,7 +155,19 @@ class WorkoutExercise {
     actualDurationSeconds: json.intOrNull('actualDurationSeconds'),
     sets: json.list('sets', WorkoutSet.fromJson),
     sectionOrder: json.intOrNull('sectionOrder') ?? 0,
+    timer: WorkoutTimer.fromJsonOrNull(json.objectOrNull('timer')),
+    serverTotalReps: _totalRepsOrNull(json.objectOrNull('totalReps')),
   );
+
+  static TotalRepsProgress? _totalRepsOrNull(JsonReader? json) => json == null
+      ? null
+      : TotalRepsProgress(
+          target: json.integer('target'),
+          done: json.integer('done'),
+          remaining: json.integer('remaining'),
+          reached: json.boolean('reached'),
+          setCount: json.integer('setCount'),
+        );
 
   final String id;
   final int order;
@@ -160,7 +186,36 @@ class WorkoutExercise {
   /// 0-based section position at start time (groups a Warm-up checklist).
   final int sectionOrder;
 
+  /// Timer the API derived from the snapshot (optional on the wire — older APIs omit it).
+  final WorkoutTimer? timer;
+
+  /// Total reps progress as computed by the API (null for other modes / older APIs).
+  final TotalRepsProgress? serverTotalReps;
+
   bool get isDone => status != ExerciseStatus.pending;
+
+  /// Total reps: the server's numbers, else the same rule over the recorded sets.
+  TotalRepsProgress? get totalProgress {
+    if (mode != ExecutionMode.totalReps) return null;
+    final target = totalRepsTarget;
+    if (target == null) return serverTotalReps;
+    return serverTotalReps ??
+        totalRepsProgress(target, [for (final s in sets) s.actualReps]);
+  }
+
+  int? get totalRepsTarget => target.totalReps ?? serverTotalReps?.target;
+
+  /// Core: rounds × work/rest from the API timer, else from the snapshot (sets = rounds,
+  /// duration = work, rest) with the documented defaults.
+  IntervalConfig? get intervalConfig {
+    if (mode != ExecutionMode.interval) return null;
+    return timer?.interval ??
+        IntervalConfig(
+          rounds: target.sets ?? kIntervalDefaultRounds,
+          workSeconds: target.durationSeconds ?? kIntervalDefaultWorkSeconds,
+          restSeconds: target.restSeconds ?? kIntervalDefaultRestSeconds,
+        );
+  }
 
   WorkoutExercise copyWith({
     ExerciseStatus? status,
@@ -182,7 +237,53 @@ class WorkoutExercise {
     actualDurationSeconds: actualDurationSeconds ?? this.actualDurationSeconds,
     sets: sets ?? this.sets,
     sectionOrder: sectionOrder,
+    timer: timer,
+    serverTotalReps: serverTotalReps,
   );
+}
+
+enum WorkoutTimerMode {
+  none,
+  manualRest,
+  autoRest,
+  interval;
+
+  static WorkoutTimerMode fromWire(String? value) => switch (value) {
+    'MANUAL_REST' => manualRest,
+    'AUTO_REST' => autoRest,
+    'INTERVAL' => interval,
+    _ => none,
+  };
+}
+
+/// `exercise.timer` (Sprint 2 contract): which timer the app runs for this exercise.
+@immutable
+class WorkoutTimer {
+  const WorkoutTimer({
+    required this.mode,
+    required this.restSeconds,
+    required this.interval,
+  });
+
+  static WorkoutTimer? fromJsonOrNull(JsonReader? json) {
+    if (json == null) return null;
+    final interval = json.objectOrNull('interval');
+    return WorkoutTimer(
+      mode: WorkoutTimerMode.fromWire(json.stringOrNull('mode')),
+      restSeconds: json.intOrNull('restSeconds'),
+      interval: interval == null
+          ? null
+          : IntervalConfig(
+              rounds: interval.integer('rounds'),
+              workSeconds: interval.integer('workSeconds'),
+              restSeconds: interval.integer('restSeconds'),
+            ),
+    );
+  }
+
+  final WorkoutTimerMode mode;
+  final int? restSeconds;
+  final IntervalConfig? interval;
 }
 
 @immutable

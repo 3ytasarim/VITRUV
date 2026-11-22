@@ -22,7 +22,18 @@ abstract interface class RestAlertScheduler {
   });
 
   Future<void> cancel();
+
+  /// Core: every upcoming phase change of a running interval (replaces the previous series;
+  /// separate ids from the rest alert). At most [kMaxSeriesAlerts] are scheduled.
+  Future<void> scheduleSeries(List<PlannedAlert> alerts);
+
+  Future<void> cancelSeries();
 }
+
+typedef PlannedAlert = ({DateTime at, String title, String body});
+
+/// iOS keeps at most 64 pending notifications per app; a Core routine needs 2 per round.
+const kMaxSeriesAlerts = 40;
 
 class NoopRestAlertScheduler implements RestAlertScheduler {
   const NoopRestAlertScheduler();
@@ -36,6 +47,12 @@ class NoopRestAlertScheduler implements RestAlertScheduler {
 
   @override
   Future<void> cancel() async {}
+
+  @override
+  Future<void> scheduleSeries(List<PlannedAlert> alerts) async {}
+
+  @override
+  Future<void> cancelSeries() async {}
 }
 
 /// iOS implementation (flutter_local_notifications). Android keeps the in-app signal only for
@@ -46,6 +63,9 @@ class LocalNotificationRestAlertScheduler implements RestAlertScheduler {
 
   /// One rest at a time → one fixed id: a new schedule replaces the previous one.
   static const _id = 4711;
+
+  /// Core phase alerts: ids 4720 … 4720 + kMaxSeriesAlerts − 1.
+  static const _seriesBase = 4720;
 
   final FlutterLocalNotificationsPlugin _plugin;
   Future<bool>? _ready;
@@ -82,9 +102,50 @@ class LocalNotificationRestAlertScheduler implements RestAlertScheduler {
     required String body,
   }) async {
     if (!await (_ready ??= _init())) return;
+    await _scheduleOne(_id, at, title, body);
+  }
+
+  @override
+  Future<void> scheduleSeries(List<PlannedAlert> alerts) async {
+    if (!await (_ready ??= _init())) return;
+    await _cancelSeriesIds();
+    final list = alerts.take(kMaxSeriesAlerts).toList();
+    for (var i = 0; i < list.length; i++) {
+      await _scheduleOne(
+        _seriesBase + i,
+        list[i].at,
+        list[i].title,
+        list[i].body,
+      );
+    }
+  }
+
+  @override
+  Future<void> cancelSeries() async {
+    if (_ready == null || !await _ready!) return;
+    await _cancelSeriesIds();
+  }
+
+  /// The whole id range — also clears a series left behind by a killed app (stale alerts).
+  Future<void> _cancelSeriesIds() async {
+    for (var i = 0; i < kMaxSeriesAlerts; i++) {
+      try {
+        await _plugin.cancel(id: _seriesBase + i);
+      } on Object catch (error) {
+        debugPrint('phase alert not cancelled: $error');
+      }
+    }
+  }
+
+  Future<void> _scheduleOne(
+    int id,
+    DateTime at,
+    String title,
+    String body,
+  ) async {
     try {
       await _plugin.zonedSchedule(
-        id: _id,
+        id: id,
         title: title,
         body: body,
         // absolute instant — no wall-clock/time-zone interpretation
