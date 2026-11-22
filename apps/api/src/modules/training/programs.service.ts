@@ -23,6 +23,8 @@ import type { TrainingDeps } from './exercises.service';
 import { assertExtendedTypesAllowed } from './capabilities';
 import { storagePrescription, type PrescriptionInput } from './prescription-storage';
 import { nextPosition, normalize, placeAfter, reorder, type Level } from './ordering';
+import { exerciseMediaDto, requireTrainingMediaRows } from './row-media';
+import type { MediaUrlResolver } from '../media/media-url';
 
 /**
  * Client training programs (Sprint 6, docs/TRAINING-ARCHITECTURE.md).
@@ -171,9 +173,11 @@ async function loadTree(db: DbExecutor, programId: string) {
   const sectionIds = sections.map((s) => s.id);
   const assignments = sectionIds.length
     ? await db
-        .select({ assignment: A, exercise: E })
+        .select({ assignment: A, exercise: E, rowMedia: M })
         .from(A)
         .innerJoin(E, eq(E.id, A.exerciseId))
+        // Sprint 7: this client's own video for the exercise (null = library video)
+        .leftJoin(M, eq(M.id, A.mediaAssetId))
         .where(inArray(A.sectionId, sectionIds))
         .orderBy(asc(A.sortOrder))
     : [];
@@ -187,7 +191,10 @@ const byParent = <T, K extends keyof T>(rows: T[], key: K) => {
   return map;
 };
 
-function toAdminAssignment(row: Tree['assignments'][number]): AdminAssignment {
+function toAdminAssignment(
+  urls: MediaUrlResolver,
+  row: Tree['assignments'][number],
+): AdminAssignment {
   const { assignment: a, exercise: e } = row;
   return {
     id: a.id,
@@ -204,6 +211,7 @@ function toAdminAssignment(row: Tree['assignments'][number]): AdminAssignment {
     instructionsOverride: a.instructionsOverride,
     executionType: a.executionType,
     repsMax: a.repsMax,
+    media: exerciseMediaDto(urls, row.rowMedia),
   };
 }
 
@@ -227,7 +235,7 @@ function summary(
   };
 }
 
-function toAdminProgram(program: ProgramRow, tree: Tree): AdminProgram {
+function toAdminProgram(urls: MediaUrlResolver, program: ProgramRow, tree: Tree): AdminProgram {
   const daysByWeek = byParent(tree.days, 'weekId');
   const sectionsByDay = byParent(tree.sections, 'dayId');
   const assignmentsBySection = new Map<string, Tree['assignments']>();
@@ -257,7 +265,9 @@ function toAdminProgram(program: ProgramRow, tree: Tree): AdminProgram {
           order: section.sortOrder,
           type: section.type,
           title: section.title,
-          assignments: (assignmentsBySection.get(section.id) ?? []).map(toAdminAssignment),
+          assignments: (assignmentsBySection.get(section.id) ?? []).map((row) =>
+            toAdminAssignment(urls, row),
+          ),
         })),
       })),
     })),
@@ -282,7 +292,7 @@ async function toClientProgram(
   const mediaIds = [
     ...new Set(
       tree.assignments
-        .map((row) => row.exercise.mediaAssetId)
+        .flatMap((row) => [row.assignment.mediaAssetId, row.exercise.mediaAssetId])
         .filter((id): id is string => Boolean(id)),
     ),
   ];
@@ -295,8 +305,11 @@ async function toClientProgram(
         )
     : [];
   const assetById = new Map(assets.map((asset) => [asset.id, asset]));
-  const media = (exercise: Tree['assignments'][number]['exercise']): ResolvedMedia | null => {
-    const asset = exercise.mediaAssetId ? assetById.get(exercise.mediaAssetId) : undefined;
+  /** Sprint 7: this client's own video (assignment) wins over the library video. */
+  const media = (row: Tree['assignments'][number]): ResolvedMedia | null => {
+    const exercise = row.exercise;
+    const assetId = row.assignment.mediaAssetId ?? exercise.mediaAssetId;
+    const asset = assetId ? assetById.get(assetId) : undefined;
     if (!asset || (asset.kind !== 'IMAGE' && asset.kind !== 'VIDEO')) return null;
     return {
       assetId: asset.id,
@@ -309,7 +322,7 @@ async function toClientProgram(
     };
   };
 
-  const admin = toAdminProgram(program, tree);
+  const admin = toAdminProgram(deps.urls, program, tree);
   const assignmentRows = new Map(tree.assignments.map((row) => [row.assignment.id, row]));
   let currentWeekId: string | null = null;
   if (program.startsOn && admin.weeks.length > 0) {
@@ -351,7 +364,7 @@ async function toClientProgram(
               order: a.order,
               name: a.exercise.name,
               description: exercise?.description ?? null,
-              media: exercise ? media(exercise) : null,
+              media: row ? media(row) : null,
               sets: a.sets,
               reps: a.reps,
               totalReps: a.totalReps,
@@ -430,7 +443,7 @@ export async function getProgram(
 ): Promise<AdminProgram> {
   return snapshot(deps, async (tx) => {
     const program = await scopedProgram(tx, actor, programId);
-    return toAdminProgram(program, await loadTree(tx, programId));
+    return toAdminProgram(deps.urls, program, await loadTree(tx, programId));
   });
 }
 
@@ -942,6 +955,7 @@ const PRESCRIPTION_KEYS = [
   'instructionsOverride',
   'executionType',
   'repsMax',
+  'mediaAssetId',
 ] as const;
 
 /** Only ACTIVE exercises can be newly assigned (inactive ones stay valid where already used). */
@@ -972,6 +986,7 @@ export async function addAssignment(
   const { programId } = await programOf(deps.db, actor, 'section', sectionId);
   assertExtendedTypesAllowed(deps, [input]);
   await requireAssignableExercise(deps.db, input.exerciseId);
+  await requireTrainingMediaRows(deps.db, [{ assetId: input.mediaAssetId, path: 'mediaAssetId' }]);
   return mutate(deps, actor, programId, async (tx) => {
     const prescription = pickPrescription(input);
     await tx.insert(A).values({
@@ -998,6 +1013,9 @@ export async function updateAssignment(
       await requireAssignableExercise(tx, input.exerciseId);
     }
     const patch = pickPrescription(input);
+    if (patch.mediaAssetId && patch.mediaAssetId !== current.mediaAssetId) {
+      await requireTrainingMediaRows(tx, [{ assetId: patch.mediaAssetId, path: 'mediaAssetId' }]);
+    }
     const merged = { ...current, ...patch };
     const issues = prescriptionIssues(merged);
     if (issues.length > 0) throw AppError.validation(issues);

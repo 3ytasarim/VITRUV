@@ -84,7 +84,7 @@ describe('Sprint 2 migrations (iOS training v2)', () => {
       expect(sql).not.toMatch(/training_assignments_meaningful/);
     }
     const journal = JSON.parse(read('meta/_journal.json')) as { entries: { tag: string }[] };
-    expect(journal.entries.slice(-3, -1).map((entry) => entry.tag)).toEqual([
+    expect(journal.entries.slice(22, 24).map((entry) => entry.tag)).toEqual([
       '0022_training_v2',
       '0023_workout_templates',
     ]);
@@ -101,7 +101,26 @@ describe('Sprint 2 migrations (iOS training v2)', () => {
       expect(line).not.toMatch(/NOT NULL/);
     }
     const journal = JSON.parse(read('meta/_journal.json')) as { entries: { tag: string }[] };
-    expect(journal.entries.at(-1)?.tag).toBe('0024_sprint3_template_library');
+    // Sprint 7: 0025 follows; 0024 itself stays the 25th entry, unchanged.
+    expect(journal.entries[24]?.tag).toBe('0024_sprint3_template_library');
+  });
+
+  it('0025 (Sprint 7) is additive: nullable video columns, one index, one narrow snapshot backfill', () => {
+    const sql = read('0025_sprint7_video_history.sql');
+    expect(findDestructiveStatements(sql)).toEqual([]);
+    expect(sql).not.toMatch(/alter\s+type/i);
+    expect(sql).not.toMatch(/\binsert\s+into\b|\bdelete\s+from\b/i);
+    for (const line of sql.split('\n').filter((l) => /ADD COLUMN/.test(l))) {
+      expect(line).not.toMatch(/NOT NULL/);
+    }
+    expect(sql.match(/ADD COLUMN "media_asset_id" uuid/g)).toHaveLength(3);
+    expect(sql).toMatch(/CREATE INDEX "workout_sessions_client_completed_idx"/);
+    // the only data statement: copy the library video into session snapshots that have none
+    const updates = sql.match(/\bUPDATE\s+"[a-z_]+"/gi) ?? [];
+    expect(updates).toEqual(['UPDATE "workout_session_exercises"']);
+    expect(sql).toMatch(/"media_asset_id" IS NULL AND e\."media_asset_id" IS NOT NULL/);
+    const journal = JSON.parse(read('meta/_journal.json')) as { entries: { tag: string }[] };
+    expect(journal.entries.at(-1)?.tag).toBe('0025_sprint7_video_history');
   });
 
   it('new columns are nullable or defaulted — existing rows stay valid without a backfill', () => {

@@ -9,5 +9,5 @@ export default async function setup(): Promise<void> {
   const base = await verifiedIsolatedBase(process.env);
   const url = await recreateIsolatedDatabase(base, 'vitruv_it_api');
   const applied = await migrateIsolated(url);
-  if (applied !== 25) throw new Error(`expected 25 applied migrations, got ${applied}`);
+  if (applied !== 26) throw new Error(`expected 26 applied migrations, got ${applied}`);
 }

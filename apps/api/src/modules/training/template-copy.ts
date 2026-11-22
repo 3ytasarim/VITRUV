@@ -25,6 +25,8 @@ export type TemplateExerciseSource = {
   weightUnit: WeightUnit | null;
   prescriptionText: string | null;
   instructionsOverride: string | null;
+  /** Sprint 7: the template row's own video (copied by reference; the file is shared, never duplicated). */
+  mediaAssetId?: string | null;
 };
 
 export type TemplateSource = {

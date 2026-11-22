@@ -14,6 +14,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { timestamps } from './columns';
 import { trainingExecutionType, trainingSectionType, weightUnit } from './enums';
+import { mediaAssets } from './media-assets';
 import { exercises } from './training';
 import { users } from './users';
 
@@ -108,6 +109,8 @@ export const workoutTemplateExercises = pgTable(
     weightUnit: weightUnit('weight_unit'),
     prescriptionText: text('prescription_text'),
     instructionsOverride: text('instructions_override'),
+    /** Sprint 7: video for this template row (null = library video); copied with the template. */
+    mediaAssetId: uuid('media_asset_id').references(() => mediaAssets.id, { onDelete: 'restrict' }),
     ...timestamps,
   },
   (table) => [

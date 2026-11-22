@@ -15,9 +15,11 @@ import {
 import * as schema from '../src/schema/index';
 
 /**
- * Sprint 2.5 (+ Sprint 3: 0024) — migrations 0000–0024 on a REAL, ISOLATED PostgreSQL (never production).
+ * Sprint 2.5 (+ Sprint 3: 0024, Sprint 7: 0025) — migrations 0000–0025 on a REAL, ISOLATED
+ * PostgreSQL (never production).
  *  A. fresh: every migration on an empty database + Drizzle schema parity
- *  B. upgrade: 0000–0021 → synthetic legacy rows → 0022–0023 → legacy rows intact
+ *  B. upgrade: 0000–0021 → synthetic legacy rows → 0022–0025 → legacy rows intact
+ *  C. Sprint 7: 0000–0024 + legacy rows with a library video → 0025 snapshots that video
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -53,9 +55,9 @@ describe('A. fresh database — all migrations', () => {
 
   it('applies every journal entry exactly once, in order', async () => {
     const journal = migrationJournal();
-    expect(journal).toHaveLength(25);
+    expect(journal).toHaveLength(26);
     expect(journal.map((entry) => entry.idx)).toEqual(journal.map((_, index) => index));
-    expect(applied).toBe(25);
+    expect(applied).toBe(26);
     const { rows } = await db.query(
       'select created_at::bigint as at from drizzle.__drizzle_migrations order by id',
     );
@@ -201,6 +203,8 @@ describe('A. fresh database — all migrations', () => {
     const actions = Object.fromEntries(rows.map((row) => [row.conname, row.confdeltype]));
     expect(actions).toEqual({
       workout_template_exercises_exercise_id_exercises_id_fk: 'r',
+      // Sprint 7 (0025): a row video in use can not be deleted
+      workout_template_exercises_media_asset_id_media_assets_id_fk: 'r',
       // 69 chars in the SQL → PostgreSQL keeps the first 63 (NAMEDATALEN − 1)
       workout_template_exercises_section_id_workout_template_sections: 'c',
       workout_template_sections_template_id_workout_templates_id_fk: 'c',
@@ -310,13 +314,14 @@ const NEW_COLUMNS: Record<string, Record<string, unknown>> = {
     // Sprint 3 (0024)
     assignment_request_id: null,
   },
-  training_exercise_assignments: { execution_type: null, reps_max: false },
+  // Sprint 7 (0025): media_asset_id (no library video in the fixture → stays NULL)
+  training_exercise_assignments: { execution_type: null, reps_max: false, media_asset_id: null },
   workout_exercise_sets: {
     client_set_id: null,
     actual_duration_seconds: null,
     client_recorded_at: null,
   },
-  workout_session_exercises: { reps_max: false },
+  workout_session_exercises: { reps_max: false, media_asset_id: null },
   workout_sessions: { source_template_id: null, source_template_version: null },
 };
 
@@ -350,9 +355,9 @@ describe('B. upgrade — 0000–0021 + legacy data, then 0022–0023', () => {
   });
   afterAll(async () => db?.end());
 
-  it('stopped at 0021, then applied exactly 0022, 0023 and 0024', () => {
+  it('stopped at 0021, then applied exactly 0022, 0023, 0024 and 0025', () => {
     expect(appliedBefore).toBe(22);
-    expect(appliedAfter).toBe(25);
+    expect(appliedAfter).toBe(26);
   });
 
   it('legacy fixture is present (sanity)', () => {
@@ -452,5 +457,68 @@ describe('B. upgrade — 0000–0021 + legacy data, then 0022–0023', () => {
   it('the dated client plan (PlanEditor) is untouched', () => {
     expect(after.client_plans).toEqual(before.client_plans);
     expect(after.client_plan_items).toEqual(before.client_plan_items);
+  });
+});
+
+describe('C. Sprint 7 — 0025 snapshots the library video of sessions started before it', () => {
+  let db: pg.Client;
+  const asset = 'aaaaaaaa-0000-4000-8000-0000000007a1';
+
+  beforeAll(async () => {
+    const base = await verifiedIsolatedBase();
+    const url = await recreateIsolatedDatabase(base, 'vitruv_it_s7_video');
+    await migrateIsolated(url, '0024_sprint3_template_library');
+    db = await open(url);
+    await db.query(legacyFixture);
+    // a fictional training video on "Legacy Kniebeuge" (exercise e1) before the migration
+    await db.query(
+      `insert into media_assets (id, kind, purpose, visibility, storage_key, file_name, mime_type, size_bytes)
+       values ('${asset}', 'VIDEO', 'TRAINING_VIDEO', 'PUBLIC', 'public/training-video/legacy.mp4', 'legacy.mp4', 'video/mp4', 10)`,
+    );
+    await db.query(
+      `update exercises set media_asset_id = '${asset}' where id = '10000000-0000-4000-8000-0000000000e1'`,
+    );
+    expect(await migrateIsolated(url)).toBe(26);
+  });
+  afterAll(async () => db?.end());
+
+  it('only snapshot rows of an exercise with a video get it; plan rows keep NULL (= library video)', async () => {
+    const { rows } = await db.query(
+      'select id, media_asset_id from workout_session_exercises order by id',
+    );
+    for (const row of rows as { id: string; media_asset_id: string | null }[]) {
+      expect(row.media_asset_id, row.id).toBe(
+        row.id === '10000000-0000-4000-8000-0000000006a2' ? asset : null,
+      );
+    }
+    const plan = await db.query(
+      'select count(*)::int as n from training_exercise_assignments where media_asset_id is not null',
+    );
+    expect(plan.rows[0]?.n).toBe(0);
+  });
+
+  it('the asset can not be deleted while a plan row uses it; a session snapshot only loses the video', async () => {
+    await db.query('begin');
+    try {
+      await db.query(
+        `update training_exercise_assignments set media_asset_id = '${asset}' where exercise_id = '10000000-0000-4000-8000-0000000000e1'`,
+      );
+      await db.query('savepoint s');
+      await expect(
+        db.query(`delete from media_assets where id = '${asset}'`),
+      ).rejects.toMatchObject({
+        code: '23001', // restrict_violation (ON DELETE RESTRICT)
+      });
+      await db.query('rollback to savepoint s');
+      await db.query('update training_exercise_assignments set media_asset_id = null');
+      await db.query('update exercises set media_asset_id = null');
+      await db.query(`delete from media_assets where id = '${asset}'`);
+      const { rows } = await db.query(
+        "select media_asset_id, status from workout_session_exercises where id = '10000000-0000-4000-8000-0000000006a2'",
+      );
+      expect(rows[0]).toEqual({ media_asset_id: null, status: 'COMPLETED' });
+    } finally {
+      await db.query('rollback');
+    }
   });
 });

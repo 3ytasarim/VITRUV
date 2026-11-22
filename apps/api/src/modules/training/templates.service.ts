@@ -2,6 +2,7 @@ import type {
   AssignTemplateResponse,
   ClientTrainingWeek,
   ClientWorkout,
+  ExerciseMedia,
   WeekWorkout,
   WorkoutExercise,
   WorkoutSection,
@@ -12,6 +13,7 @@ import type {
 import { schema, type DbExecutor } from '@vitruv/db';
 import {
   usesExtendedTraining,
+  weekStats,
   workoutDayStatus,
   type TrainingExecutionType,
   type TrainingSectionType,
@@ -48,6 +50,7 @@ import {
   requireClientInScope,
   snapshot,
 } from './programs.service';
+import { loadRowMedia, requireTrainingMediaRows } from './row-media';
 import { copyTemplateForDay, type TemplateSource } from './template-copy';
 
 /**
@@ -164,8 +167,10 @@ function exerciseDto(
     prescriptionText: string | null;
     instructionsOverride: string | null;
     executionType: TrainingExecutionType | null;
+    mediaAssetId: string | null;
   },
   exercise: typeof E.$inferSelect,
+  media: ReadonlyMap<string, ExerciseMedia>,
 ): WorkoutExercise {
   return {
     id: row.id,
@@ -191,10 +196,15 @@ function exerciseDto(
         : row.prescriptionText,
     instructionsOverride: row.instructionsOverride,
     executionType: row.executionType,
+    // Sprint 7: this row's own medium (null = the library medium of the exercise)
+    media: row.mediaAssetId ? (media.get(row.mediaAssetId) ?? null) : null,
   };
 }
 
-function templateSections(tree: TemplateTree): WorkoutSection[] {
+function templateSections(
+  tree: TemplateTree,
+  media: ReadonlyMap<string, ExerciseMedia>,
+): WorkoutSection[] {
   return tree.sections.map((section) => ({
     id: section.id,
     order: section.sortOrder,
@@ -202,7 +212,7 @@ function templateSections(tree: TemplateTree): WorkoutSection[] {
     title: section.title,
     exercises: tree.exercises
       .filter((e) => e.row.sectionId === section.id)
-      .map((e) => exerciseDto(e.row, e.exercise)),
+      .map((e) => exerciseDto(e.row, e.exercise, media)),
   }));
 }
 
@@ -255,13 +265,14 @@ function toTemplate(
   row: TemplateRow,
   ownerName: string,
   tree: TemplateTree,
+  media: ReadonlyMap<string, ExerciseMedia>,
 ): WorkoutTemplate {
   return {
     ...summaryOf(actor, row, ownerName, {
       exerciseCount: tree.exercises.length,
       executionTypes: sortTypes(tree.exercises.map((e) => e.row.executionType)),
     }),
-    sections: templateSections(tree),
+    sections: templateSections(tree, media),
   };
 }
 
@@ -333,7 +344,13 @@ export async function getTemplate(
 ): Promise<WorkoutTemplate> {
   return snapshot(deps, async (tx) => {
     const { row, ownerName } = await scopedTemplate(tx, actor, templateId);
-    return toTemplate(actor, row, ownerName, await loadTemplateTree(tx, templateId));
+    const tree = await loadTemplateTree(tx, templateId);
+    const media = await loadRowMedia(
+      deps.urls,
+      tx,
+      tree.exercises.map((e) => e.row.mediaAssetId),
+    );
+    return toTemplate(actor, row, ownerName, tree, media);
   });
 }
 
@@ -358,6 +375,16 @@ async function requireUsableExercises(
         ]);
       }
     }),
+  );
+  // Sprint 7: a row's own video must be a TRAINING library image/video
+  await requireTrainingMediaRows(
+    db,
+    sections.flatMap((section, si) =>
+      section.exercises.map((exercise, ei) => ({
+        assetId: exercise.mediaAssetId,
+        path: `sections.${si}.exercises.${ei}.mediaAssetId`,
+      })),
+    ),
   );
 }
 
@@ -386,6 +413,7 @@ function templateExerciseValues(exercise: ExerciseInput, sectionId: string, sort
     weightUnit: exercise.weightUnit ?? null,
     prescriptionText: exercise.prescriptionText ?? null,
     instructionsOverride: exercise.instructionsOverride ?? null,
+    mediaAssetId: exercise.mediaAssetId ?? null,
   };
   return values.executionType === 'INTERVAL'
     ? { ...values, ...storagePrescription(values) }
@@ -853,6 +881,7 @@ export async function assignTemplate(
               weightUnit: e.weightUnit,
               prescriptionText: e.prescriptionText,
               instructionsOverride: e.instructionsOverride,
+              mediaAssetId: e.mediaAssetId,
             })),
         })),
       };
@@ -927,6 +956,11 @@ export async function getClientWorkout(
           )
           .orderBy(asc(A.sortOrder))
       : [];
+    const media = await loadRowMedia(
+      deps.urls,
+      tx,
+      assignments.map((a) => a.row.mediaAssetId),
+    );
     const sessionRows = await tx
       .select({ status: WS.status, n: count() })
       .from(WS)
@@ -971,7 +1005,7 @@ export async function getClientWorkout(
         title: section.title,
         exercises: assignments
           .filter((a) => a.row.sectionId === section.id)
-          .map((a) => exerciseDto(a.row, a.exercise)),
+          .map((a) => exerciseDto(a.row, a.exercise, media)),
       })),
     };
   });
@@ -989,6 +1023,7 @@ const PRESCRIPTION_COLUMNS = [
   'prescriptionText',
   'instructionsOverride',
   'executionType',
+  'mediaAssetId',
 ] as const;
 
 /** The complete prescription of a row (absent field = cleared), plus the Sprint 2 storage rules. */
@@ -1193,6 +1228,7 @@ export async function clientWeek(
       days: calendar.map((d) => ({ date: d, weekday: isoWeekday(d), workouts: [] })),
       unscheduled: [],
       legacyPlan,
+      stats: weekStats([]),
     };
     if (!program?.startsOn) return empty;
     const startsOn = program.startsOn;
@@ -1251,23 +1287,26 @@ export async function clientWeek(
       return weeks[Math.floor(offset / 7)];
     };
     const anchorWeek = weekAt(anchor);
+    const weekDays = calendar.map((iso) => {
+      const week = weekAt(iso);
+      const weekday = isoWeekday(iso);
+      return {
+        date: iso,
+        weekday,
+        workouts: week
+          ? days
+              .filter((d) => d.weekId === week.id && d.scheduledWeekday === weekday)
+              .map(toWorkout)
+          : [],
+      };
+    });
     return {
       ...empty,
       weekIndex: anchorWeek ? anchorWeek.sortOrder : null,
       weekId: anchorWeek?.id ?? null,
-      days: calendar.map((iso) => {
-        const week = weekAt(iso);
-        const weekday = isoWeekday(iso);
-        return {
-          date: iso,
-          weekday,
-          workouts: week
-            ? days
-                .filter((d) => d.weekId === week.id && d.scheduledWeekday === weekday)
-                .map(toWorkout)
-            : [],
-        };
-      }),
+      days: weekDays,
+      // Sprint 7: the app's week counts (dated workouts only), one rule for coach and client
+      stats: weekStats(weekDays.flatMap((d) => d.workouts)),
       unscheduled: anchorWeek
         ? days
             .filter((d) => d.weekId === anchorWeek.id && d.scheduledWeekday === null)

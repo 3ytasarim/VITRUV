@@ -266,6 +266,11 @@ export const trainingExerciseAssignments = pgTable(
     executionType: trainingExecutionType('execution_type'),
     /** Sprint 2: Strength "MAX" — as many reps as possible per set (then `reps` is null). */
     repsMax: boolean('reps_max').notNull().default(false),
+    /**
+     * Sprint 7: video for THIS client's exercise (overrides the library video; null = library
+     * video). Changing it never touches other clients (each client has own assignment rows).
+     */
+    mediaAssetId: uuid('media_asset_id').references(() => mediaAssets.id, { onDelete: 'restrict' }),
     ...timestamps,
   },
   (table) => [

@@ -21,6 +21,7 @@ import {
   workoutExerciseStatus,
   workoutSessionStatus,
 } from './enums';
+import { mediaAssets } from './media-assets';
 import { exercises, trainingDays, trainingExerciseAssignments, trainingPrograms } from './training';
 import { users } from './users';
 
@@ -75,6 +76,8 @@ export const workoutSessions = pgTable(
       .on(table.clientUserId)
       .where(sql`${table.status} = 'IN_PROGRESS'`),
     index('workout_sessions_client_started_idx').on(table.clientUserId, table.startedAt),
+    /** Sprint 7: history / progress of one client by completion time. */
+    index('workout_sessions_client_completed_idx').on(table.clientUserId, table.completedAt),
     index('workout_sessions_program_idx').on(table.trainingProgramId),
     check(
       'workout_sessions_status_timestamps',
@@ -131,6 +134,11 @@ export const workoutSessionExercises = pgTable(
     executionMode: workoutExecutionMode('execution_mode').notNull(),
     /** Sprint 2: Strength MAX target (as many reps as possible per set). */
     repsMax: boolean('reps_max').notNull().default(false),
+    /**
+     * Sprint 7: the video at the start (assignment override, else library video). History keeps
+     * it; deleting the asset only removes the video from old sessions (SET NULL), never results.
+     */
+    mediaAssetId: uuid('media_asset_id').references(() => mediaAssets.id, { onDelete: 'set null' }),
     // ---- execution state (the client's record)
     status: workoutExerciseStatus('status').notNull().default('PENDING'),
     completedAt: timestamp('completed_at', { withTimezone: true }),

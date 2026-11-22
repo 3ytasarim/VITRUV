@@ -19,6 +19,8 @@ export type PrescriptionInput = {
   instructionsOverride?: string | null;
   executionType?: TrainingExecutionType | null;
   repsMax?: boolean;
+  /** Sprint 7: the row's own video/image (null = the library medium). */
+  mediaAssetId?: string | null;
 };
 /**
  * Sprint 2 storage rules applied to the MERGED prescription (after validation):

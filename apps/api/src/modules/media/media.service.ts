@@ -37,6 +37,8 @@ const {
   websiteSections,
   websitePages,
   exercises,
+  workoutTemplateExercises,
+  trainingExerciseAssignments,
   welcomeVideos,
 } = schema;
 
@@ -234,6 +236,33 @@ export async function exerciseUsages(
     .orderBy(exercises.name);
 }
 
+/**
+ * Sprint 7: template rows and client assignments that use the asset as their own video
+ * (FK RESTRICT). Session snapshots are not listed — deleting only removes the video from history.
+ */
+async function rowUsages(db: DbExecutor, assetId: string) {
+  const templateRows = await db
+    .select({ id: workoutTemplateExercises.id, name: exercises.name })
+    .from(workoutTemplateExercises)
+    .innerJoin(exercises, eq(exercises.id, workoutTemplateExercises.exerciseId))
+    .where(eq(workoutTemplateExercises.mediaAssetId, assetId));
+  const clientRows = await db
+    .select({ id: trainingExerciseAssignments.id, name: exercises.name })
+    .from(trainingExerciseAssignments)
+    .innerJoin(exercises, eq(exercises.id, trainingExerciseAssignments.exerciseId))
+    .where(eq(trainingExerciseAssignments.mediaAssetId, assetId));
+  return [
+    ...templateRows.map((row) => ({
+      path: `template-exercise/${row.id}`,
+      message: `Workout-Vorlage: „${row.name}“`,
+    })),
+    ...clientRows.map((row) => ({
+      path: `assignment/${row.id}`,
+      message: `Kundenplan: „${row.name}“`,
+    })),
+  ];
+}
+
 /** "Willkommen" videos that show the asset (owner request 2026-11-18). */
 async function welcomeUsages(db: DbExecutor, assetId: string) {
   return db
@@ -326,6 +355,25 @@ interface StoredFile {
 
 const KIND_LABEL: Record<WebsiteMediaKind, string> = { IMAGE: 'Bild', VIDEO: 'Video' };
 
+/** H.264 sample entries (MP4) — what every iPhone plays in hardware. */
+export const IPHONE_VIDEO_CODECS = new Set(['avc1', 'avc3']);
+
+/**
+ * Sprint 7 — exercise videos are watched in the iPhone app (AVPlayer): no WebM/Ogg, and in MP4
+ * only H.264 video (HEVC is already refused for browser reasons; VP9/AV1-in-MP4 fail on older
+ * iPhones). There is no server-side transcoding: the coach uploads an MP4 (H.264). Website (CMS)
+ * uploads keep their rules. The audio codec is not inspected (AAC is recommended in the message).
+ */
+export function checkTrainingVideoPlayback(sniffed: SniffResult): void {
+  if (!sniffed.mimeType.startsWith('video/')) return;
+  const message =
+    'Übungsvideos müssen auf dem iPhone abspielbar sein: bitte als MP4 mit H.264-Video (Ton AAC) hochladen. WebM wird für Übungen nicht angenommen.';
+  if (sniffed.mimeType !== 'video/mp4') throw AppError.badRequest(message);
+  if (sniffed.videoCodecs.some((codec) => !IPHONE_VIDEO_CODECS.has(codec))) {
+    throw AppError.badRequest(message);
+  }
+}
+
 /**
  * Validates the staged upload (type, size, content signature; HEIC → JPEG) and writes it to
  * object storage under a NEW server-generated key. Streaming: validation reads only headers /
@@ -356,6 +404,7 @@ async function storeStagedFile(
     kind,
     sniffed: await sniffMediaFile(staged, staged.sizeBytes),
   });
+  if (library === 'TRAINING') checkTrainingVideoPlayback(upload.sniffed);
   if (upload.sniffed.mimeType === 'image/heic') {
     return storeConvertedHeic(deps, library, staged, upload);
   }
@@ -574,6 +623,7 @@ function inUseError(
   usages: MediaUsage[],
   byExercises: ExerciseMediaUsage[] = [],
   byWelcome: { id: string; title: string }[] = [],
+  byRows: { path: string; message: string }[] = [],
 ) {
   return AppError.conflict(
     'Das Medium wird noch verwendet und kann nicht gelöscht werden. Zuerst in den Inhalten, Übungen bzw. unter „Willkommen“ ersetzen oder entfernen.',
@@ -590,6 +640,7 @@ function inUseError(
         path: `welcome/${usage.id}`,
         message: `Willkommen-Video „${usage.title}“`,
       })),
+      ...byRows,
     ],
   );
 }
@@ -622,8 +673,14 @@ export async function deleteLibraryMedia(
       const usages = await mediaUsages(tx, id);
       const byExercises = await exerciseUsages(tx, id);
       const byWelcome = await welcomeUsages(tx, id);
-      if (usages.length > 0 || byExercises.length > 0 || byWelcome.length > 0) {
-        throw inUseError(usages, byExercises, byWelcome);
+      const byRows = await rowUsages(tx, id);
+      if (
+        usages.length > 0 ||
+        byExercises.length > 0 ||
+        byWelcome.length > 0 ||
+        byRows.length > 0
+      ) {
+        throw inUseError(usages, byExercises, byWelcome, byRows);
       }
       await tx.delete(mediaAssets).where(eq(mediaAssets.id, id));
       return asset.storageKey;
@@ -635,6 +692,7 @@ export async function deleteLibraryMedia(
         await mediaUsages(deps.db, id),
         await exerciseUsages(deps.db, id),
         await welcomeUsages(deps.db, id),
+        await rowUsages(deps.db, id),
       );
     }
     throw error;

@@ -106,6 +106,21 @@ export type UpdateWorkoutNoteRequest = z.infer<typeof updateWorkoutNoteRequestSc
 
 export const workoutHistoryQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
+  /**
+   * Sprint 7 (additive): opaque cursor from `nextCursor` of the previous page (newest first,
+   * stable order startedAt desc, id desc). Omitted = first page.
+   */
+  cursor: z
+    .string()
+    .max(200)
+    .regex(/^[A-Za-z0-9_-]+$/, 'Ungültiger Cursor.')
+    .optional(),
+});
+export type WorkoutHistoryQuery = z.infer<typeof workoutHistoryQuerySchema>;
+
+/** Sprint 7: GET …/workouts/progress/exercises/:exerciseId — points of one exercise. */
+export const exerciseProgressQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(12),
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -279,11 +294,20 @@ export const workoutSessionSummarySchema = z.object({
   exercisesSkipped: z.number().int().min(0),
   /** Client notes in this session (exercise notes + the session note). */
   notesCount: z.number().int().min(0),
+  /**
+   * Sprint 7 (additive, recorded values only): sum of recorded reps (Strength + Total reps;
+   * null = none recorded, never 0), sets with a recorded result, completed Core rounds.
+   */
+  totalReps: z.number().int().min(0).nullable().optional(),
+  setsCompleted: z.number().int().min(0).optional(),
+  roundsCompleted: z.number().int().min(0).optional(),
 });
 export type WorkoutSessionSummary = z.infer<typeof workoutSessionSummarySchema>;
 
 export const workoutSessionSummaryListSchema = z.object({
   items: z.array(workoutSessionSummarySchema),
+  /** Sprint 7 (additive): cursor of the next (older) page; null = no more entries. */
+  nextCursor: z.string().nullable().optional(),
 });
 export type WorkoutSessionSummaryList = z.infer<typeof workoutSessionSummaryListSchema>;
 
@@ -296,3 +320,92 @@ export const workoutNoteResponseSchema = z.object({
   clientNoteUpdatedAt: z.iso.datetime().nullable(),
 });
 export type WorkoutNoteResponse = z.infer<typeof workoutNoteResponseSchema>;
+
+// ---------------------------------------------------------------------------------------------
+// Sprint 7: comparison + exercise progress (recorded values only; computed by @vitruv/shared)
+// ---------------------------------------------------------------------------------------------
+
+export const resultKindSchema = z.enum(['REPS', 'TOTAL_REPS', 'ROUNDS', 'NONE']);
+
+export const exerciseResultSchema = z.object({
+  kind: resultKindSchema,
+  totalReps: z.number().int().nullable(),
+  setCount: z.number().int().min(0),
+  roundsCompleted: z.number().int().min(0).nullable(),
+  totalTarget: z.number().int().nullable(),
+  interval: z
+    .object({
+      rounds: z.number().int().nullable(),
+      workSeconds: z.number().int().nullable(),
+      restSeconds: z.number().int().nullable(),
+    })
+    .nullable(),
+  sets: z.array(
+    z.object({
+      setNumber: z.number().int().min(1),
+      targetReps: z.number().int().nullable(),
+      actualReps: z.number().int().nullable(),
+      completed: z.boolean(),
+    }),
+  ),
+});
+export type ExerciseResultDto = z.infer<typeof exerciseResultSchema>;
+
+const resultEntrySchema = z.object({
+  sessionId: z.uuid(),
+  /** Completion time (start time while the session is still running). */
+  date: z.iso.datetime(),
+  status: workoutSessionStatusSchema,
+  result: exerciseResultSchema,
+});
+
+export const exerciseComparisonSchema = z.object({
+  sessionExerciseId: z.uuid(),
+  exerciseId: z.uuid(),
+  name: z.string(),
+  executionMode: workoutExecutionModeSchema,
+  repsMax: z.boolean(),
+  current: resultEntrySchema,
+  /** The latest earlier COMPLETED session with the same exercise and type; null = none yet. */
+  previous: resultEntrySchema.nullable(),
+  /** current − previous (reps or rounds); null = not comparable / no data. */
+  difference: z.number().int().nullable(),
+  setDifferences: z.array(
+    z.object({
+      setNumber: z.number().int().min(1),
+      previous: z.number().int().nullable(),
+      current: z.number().int().nullable(),
+      difference: z.number().int().nullable(),
+    }),
+  ),
+  /** Core: rounds/work/rest differ between the two sessions. */
+  configChanged: z.boolean(),
+});
+export type ExerciseComparison = z.infer<typeof exerciseComparisonSchema>;
+
+/** GET …/workouts/:sessionId/comparison */
+export const workoutComparisonSchema = z.object({
+  sessionId: z.uuid(),
+  items: z.array(exerciseComparisonSchema),
+});
+export type WorkoutComparison = z.infer<typeof workoutComparisonSchema>;
+
+/** GET …/workouts/progress/exercises/:exerciseId — oldest → newest, COMPLETED sessions only. */
+export const exerciseProgressSchema = z.object({
+  exerciseId: z.uuid(),
+  /** Name in the latest session (snapshot); null when the exercise was never trained. */
+  name: z.string().nullable(),
+  executionMode: workoutExecutionModeSchema.nullable(),
+  repsMax: z.boolean(),
+  kind: resultKindSchema,
+  points: z.array(
+    z.object({
+      sessionId: z.uuid(),
+      date: z.iso.datetime(),
+      /** Reps (Strength/Total reps) or completed rounds (Core). Never invented. */
+      value: z.number().int(),
+      setCount: z.number().int().min(0),
+    }),
+  ),
+});
+export type ExerciseProgress = z.infer<typeof exerciseProgressSchema>;

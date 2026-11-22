@@ -1,5 +1,8 @@
 import type {
   CurrentWorkoutResponse,
+  ExerciseProgress,
+  WorkoutComparison,
+  WorkoutHistoryQuery,
   FinishWorkoutResponse,
   RecordWorkoutSetRequest,
   RecordWorkoutSetResponse,
@@ -28,6 +31,14 @@ import type { Principal } from '../../auth/principal';
 import { AppError } from '../../lib/errors';
 import { clientAccessible } from '../management/management.service';
 import type { TrainingDeps } from '../training/exercises.service';
+import {
+  afterCursor,
+  decodeCursor,
+  encodeCursor,
+  exerciseProgress,
+  sessionComparison,
+  sessionTotals,
+} from './history';
 import {
   decideRecordedSet,
   legacyTotalCarryOver,
@@ -113,23 +124,30 @@ function progressOf(rows: Pick<ExerciseRow, 'id' | 'status' | 'sortOrder'>[]): W
   };
 }
 
-/** Current demonstration media of the exercises (PUBLIC training assets only, URLs not keys). */
-async function mediaFor(deps: TrainingDeps, db: DbExecutor, exerciseIds: string[]) {
-  const rows = exerciseIds.length
+/**
+ * Demonstration media of the session exercises (PUBLIC training assets only, URLs not keys).
+ * Sprint 7: read from the SNAPSHOT (`workout_session_exercises.media_asset_id`, set at the start
+ * from the client's own video or the library video) — a later library/plan change never changes a
+ * started or finished session; a deleted asset simply shows no video (SET NULL).
+ */
+async function mediaFor(
+  deps: TrainingDeps,
+  db: DbExecutor,
+  snapshotRows: Pick<ExerciseRow, 'mediaAssetId'>[],
+) {
+  const assetIds = [
+    ...new Set(snapshotRows.map((row) => row.mediaAssetId).filter((id): id is string => !!id)),
+  ];
+  const rows = assetIds.length
     ? await db
-        .select({ exerciseId: E.id, asset: M })
-        .from(E)
-        .innerJoin(M, eq(M.id, E.mediaAssetId))
+        .select()
+        .from(M)
         .where(
-          and(
-            inArray(E.id, [...new Set(exerciseIds)]),
-            eq(M.visibility, 'PUBLIC'),
-            eq(M.purpose, 'TRAINING_VIDEO'),
-          ),
+          and(inArray(M.id, assetIds), eq(M.visibility, 'PUBLIC'), eq(M.purpose, 'TRAINING_VIDEO')),
         )
     : [];
-  return (exerciseId: string, name: string): ResolvedMedia | null => {
-    const asset = rows.find((row) => row.exerciseId === exerciseId)?.asset;
+  return (row: Pick<ExerciseRow, 'mediaAssetId'>, name: string): ResolvedMedia | null => {
+    const asset = row.mediaAssetId ? rows.find((a) => a.id === row.mediaAssetId) : undefined;
     if (!asset || (asset.kind !== 'IMAGE' && asset.kind !== 'VIDEO')) return null;
     return {
       assetId: asset.id,
@@ -232,29 +250,28 @@ async function loadSession(
           ),
         )
     : [];
-  const media = await mediaFor(
-    deps,
-    db,
-    rows.map((row) => row.exerciseId),
-  );
+  const media = await mediaFor(deps, db, rows);
   return {
     ...header(session),
     programId: session.trainingProgramId,
     dayId: session.trainingDayId,
     progress: progressOf(rows),
-    exercises: rows.map((row) =>
-      toExerciseDto(row, sets, media(row.exerciseId, row.exerciseNameSnapshot)),
-    ),
+    exercises: rows.map((row) => toExerciseDto(row, sets, media(row, row.exerciseNameSnapshot))),
     clientNote: session.clientNote,
     clientNoteUpdatedAt: iso(session.clientNoteUpdatedAt),
   };
 }
 
+/**
+ * One history page, newest first (startedAt desc, id desc — stable), with the recorded totals.
+ * Sprint 7: cursor pagination (limit + 1 rows → nextCursor) and totals in ONE aggregate query.
+ */
 async function summaries(
   db: DbExecutor,
   clientId: string,
-  limit: number,
-): Promise<WorkoutSessionSummary[]> {
+  query: WorkoutHistoryQuery,
+): Promise<WorkoutSessionSummaryList> {
+  const cursor = decodeCursor(query.cursor);
   const counts = db
     .select({
       sessionId: WE.sessionId,
@@ -278,10 +295,16 @@ async function summaries(
     })
     .from(WS)
     .leftJoin(counts, eq(counts.sessionId, WS.id))
-    .where(eq(WS.clientUserId, clientId))
+    .where(and(eq(WS.clientUserId, clientId), afterCursor(cursor)))
     .orderBy(desc(WS.startedAt), desc(WS.id))
-    .limit(limit);
-  return rows.map((row) => ({
+    .limit(query.limit + 1);
+  const page = rows.slice(0, query.limit);
+  const last = page.at(-1);
+  const totals = await sessionTotals(
+    db,
+    page.map((row) => row.session.id),
+  );
+  const items = page.map((row) => ({
     ...header(row.session),
     programId: row.session.trainingProgramId,
     dayId: row.session.trainingDayId,
@@ -289,7 +312,14 @@ async function summaries(
     exercisesCompleted: row.completed ?? 0,
     exercisesSkipped: row.skipped ?? 0,
     notesCount: (row.notes ?? 0) + (row.session.clientNote ? 1 : 0),
+    totalReps: totals.get(row.session.id)?.totalReps ?? null,
+    setsCompleted: totals.get(row.session.id)?.setsCompleted ?? 0,
+    roundsCompleted: totals.get(row.session.id)?.roundsCompleted ?? 0,
   }));
+  return {
+    items,
+    nextCursor: rows.length > query.limit && last ? encodeCursor(last.session) : null,
+  };
 }
 
 async function summaryOf(db: DbExecutor, session: SessionRow): Promise<WorkoutSessionSummary> {
@@ -298,6 +328,7 @@ async function summaryOf(db: DbExecutor, session: SessionRow): Promise<WorkoutSe
     .from(WE)
     .where(eq(WE.sessionId, session.id));
   const progress = progressOf(rows);
+  const totals = (await sessionTotals(db, [session.id])).get(session.id);
   return {
     ...header(session),
     programId: session.trainingProgramId,
@@ -306,6 +337,9 @@ async function summaryOf(db: DbExecutor, session: SessionRow): Promise<WorkoutSe
     exercisesCompleted: progress.completed,
     exercisesSkipped: progress.skipped,
     notesCount: rows.filter((row) => row.note !== null).length + (session.clientNote ? 1 : 0),
+    totalReps: totals?.totalReps ?? null,
+    setsCompleted: totals?.setsCompleted ?? 0,
+    roundsCompleted: totals?.roundsCompleted ?? 0,
   };
 }
 
@@ -368,14 +402,10 @@ async function focused(
       .select({ id: WE.id, status: WE.status, sortOrder: WE.sortOrder })
       .from(WE)
       .where(eq(WE.sessionId, session.id)),
-    mediaFor(deps, db, [exercise.exerciseId]),
+    mediaFor(deps, db, [exercise]),
   ]);
   return {
-    exercise: toExerciseDto(
-      exercise,
-      sets,
-      media(exercise.exerciseId, exercise.exerciseNameSnapshot),
-    ),
+    exercise: toExerciseDto(exercise, sets, media(exercise, exercise.exerciseNameSnapshot)),
     progress: progressOf(siblings),
   };
 }
@@ -484,7 +514,7 @@ export async function startWorkout(
         section_type, section_title_snapshot, section_order,
         exercise_name_snapshot, instructions_snapshot,
         sets, reps, total_reps, duration_seconds, rest_seconds, target_weight, weight_unit,
-        prescription_text, execution_mode, reps_max
+        prescription_text, execution_mode, reps_max, media_asset_id
       )
       select ${session.id}, a.id, e.id,
         (row_number() over (order by s.sort_order, a.sort_order)) - 1,
@@ -502,7 +532,9 @@ export async function startWorkout(
           when a.total_reps is not null then 'TOTAL_REPS'
           when a.duration_seconds is not null then 'DURATION'
           else 'CUSTOM' end)::workout_execution_mode,
-        a.reps_max
+        a.reps_max,
+        -- Sprint 7: snapshot of the video (this client's own video, else the library video)
+        coalesce(a.media_asset_id, e.media_asset_id)
       from ${A} a
       join ${S} s on s.id = a.section_id
       join ${E} e on e.id = a.exercise_id
@@ -557,11 +589,35 @@ export async function getWorkout(
 export async function workoutHistory(
   deps: TrainingDeps,
   actor: Principal,
-  limit: number,
+  query: WorkoutHistoryQuery,
 ): Promise<WorkoutSessionSummaryList> {
   return snapshotRead(deps, async (tx) => {
     await requireClient(tx, actor);
-    return { items: await summaries(tx, actor.userId, limit) };
+    return summaries(tx, actor.userId, query);
+  });
+}
+
+/** Sprint 7: own session — every exercise next to its previous comparable result. */
+export async function workoutComparison(
+  deps: TrainingDeps,
+  actor: Principal,
+  sessionId: string,
+): Promise<WorkoutComparison> {
+  return snapshotRead(deps, async (tx) =>
+    sessionComparison(tx, await ownSession(tx, actor, sessionId)),
+  );
+}
+
+/** Sprint 7: own progress of one exercise (completed sessions only). */
+export async function myExerciseProgress(
+  deps: TrainingDeps,
+  actor: Principal,
+  exerciseId: string,
+  limit: number,
+): Promise<ExerciseProgress> {
+  return snapshotRead(deps, async (tx) => {
+    await requireClient(tx, actor);
+    return exerciseProgress(tx, actor.userId, exerciseId, limit);
   });
 }
 
@@ -925,20 +981,59 @@ export async function finishWorkout(
 // Coach / Admin: read-only summaries (client scope as for programs)
 // ---------------------------------------------------------------------------------------------
 
+/** Coach/Admin: the client must be in the actor's scope (out of scope = 404). */
+async function scopedClient(db: DbExecutor, actor: Principal, clientId: string) {
+  const [client] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.id, clientId), clientAccessible(actor, users.id)))
+    .limit(1);
+  if (!client) throw notFound();
+  return client;
+}
+
 export async function clientWorkoutSummaries(
   deps: TrainingDeps,
   actor: Principal,
   clientId: string,
-  limit: number,
+  query: WorkoutHistoryQuery,
 ): Promise<WorkoutSessionSummaryList> {
   return snapshotRead(deps, async (tx) => {
-    const [client] = await tx
-      .select({ id: users.id })
-      .from(users)
-      .where(and(eq(users.id, clientId), clientAccessible(actor, users.id)))
+    await scopedClient(tx, actor, clientId);
+    return summaries(tx, clientId, query);
+  });
+}
+
+/** Sprint 7: Coach/Admin — "previous vs current" of one session of a client in scope. */
+export async function clientWorkoutComparison(
+  deps: TrainingDeps,
+  actor: Principal,
+  clientId: string,
+  sessionId: string,
+): Promise<WorkoutComparison> {
+  return snapshotRead(deps, async (tx) => {
+    const client = await scopedClient(tx, actor, clientId);
+    const [session] = await tx
+      .select()
+      .from(WS)
+      .where(and(eq(WS.id, sessionId), eq(WS.clientUserId, client.id)))
       .limit(1);
-    if (!client) throw notFound();
-    return { items: await summaries(tx, clientId, limit) };
+    if (!session) throw notFound();
+    return sessionComparison(tx, session);
+  });
+}
+
+/** Sprint 7: Coach/Admin — progress of one exercise of a client in scope. */
+export async function clientExerciseProgress(
+  deps: TrainingDeps,
+  actor: Principal,
+  clientId: string,
+  exerciseId: string,
+  limit: number,
+): Promise<ExerciseProgress> {
+  return snapshotRead(deps, async (tx) => {
+    const client = await scopedClient(tx, actor, clientId);
+    return exerciseProgress(tx, client.id, exerciseId, limit);
   });
 }
 

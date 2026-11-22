@@ -139,7 +139,10 @@ export const exerciseMediaSchema = z.object({
   kind: z.enum(['IMAGE', 'VIDEO']),
   url: z.url(),
   fileName: z.string(),
+  /** Sprint 7 (additive): lets the editor warn about formats an iPhone can not play (WebM). */
+  mimeType: z.string().optional(),
 });
+export type ExerciseMedia = z.infer<typeof exerciseMediaSchema>;
 
 export const adminExerciseSchema = exerciseCatalogFieldsSchema.extend({
   id: z.uuid(),
@@ -185,6 +188,11 @@ export const prescriptionShape = {
   weightUnit: weightUnitSchema.nullable().optional(),
   prescriptionText: optionalLine(200).nullable().optional(),
   instructionsOverride: longText(2000).nullable().optional(),
+  /**
+   * Sprint 7: video/image for THIS row (template exercise or one client's assignment) instead of
+   * the library default. null/omitted = the exercise library medium.
+   */
+  mediaAssetId: z.uuid('Ungültiges Medium.').nullable().optional(),
   /** Sprint 2 (optional; omitted = unchanged / legacy behaviour). */
   executionType: trainingExecutionTypeSchema.nullable().optional(),
   /** Sprint 2: Strength MAX ("so viele wie möglich") — then `reps` stays empty. */
@@ -381,6 +389,8 @@ export const adminAssignmentSchema = z.object({
   /** Sprint 2 (additive): explicit type, null for legacy rows. */
   executionType: trainingExecutionTypeSchema.nullable().optional(),
   repsMax: z.boolean().optional(),
+  /** Sprint 7 (additive): this client's own medium (null = the library medium). */
+  media: exerciseMediaSchema.nullable().optional(),
 });
 export type AdminAssignment = z.infer<typeof adminAssignmentSchema>;
 
@@ -675,6 +685,8 @@ export const workoutExerciseSchema = z.object({
   prescriptionText: z.string().nullable(),
   instructionsOverride: z.string().nullable(),
   executionType: trainingExecutionTypeSchema.nullable(),
+  /** Sprint 7 (additive): this row's own medium (null = the library medium). */
+  media: exerciseMediaSchema.nullable().optional(),
 });
 export type WorkoutExercise = z.infer<typeof workoutExerciseSchema>;
 
@@ -861,6 +873,18 @@ export const clientTrainingWeekSchema = z.object({
   ),
   /** Workouts of that program week without a weekday. */
   unscheduled: z.array(weekWorkoutSchema),
+  /**
+   * Sprint 7 (additive): counts of the DATED workouts of this calendar week — the same rule as the
+   * app's week view (`weekStats` in @vitruv/shared).
+   */
+  stats: z
+    .object({
+      planned: z.number().int().min(0),
+      completed: z.number().int().min(0),
+      inProgress: z.number().int().min(0),
+      open: z.number().int().min(0),
+    })
+    .optional(),
   legacyPlan: z
     .object({
       itemCount: z.number().int(),
