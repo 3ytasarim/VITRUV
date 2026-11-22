@@ -12,6 +12,8 @@ import {
   clientTrainingProgramSchema,
   workoutSessionSchema,
   workoutSessionSummaryListSchema,
+  workoutComparisonSchema,
+  exerciseProgressSchema,
   assignTemplateResponseSchema,
   clientTrainingWeekSchema,
   clientWorkoutSchema,
@@ -87,8 +89,24 @@ export const trainingApi = {
     adminFetch(`${T}/clients/${clientId}/programs`, adminProgramListSchema),
   program: (id: string) => adminFetch(`${T}/programs/${id}`, adminProgramSchema),
   /** Read-only workout summaries of a client (newest first). */
-  workouts: (clientId: string, limit = 20) =>
-    adminFetch(`${T}/clients/${clientId}/workouts?limit=${limit}`, workoutSessionSummaryListSchema),
+  /** Newest first; `cursor` = `nextCursor` of the previous page (Sprint 7). */
+  workouts: (clientId: string, limit = 20, cursor?: string) =>
+    adminFetch(
+      `${T}/clients/${clientId}/workouts?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
+      workoutSessionSummaryListSchema,
+    ),
+  /** Sprint 7: each exercise of a session vs. the previous comparable completed workout. */
+  workoutComparison: (clientId: string, sessionId: string) =>
+    adminFetch(
+      `${T}/clients/${clientId}/workouts/${sessionId}/comparison`,
+      workoutComparisonSchema,
+    ),
+  /** Sprint 7: recorded values of one exercise over the client's completed workouts. */
+  exerciseProgress: (clientId: string, exerciseId: string, limit = 12) =>
+    adminFetch(
+      `${T}/clients/${clientId}/workouts/progress/exercises/${exerciseId}?limit=${limit}`,
+      exerciseProgressSchema,
+    ),
   /** One session in full, incl. the client's notes per exercise (read-only). */
   workout: (clientId: string, sessionId: string) =>
     adminFetch(`${T}/clients/${clientId}/workouts/${sessionId}`, workoutSessionSchema),

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ErrorState } from '@/components/admin/states';
 import { PlanEditor } from '@/components/admin/training/plan-editor';
+import { TrainingProgress } from '@/components/admin/training/training-progress';
 import { TrainingWeek } from '@/components/admin/training/training-week';
 import { WorkoutHistory } from '@/components/admin/training/workout-history';
 import { Badge } from '@/components/ui';
@@ -21,7 +22,8 @@ const berlinToday = () =>
  *  2. The older dated exercise list (client_plans, owner decision 2026-10-19) stays as it is — shown
  *     separately and clearly labelled; it is never converted silently and can not be started as a
  *     workout.
- *  3. Earlier workout sessions.
+ *  3. Sprint 7 "Trainingsfortschritt": this week's counts + the latest workout, and the earlier
+ *     workout sessions with recorded totals, page-wise (`?verlauf=<cursor>`, newest first).
  */
 export default async function ClientTrainingPage({
   params,
@@ -40,6 +42,10 @@ export default async function ClientTrainingPage({
     typeof query.woche === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(query.woche)
       ? query.woche
       : undefined;
+  const cursor =
+    typeof query.verlauf === 'string' && /^[A-Za-z0-9_-]{1,200}$/.test(query.verlauf)
+      ? query.verlauf
+      : undefined;
   const canSeeWorkouts = user.permissions.includes('training.sessions.read');
   const canReadLibrary = user.permissions.includes('training.exercises.read');
   const canAssign =
@@ -51,11 +57,13 @@ export default async function ClientTrainingPage({
     adminApi.client(id),
     canReadLibrary ? trainingApi.exercises({ status: 'active' }) : null,
     canReadLibrary ? trainingApi.categories() : null,
-    canSeeWorkouts ? trainingApi.workouts(id) : null,
+    canSeeWorkouts ? trainingApi.workouts(id, 20, cursor) : null,
   ]);
   if (!plan.ok && (plan.status === 404 || plan.status === 400)) notFound();
   if (!plan.ok) return <ErrorState message="Der Trainingsplan konnte nicht geladen werden." />;
   const sessions = workouts?.ok ? workouts.data.items : [];
+  const nextCursor = workouts?.ok ? (workouts.data.nextCursor ?? null) : null;
+  const base = `/admin/kunden/${id}/training`;
   const clientName = client.ok
     ? `${client.data.firstName} ${client.data.lastName}`.trim()
     : 'Teilnehmer:in';
@@ -92,7 +100,24 @@ export default async function ClientTrainingPage({
           canEdit={user.permissions.includes('training.programs.update')}
         />
       </section>
-      {sessions.length > 0 && <WorkoutHistory clientId={id} items={sessions} />}
+      {canSeeWorkouts && !cursor && (
+        <TrainingProgress
+          stats={week.ok ? (week.data.stats ?? null) : null}
+          latest={sessions[0] ?? null}
+        />
+      )}
+      {(sessions.length > 0 || cursor) && (
+        <WorkoutHistory
+          clientId={id}
+          items={workouts?.ok ? sessions : null}
+          olderHref={
+            nextCursor
+              ? `${base}?verlauf=${encodeURIComponent(nextCursor)}#trainingsverlauf`
+              : undefined
+          }
+          newestHref={cursor ? `${base}#trainingsverlauf` : undefined}
+        />
+      )}
     </div>
   );
 }

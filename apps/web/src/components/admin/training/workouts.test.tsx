@@ -22,6 +22,8 @@ const workoutActions = vi.hoisted(() => ({
 }));
 vi.mock('@/app/admin/training-actions', () => trainingActions);
 vi.mock('@/app/admin/workout-actions', () => workoutActions);
+// Sprint 7: the editor's row video field uses the media picker (TRAINING + website libraries).
+vi.mock('@/app/admin/website-actions', () => ({ listMediaAction: vi.fn() }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }),
   usePathname: () => '/admin/training/workouts',

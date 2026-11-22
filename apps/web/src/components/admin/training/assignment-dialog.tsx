@@ -4,12 +4,14 @@ import {
   createAssignmentRequestSchema,
   type AdminAssignment,
   type AdminExercise,
+  type ExerciseMedia,
 } from '@vitruv/contracts';
 import { Check, Search, X } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { searchExercisesAction } from '@/app/admin/training-actions';
 import { Button, cx } from '@/components/ui';
 import { formatClock, parseClock } from '@/lib/training-format';
+import { RowMediaField } from './row-media-field';
 
 export type AssignmentValues = {
   exerciseId: string;
@@ -22,6 +24,8 @@ export type AssignmentValues = {
   weightUnit: 'KG' | null;
   prescriptionText: string | null;
   instructionsOverride: string | null;
+  /** Sprint 7: this client's own video/image (null = the library medium); absent = unchanged. */
+  mediaAssetId?: string | null;
 };
 
 type Fields = {
@@ -58,6 +62,7 @@ const intOrNull = (value: string) => (value.trim() === '' ? null : Number(value.
 export function toAssignmentValues(
   exerciseId: string | null,
   fields: Fields,
+  media?: ExerciseMedia | null,
 ): { values?: AssignmentValues; errors: Record<string, string> } {
   const errors: Record<string, string> = {};
   if (!exerciseId) errors.exercise = 'Bitte eine Übung auswählen.';
@@ -81,6 +86,7 @@ export function toAssignmentValues(
     prescriptionText: fields.prescriptionText.trim() === '' ? null : fields.prescriptionText,
     instructionsOverride:
       fields.instructionsOverride.trim() === '' ? null : fields.instructionsOverride,
+    ...(media === undefined ? {} : { mediaAssetId: media?.assetId ?? null }),
   };
   const parsed = createAssignmentRequestSchema.safeParse(candidate);
   if (!parsed.success) {
@@ -127,9 +133,14 @@ export function AssignmentDialog({
   const initial = useMemo(() => fieldsOf(assignment), [assignment]);
   const [fields, setFields] = useState<Fields>(initial);
   const initialExercise = assignment?.exercise ?? preset ?? null;
-  const [exercise, setExercise] = useState<{ id: string; name: string; active: boolean } | null>(
-    initialExercise,
-  );
+  const [exercise, setExercise] = useState<{
+    id: string;
+    name: string;
+    active: boolean;
+    hasMedia?: boolean;
+  } | null>(initialExercise);
+  const initialMedia = assignment?.media ?? null;
+  const [media, setMedia] = useState<ExerciseMedia | null>(initialMedia);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<AdminExercise[] | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -140,7 +151,8 @@ export function AssignmentDialog({
 
   const dirty =
     JSON.stringify(fields) !== JSON.stringify(initial) ||
-    (exercise?.id ?? null) !== (initialExercise?.id ?? null);
+    (exercise?.id ?? null) !== (initialExercise?.id ?? null) ||
+    (media?.assetId ?? null) !== (initialMedia?.assetId ?? null);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -175,7 +187,7 @@ export function AssignmentDialog({
   };
 
   const submit = async () => {
-    const { values, errors: found } = toAssignmentValues(exercise?.id ?? null, fields);
+    const { values, errors: found } = toAssignmentValues(exercise?.id ?? null, fields, media);
     setErrors(found);
     if (!values) {
       setFormError(found.prescription ?? 'Bitte prüfe die markierten Felder.');
@@ -331,7 +343,12 @@ export function AssignmentDialog({
                         type="button"
                         aria-pressed={selected}
                         onClick={() =>
-                          setExercise({ id: item.id, name: item.name, active: item.active })
+                          setExercise({
+                            id: item.id,
+                            name: item.name,
+                            active: item.active,
+                            hasMedia: Boolean(item.media),
+                          })
                         }
                         className={cx(
                           'type-body-sm flex min-h-12 w-full items-center justify-between gap-3 rounded-xs border px-3 text-left',
@@ -395,6 +412,16 @@ export function AssignmentDialog({
                   Optional – sonst gilt die Beschreibung der Übung.
                 </p>
               </div>
+              {exercise && (
+                <RowMediaField
+                  exerciseName={exercise.name}
+                  media={media}
+                  libraryHasMedia={exercise.hasMedia ?? false}
+                  disabled={pending}
+                  error={errors.mediaAssetId}
+                  onChange={setMedia}
+                />
+              )}
             </section>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border-subtle px-4 py-3 md:px-6">

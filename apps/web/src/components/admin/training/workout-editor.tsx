@@ -5,6 +5,7 @@ import {
   updateClientWorkoutRequestSchema,
   type AdminExercise,
   type ClientWorkout,
+  type ExerciseMedia,
   type WorkoutSection,
   type WorkoutTemplate,
 } from '@vitruv/contracts';
@@ -33,6 +34,7 @@ import {
   parseClock,
   workoutExerciseSummary,
 } from '@/lib/training-format';
+import { RowMediaField } from './row-media-field';
 
 /**
  * One editor for both targets — clearly separated by the header and a coloured notice:
@@ -51,6 +53,8 @@ type ExerciseRow = {
   exerciseId: string;
   name: string;
   hasMedia: boolean;
+  /** Sprint 7: this row's own video/image (null = the library medium applies). */
+  media: ExerciseMedia | null;
   active: boolean;
   executionType: TrainingExecutionType | null;
   sets: string;
@@ -88,6 +92,7 @@ function rowsOf(sections: WorkoutSection[]): SectionRow[] {
       exerciseId: e.exercise.id,
       name: e.exercise.name,
       hasMedia: e.exercise.hasMedia,
+      media: e.media ?? null,
       active: e.exercise.active,
       executionType: e.executionType,
       sets: str(e.sets),
@@ -127,6 +132,7 @@ function payloadOf(row: ExerciseRow, withIds: boolean) {
     exerciseId: row.exerciseId,
     executionType: row.executionType,
     instructionsOverride: textOrNull(row.instructions),
+    mediaAssetId: row.media?.assetId ?? null,
   };
   switch (row.executionType) {
     case 'STRENGTH':
@@ -259,6 +265,7 @@ export function WorkoutEditor({
               exerciseId: exercise.id,
               name: exercise.name,
               hasMedia: Boolean(exercise.media),
+              media: null,
               active: exercise.active,
               executionType: type,
               sets: type === 'STRENGTH' ? (warm ? '1' : '3') : '',
@@ -581,7 +588,7 @@ export function WorkoutEditor({
                               })}
                             </span>
                           </span>
-                          {row.hasMedia && (
+                          {(row.media !== null || row.hasMedia) && (
                             <Badge tone="accent">
                               <Video aria-hidden className="size-3" />
                               Video
@@ -793,6 +800,14 @@ export function WorkoutEditor({
                             />
                           )}
                         </fieldset>
+                        <RowMediaField
+                          exerciseName={row.name}
+                          media={row.media}
+                          libraryHasMedia={row.hasMedia}
+                          disabled={readOnly || pending}
+                          error={fieldError(si, ei, 'mediaAssetId')}
+                          onChange={(media) => updateRow(section.key, row.key, { media })}
+                        />
                       </li>
                     ))}
                   </ol>
