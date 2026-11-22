@@ -15,7 +15,12 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { timestamps } from './columns';
-import { trainingProgramStatus, trainingSectionType, weightUnit } from './enums';
+import {
+  trainingExecutionType,
+  trainingProgramStatus,
+  trainingSectionType,
+  weightUnit,
+} from './enums';
 import { mediaAssets } from './media-assets';
 import { users } from './users';
 
@@ -175,6 +180,12 @@ export const trainingDays = pgTable(
     notes: text('notes'),
     /** Optional planning hint (ISO weekday 1 = Monday … 7 = Sunday); no calendar is forced. */
     scheduledWeekday: smallint('scheduled_weekday'),
+    /**
+     * Sprint 2 lineage: the workout template this day was COPIED from (informational, no FK —
+     * the copy is independent; changing or deleting the template never touches this day).
+     */
+    sourceTemplateId: uuid('source_template_id'),
+    sourceTemplateVersion: integer('source_template_version'),
     ...timestamps,
   },
   (table) => [
@@ -240,9 +251,20 @@ export const trainingExerciseAssignments = pgTable(
     weightUnit: weightUnit('weight_unit'),
     prescriptionText: text('prescription_text'),
     instructionsOverride: text('instructions_override'),
+    /**
+     * Sprint 2: explicit workout type (STRENGTH / TOTAL_REPS / INTERVAL / CHECKLIST).
+     * NULL = rows written before Sprint 2 — their mode is derived from the fields as before.
+     */
+    executionType: trainingExecutionType('execution_type'),
+    /** Sprint 2: Strength "MAX" — as many reps as possible per set (then `reps` is null). */
+    repsMax: boolean('reps_max').notNull().default(false),
     ...timestamps,
   },
   (table) => [
+    check(
+      'training_assignments_reps_max_without_reps',
+      sql`not ${table.repsMax} or ${table.reps} is null`,
+    ),
     unique('training_assignments_order_unique').on(table.sectionId, table.sortOrder),
     index('training_assignments_exercise_idx').on(table.exerciseId),
     check('training_assignments_order_nonnegative', sql`${table.sortOrder} >= 0`),

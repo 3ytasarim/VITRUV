@@ -25,14 +25,25 @@ enum ExecutionMode {
   setsReps,
   totalReps,
   duration,
-  custom;
+  custom,
 
+  /// Sprint 2 (API): Core interval — rounds × work/rest. The dedicated UI is a later sprint;
+  /// until then it is shown like [custom] (tick off), never as an error.
+  interval,
+
+  /// Sprint 2 (API): Warm-up checklist item — tick off only.
+  checklist;
+
+  /// Unknown future modes fall back to [custom] (mark done) instead of failing the whole
+  /// workout — the API may learn new modes before an installed app does.
   static ExecutionMode fromWire(String value) => switch (value) {
     'SETS_REPS' => setsReps,
     'TOTAL_REPS' => totalReps,
     'DURATION' => duration,
     'CUSTOM' => custom,
-    _ => throw const UnknownFailure('Unknown execution mode'),
+    'INTERVAL' => interval,
+    'CHECKLIST' => checklist,
+    _ => custom,
   };
 }
 

@@ -1,6 +1,8 @@
 import type {
   CurrentWorkoutResponse,
   FinishWorkoutResponse,
+  RecordWorkoutSetRequest,
+  RecordWorkoutSetResponse,
   ResolvedMedia,
   StartWorkoutResponse,
   UpdateWorkoutExerciseRequest,
@@ -15,12 +17,25 @@ import type {
   WorkoutSessionSummaryList,
 } from '@vitruv/contracts';
 import { schema, type DbExecutor } from '@vitruv/db';
-import type { WorkoutExerciseStatus } from '@vitruv/shared';
+import {
+  CHECKLIST_PRESCRIPTION_FALLBACK,
+  INTERVAL_DEFAULTS,
+  timerConfigOf,
+  type WorkoutExerciseStatus,
+} from '@vitruv/shared';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Principal } from '../../auth/principal';
 import { AppError } from '../../lib/errors';
 import { clientAccessible } from '../management/management.service';
 import type { TrainingDeps } from '../training/exercises.service';
+import {
+  decideRecordedSet,
+  legacyTotalCarryOver,
+  progressThrough,
+  restAfterRecordedSet,
+  sameRecordedValues,
+  totalRepsExerciseState,
+} from './set-recording';
 
 /**
  * Workout sessions (Sprint 7, docs/WORKOUT-ARCHITECTURE.md).
@@ -83,6 +98,8 @@ function header(session: SessionRow) {
     completedAt: iso(session.completedAt),
     abandonedAt: iso(session.abandonedAt),
     durationSeconds: durationOf(session),
+    sourceTemplateId: session.sourceTemplateId,
+    sourceTemplateVersion: session.sourceTemplateVersion,
   };
 }
 
@@ -131,6 +148,12 @@ function toExerciseDto(
   sets: SetRow[],
   media: ResolvedMedia | null,
 ): WorkoutSessionExercise {
+  const own = sets.filter((set) => set.sessionExerciseId === row.id);
+  // Pre-Sprint-2 TOTAL_REPS records only have the exercise-level total.
+  const legacyTotal =
+    row.actualReps === null
+      ? []
+      : [{ setNumber: 1, clientSetId: null, actualReps: row.actualReps }];
   return {
     id: row.id,
     assignmentId: row.trainingExerciseAssignmentId,
@@ -150,7 +173,13 @@ function toExerciseDto(
       restSeconds: row.restSeconds,
       targetWeight: row.targetWeight,
       weightUnit: row.weightUnit,
-      prescriptionText: row.prescriptionText,
+      // The CHECKLIST compatibility text is storage detail (see CHECKLIST_PRESCRIPTION_FALLBACK).
+      prescriptionText:
+        row.executionMode === 'CHECKLIST' &&
+        row.prescriptionText === CHECKLIST_PRESCRIPTION_FALLBACK
+          ? null
+          : row.prescriptionText,
+      repsMax: row.repsMax,
     },
     executionMode: row.executionMode,
     status: row.status,
@@ -158,8 +187,7 @@ function toExerciseDto(
     actualReps: row.actualReps,
     actualDurationSeconds: row.actualDurationSeconds,
     actualWeight: row.actualWeight,
-    sets: sets
-      .filter((set) => set.sessionExerciseId === row.id)
+    sets: own
       .sort((a, b) => a.setNumber - b.setNumber)
       .map((set) => ({
         setNumber: set.setNumber,
@@ -170,7 +198,14 @@ function toExerciseDto(
         actualWeight: set.actualWeight,
         completed: set.completedAt !== null,
         completedAt: iso(set.completedAt),
+        actualDurationSeconds: set.actualDurationSeconds,
+        clientSetId: set.clientSetId,
       })),
+    timer: timerConfigOf(row),
+    totalReps:
+      row.executionMode === 'TOTAL_REPS' && row.totalReps !== null
+        ? progressThrough(row.totalReps, own.length > 0 ? own : legacyTotal)
+        : null,
     clientNote: row.clientNote,
     clientNoteUpdatedAt: iso(row.clientNoteUpdatedAt),
   };
@@ -384,6 +419,8 @@ export async function startWorkout(
         weekOrder: W.sortOrder,
         programId: P.id,
         programTitle: P.title,
+        sourceTemplateId: D.sourceTemplateId,
+        sourceTemplateVersion: D.sourceTemplateVersion,
       })
       .from(D)
       .innerJoin(W, eq(W.id, D.weekId))
@@ -413,6 +450,8 @@ export async function startWorkout(
           dayTitleSnapshot: day.dayTitle,
           weekOrderSnapshot: day.weekOrder,
           dayOrderSnapshot: day.dayOrder,
+          sourceTemplateId: day.sourceTemplateId,
+          sourceTemplateVersion: day.sourceTemplateVersion,
           startedAt: now,
         })
         .returning(),
@@ -424,7 +463,7 @@ export async function startWorkout(
         section_type, section_title_snapshot, section_order,
         exercise_name_snapshot, instructions_snapshot,
         sets, reps, total_reps, duration_seconds, rest_seconds, target_weight, weight_unit,
-        prescription_text, execution_mode
+        prescription_text, execution_mode, reps_max
       )
       select ${session.id}, a.id, e.id,
         (row_number() over (order by s.sort_order, a.sort_order)) - 1,
@@ -433,10 +472,16 @@ export async function startWorkout(
         a.sets, a.reps, a.total_reps, a.duration_seconds, a.rest_seconds, a.target_weight, a.weight_unit,
         a.prescription_text,
         (case
-          when a.sets is not null or a.reps is not null then 'SETS_REPS'
+          -- Sprint 2: an explicit type wins; NULL (every pre-Sprint-2 row) keeps the old rule.
+          when a.execution_type = 'STRENGTH' then 'SETS_REPS'
+          when a.execution_type = 'TOTAL_REPS' then 'TOTAL_REPS'
+          when a.execution_type = 'INTERVAL' then 'INTERVAL'
+          when a.execution_type = 'CHECKLIST' then 'CHECKLIST'
+          when a.sets is not null or a.reps is not null or a.reps_max then 'SETS_REPS'
           when a.total_reps is not null then 'TOTAL_REPS'
           when a.duration_seconds is not null then 'DURATION'
-          else 'CUSTOM' end)::workout_execution_mode
+          else 'CUSTOM' end)::workout_execution_mode,
+        a.reps_max
       from ${A} a
       join ${S} s on s.id = a.section_id
       join ${E} e on e.id = a.exercise_id
@@ -450,6 +495,13 @@ export async function startWorkout(
       select we.id, n, we.reps, we.duration_seconds, we.target_weight
       from ${WE} we, generate_series(1, coalesce(we.sets, 1)) as n
       where we.session_id = ${session.id} and we.execution_mode = 'SETS_REPS'
+    `);
+    // Sprint 2: one planned row per interval round (target = work seconds).
+    await tx.execute(sql`
+      insert into ${WSET} (session_exercise_id, set_number, target_duration_seconds)
+      select we.id, n, coalesce(we.duration_seconds, ${INTERVAL_DEFAULTS.workSeconds})
+      from ${WE} we, generate_series(1, coalesce(we.sets, ${INTERVAL_DEFAULTS.rounds})) as n
+      where we.session_id = ${session.id} and we.execution_mode = 'INTERVAL'
     `);
     return { session: await loadSession(deps, tx, session), resumed: false };
   });
@@ -512,6 +564,25 @@ export async function updateWorkoutExercise(
     ) {
       throw AppError.badRequest('Wiederholungen werden bei Satz-Übungen pro Satz erfasst.');
     }
+    // Sprint 2: Warm-up is only ticked off; interval rounds are recorded per round.
+    if (
+      (exercise.executionMode === 'CHECKLIST' || exercise.executionMode === 'INTERVAL') &&
+      (input.actualReps !== undefined ||
+        input.actualDurationSeconds !== undefined ||
+        input.actualWeight !== undefined)
+    ) {
+      throw AppError.badRequest('Für diese Übung werden keine Werte erfasst — nur abhaken.');
+    }
+    if (exercise.executionMode === 'TOTAL_REPS' && input.actualReps !== undefined) {
+      const [recorded] = await tx
+        .select({ id: WSET.id })
+        .from(WSET)
+        .where(eq(WSET.sessionExerciseId, exercise.id))
+        .limit(1);
+      if (recorded) {
+        throw AppError.badRequest('Wiederholungen werden bei dieser Übung pro Satz erfasst.');
+      }
+    }
     const now = nowOf(deps);
     const updated = one(
       await tx
@@ -555,14 +626,27 @@ export async function updateWorkoutSet(
         ...(input.completed !== undefined ? { completedAt: input.completed ? now : null } : {}),
         ...(input.actualReps !== undefined ? { actualReps: input.actualReps } : {}),
         ...(input.actualWeight !== undefined ? { actualWeight: input.actualWeight } : {}),
+        ...(input.actualDurationSeconds !== undefined
+          ? { actualDurationSeconds: input.actualDurationSeconds }
+          : {}),
       })
       .where(and(eq(WSET.sessionExerciseId, exercise.id), eq(WSET.setNumber, setNumber)))
       .returning();
     if (!set) throw notFound();
     const sets = await tx
-      .select({ completedAt: WSET.completedAt })
+      .select({
+        setNumber: WSET.setNumber,
+        clientSetId: WSET.clientSetId,
+        actualReps: WSET.actualReps,
+        completedAt: WSET.completedAt,
+      })
       .from(WSET)
       .where(eq(WSET.sessionExerciseId, exercise.id));
+    if (exercise.executionMode === 'TOTAL_REPS') {
+      // Correcting the reps of a recorded set re-evaluates the total (Sprint 2).
+      const state = totalRepsExerciseState(exercise, sets);
+      return focused(deps, tx, session, await syncExercise(deps, tx, exercise, state));
+    }
     const done = sets.filter((row) => row.completedAt !== null).length;
     const status: WorkoutExerciseStatus =
       done === sets.length
@@ -581,6 +665,130 @@ export async function updateWorkoutSet(
       );
     }
     return focused(deps, tx, session, row);
+  });
+}
+
+/** Writes status / completedAt / actualReps when they differ from the stored exercise. */
+async function syncExercise(
+  deps: TrainingDeps,
+  tx: DbExecutor,
+  exercise: ExerciseRow,
+  state: { status: WorkoutExerciseStatus; actualReps: number },
+): Promise<ExerciseRow> {
+  if (state.status === exercise.status && state.actualReps === exercise.actualReps) return exercise;
+  return one(
+    await tx
+      .update(WE)
+      .set({
+        status: state.status,
+        completedAt: state.status === 'COMPLETED' ? (exercise.completedAt ?? nowOf(deps)) : null,
+        actualReps: state.actualReps,
+      })
+      .where(eq(WE.id, exercise.id))
+      .returning(),
+  );
+}
+
+/**
+ * Sprint 2 — append one recorded set to a TOTAL_REPS exercise (e.g. 60 Klimmzüge: 12, 10, 9 …).
+ *
+ * IDEMPOTENT: `clientSetId` is the app's key for this set. The same key again (network retry,
+ * double tap, a device replaying its offline queue) returns the stored set with `created: false`
+ * and changes nothing. The same key with OTHER values is refused (409) — never merged (2.5).
+ * A pre-Sprint-2 exercise-level total is carried over as set 1 first, so it is never lost (2.5). Concurrency: the session row is locked FOR UPDATE first, so writes of one
+ * session run one after another; the partial unique index (session_exercise_id, client_set_id)
+ * with ON CONFLICT DO NOTHING is the last line should two inserts ever race.
+ * The exercise completes itself once the total is reached; `restSeconds` is null then (no rest
+ * after the final set). Only the own IN_PROGRESS session is writable (else 404 / 409).
+ */
+export async function recordWorkoutSet(
+  deps: TrainingDeps,
+  actor: Principal,
+  sessionId: string,
+  exerciseId: string,
+  input: RecordWorkoutSetRequest,
+): Promise<RecordWorkoutSetResponse> {
+  return deps.db.transaction(async (tx) => {
+    const session = await ownRunningSession(tx, actor, sessionId);
+    const exercise = await sessionExercise(tx, session.id, exerciseId);
+    const stored = await tx.select().from(WSET).where(eq(WSET.sessionExerciseId, exercise.id));
+    const carryOver = legacyTotalCarryOver(exercise, stored);
+    if (carryOver !== null) {
+      // Pre-Sprint-2 total (exercise-level only) becomes set 1 — rolled back with the rest of
+      // this transaction if the request is refused below.
+      stored.push(
+        one(
+          await tx
+            .insert(WSET)
+            .values({
+              sessionExerciseId: exercise.id,
+              setNumber: 1,
+              actualReps: carryOver,
+              actualWeight: exercise.actualWeight,
+              completedAt: exercise.completedAt ?? nowOf(deps),
+            })
+            .returning(),
+        ),
+      );
+    }
+    const decision = decideRecordedSet(exercise, stored, input.clientSetId);
+    if (decision.kind === 'reject') {
+      throw AppError.conflict(
+        decision.reason === 'NOT_TOTAL_REPS'
+          ? 'Bei dieser Übung werden die geplanten Sätze einzeln abgehakt.'
+          : decision.reason === 'TARGET_REACHED'
+            ? 'Das Wiederholungsziel ist bereits erreicht.'
+            : 'Zu viele Sätze für diese Übung.',
+      );
+    }
+    let set: SetRow;
+    let created = false;
+    if (decision.kind === 'replay') {
+      set = decision.set;
+    } else {
+      const [inserted] = await tx
+        .insert(WSET)
+        .values({
+          sessionExerciseId: exercise.id,
+          setNumber: decision.setNumber,
+          clientSetId: input.clientSetId,
+          actualReps: input.actualReps,
+          actualWeight: input.actualWeight ?? null,
+          completedAt: nowOf(deps),
+          clientRecordedAt: input.recordedAt ? new Date(input.recordedAt) : null,
+        })
+        .onConflictDoNothing()
+        .returning();
+      if (inserted) {
+        set = inserted;
+        created = true;
+      } else {
+        // Lost a race against an identical retry: answer with what the winner stored.
+        const [winner] = await tx
+          .select()
+          .from(WSET)
+          .where(
+            and(eq(WSET.sessionExerciseId, exercise.id), eq(WSET.clientSetId, input.clientSetId)),
+          )
+          .limit(1);
+        if (!winner) throw AppError.conflict('Der Satz konnte nicht gespeichert werden.');
+        set = winner;
+      }
+    }
+    if (!created && !sameRecordedValues(set, input)) {
+      throw AppError.conflict('Diese Satz-ID wurde bereits für andere Werte verwendet.');
+    }
+    const all = created ? [...stored, set] : stored;
+    const row = await syncExercise(deps, tx, exercise, totalRepsExerciseState(exercise, all));
+    const focus = await focused(deps, tx, session, row);
+    const dto = toExerciseDto(row, [set], null).sets[0];
+    if (!dto) throw new Error('recorded set missing');
+    return {
+      ...focus,
+      set: dto,
+      created,
+      restSeconds: restAfterRecordedSet(row, all, set.setNumber),
+    };
   });
 }
 

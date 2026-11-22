@@ -12,6 +12,9 @@ const DESTRUCTIVE_PATTERNS: ReadonlyArray<{ label: string; pattern: RegExp }> = 
   { label: 'DELETE FROM', pattern: /\bdelete\s+from\b/i },
   { label: 'RENAME', pattern: /\balter\s+table\b[^;]*\brename\b/i },
   { label: 'ALTER COLUMN TYPE', pattern: /\balter\s+column\b[^;]*\b(set\s+data\s+)?type\b/i },
+  // Sprint 2: removing/relaxing a constraint or index changes what production accepts.
+  { label: 'DROP CONSTRAINT', pattern: /\bdrop\s+constraint\b/i },
+  { label: 'DROP INDEX', pattern: /\bdrop\s+index\b/i },
 ];
 
 function stripSqlComments(sqlText: string): string {

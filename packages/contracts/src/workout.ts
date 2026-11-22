@@ -1,8 +1,10 @@
 import {
   WORKOUT_ACTUAL_LIMITS,
+  WORKOUT_DAY_STATUSES,
   WORKOUT_EXECUTION_MODES,
   WORKOUT_EXERCISE_STATUSES,
   WORKOUT_SESSION_STATUSES,
+  WORKOUT_TIMER_MODES,
 } from '@vitruv/shared';
 import { z } from 'zod';
 import { resolvedMediaSchema } from './cms/media';
@@ -19,6 +21,9 @@ import { trainingSectionTypeSchema, weightUnitSchema } from './training';
 export const workoutSessionStatusSchema = z.enum(WORKOUT_SESSION_STATUSES);
 export const workoutExecutionModeSchema = z.enum(WORKOUT_EXECUTION_MODES);
 export const workoutExerciseStatusSchema = z.enum(WORKOUT_EXERCISE_STATUSES);
+/** Sprint 2: derived day status for the client's plan (NOT_STARTED is never stored). */
+export const workoutDayStatusSchema = z.enum(WORKOUT_DAY_STATUSES);
+export const workoutTimerModeSchema = z.enum(WORKOUT_TIMER_MODES);
 
 const actualReps = z.number().int().min(0).max(WORKOUT_ACTUAL_LIMITS.reps).nullable();
 const actualDuration = z
@@ -56,15 +61,31 @@ export const updateWorkoutExerciseRequestSchema = z
   .refine(atLeastOne, 'Keine Änderung angegeben.');
 export type UpdateWorkoutExerciseRequest = z.infer<typeof updateWorkoutExerciseRequestSchema>;
 
-/** Set-level record (SETS_REPS exercises only). */
+/** Set-level record of a planned set (SETS_REPS sets, INTERVAL rounds). */
 export const updateWorkoutSetRequestSchema = z
   .strictObject({
     completed: z.boolean().optional(),
     actualReps: actualReps.optional(),
     actualWeight: actualWeight.optional(),
+    /** Sprint 2: seconds actually worked (interval round). */
+    actualDurationSeconds: actualDuration.optional(),
   })
   .refine(atLeastOne, 'Keine Änderung angegeben.');
 export type UpdateWorkoutSetRequest = z.infer<typeof updateWorkoutSetRequestSchema>;
+
+/**
+ * Sprint 2 — POST …/exercises/:exerciseId/sets: append one recorded set to a TOTAL_REPS exercise.
+ * `clientSetId` is generated once per set by the app (UUID) and re-sent unchanged on every retry:
+ * the same id never creates a second row (idempotent, also under concurrent retries).
+ */
+export const recordWorkoutSetRequestSchema = z.strictObject({
+  clientSetId: z.uuid(),
+  actualReps: z.number().int().min(1).max(WORKOUT_ACTUAL_LIMITS.reps),
+  actualWeight: actualWeight.optional(),
+  /** Device time of the record (informational; the server keeps its own completedAt). */
+  recordedAt: z.iso.datetime({ offset: true }).optional(),
+});
+export type RecordWorkoutSetRequest = z.infer<typeof recordWorkoutSetRequestSchema>;
 
 /** Longest client note (per exercise and per session) — mirrors the database check. */
 export const WORKOUT_NOTE_MAX_LENGTH = 2000;
@@ -101,8 +122,32 @@ export const workoutTargetSchema = z.object({
   targetWeight: z.number().nullable(),
   weightUnit: weightUnitSchema.nullable(),
   prescriptionText: z.string().nullable(),
+  /** Sprint 2 (additive): Strength MAX target. */
+  repsMax: z.boolean().optional(),
 });
 export type WorkoutTarget = z.infer<typeof workoutTargetSchema>;
+
+/** Sprint 2: timer CONFIGURATION (the app runs the clock; see @vitruv/shared workout-engine). */
+export const workoutTimerConfigSchema = z.object({
+  mode: workoutTimerModeSchema,
+  restSeconds: z.number().int().min(0).nullable(),
+  interval: z
+    .object({
+      rounds: z.number().int().min(1),
+      workSeconds: z.number().int().min(1),
+      restSeconds: z.number().int().min(0),
+    })
+    .nullable(),
+});
+export type WorkoutTimerConfigDto = z.infer<typeof workoutTimerConfigSchema>;
+
+export const totalRepsProgressSchema = z.object({
+  target: z.number().int().min(1),
+  done: z.number().int().min(0),
+  remaining: z.number().int().min(0),
+  reached: z.boolean(),
+  setCount: z.number().int().min(0),
+});
 
 export const workoutSetSchema = z.object({
   setNumber: z.number().int().min(1),
@@ -113,6 +158,9 @@ export const workoutSetSchema = z.object({
   actualWeight: z.number().nullable(),
   completed: z.boolean(),
   completedAt: z.iso.datetime().nullable(),
+  /** Sprint 2 (additive). */
+  actualDurationSeconds: z.number().int().nullable().optional(),
+  clientSetId: z.uuid().nullable().optional(),
 });
 export type WorkoutSet = z.infer<typeof workoutSetSchema>;
 
@@ -136,8 +184,15 @@ export const workoutSessionExerciseSchema = z.object({
   actualReps: z.number().int().nullable(),
   actualDurationSeconds: z.number().int().nullable(),
   actualWeight: z.number().nullable(),
-  /** One row per set for SETS_REPS; empty for the other modes. */
+  /**
+   * SETS_REPS: one row per planned set · INTERVAL: one row per round · TOTAL_REPS: one row per
+   * recorded set (grows) · other modes: empty.
+   */
   sets: z.array(workoutSetSchema),
+  /** Sprint 2 (additive): timer configuration of this exercise. */
+  timer: workoutTimerConfigSchema.optional(),
+  /** Sprint 2 (additive): TOTAL_REPS only — done / remaining computed from the recorded sets. */
+  totalReps: totalRepsProgressSchema.nullable().optional(),
   /** The client's note under this exercise (null when none). */
   clientNote: z.string().nullable(),
   clientNoteUpdatedAt: z.iso.datetime().nullable(),
@@ -167,6 +222,9 @@ const sessionHeader = {
   abandonedAt: z.iso.datetime().nullable(),
   /** End − start in seconds; null while IN_PROGRESS. */
   durationSeconds: z.number().int().min(0).nullable(),
+  /** Sprint 2 (additive) lineage snapshot: template the day was copied from. */
+  sourceTemplateId: z.uuid().nullable().optional(),
+  sourceTemplateVersion: z.number().int().min(1).nullable().optional(),
 };
 
 export const workoutSessionSchema = z.object({
@@ -197,6 +255,18 @@ export const workoutExecutionUpdateResponseSchema = z.object({
   progress: workoutProgressSchema,
 });
 export type WorkoutExecutionUpdateResponse = z.infer<typeof workoutExecutionUpdateResponseSchema>;
+
+/**
+ * Sprint 2 answer to POST …/sets. `created: false` = this clientSetId was already stored (retry);
+ * the stored set is returned unchanged. `restSeconds`: rest to start now, null = no rest (e.g. the
+ * total was reached with this set).
+ */
+export const recordWorkoutSetResponseSchema = workoutExecutionUpdateResponseSchema.extend({
+  set: workoutSetSchema,
+  created: z.boolean(),
+  restSeconds: z.number().int().min(0).nullable(),
+});
+export type RecordWorkoutSetResponse = z.infer<typeof recordWorkoutSetResponseSchema>;
 
 /** History row (client) and coach/admin summary — no execution details. */
 export const workoutSessionSummarySchema = z.object({

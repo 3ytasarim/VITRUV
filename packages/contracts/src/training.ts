@@ -1,8 +1,10 @@
 import {
   PRESCRIPTION_LIMITS,
+  TRAINING_EXECUTION_TYPES,
   TRAINING_PROGRAM_STATUSES,
   TRAINING_SECTION_TYPES,
   WEIGHT_UNITS,
+  WORKOUT_DAY_STATUSES,
 } from '@vitruv/shared';
 import { z } from 'zod';
 import { resolvedMediaSchema } from './cms/media';
@@ -59,6 +61,8 @@ const int = (min: number, max: number, label: string) =>
 export const trainingProgramStatusSchema = z.enum(TRAINING_PROGRAM_STATUSES);
 export const trainingSectionTypeSchema = z.enum(TRAINING_SECTION_TYPES);
 export const weightUnitSchema = z.enum(WEIGHT_UNITS);
+/** Sprint 2: STRENGTH / TOTAL_REPS / INTERVAL / CHECKLIST (null = legacy, derived from fields). */
+export const trainingExecutionTypeSchema = z.enum(TRAINING_EXECUTION_TYPES);
 
 // ---------------------------------------------------------------- exercise library
 
@@ -180,6 +184,10 @@ export const prescriptionShape = {
   weightUnit: weightUnitSchema.nullable().optional(),
   prescriptionText: optionalLine(200).nullable().optional(),
   instructionsOverride: longText(2000).nullable().optional(),
+  /** Sprint 2 (optional; omitted = unchanged / legacy behaviour). */
+  executionType: trainingExecutionTypeSchema.nullable().optional(),
+  /** Sprint 2: Strength MAX ("so viele wie möglich") — then `reps` stays empty. */
+  repsMax: z.boolean().optional(),
 };
 
 type PrescriptionValues = {
@@ -190,18 +198,72 @@ type PrescriptionValues = {
   prescriptionText?: string | null;
   targetWeight?: number | null;
   weightUnit?: string | null;
+  restSeconds?: number | null;
+  executionType?: (typeof TRAINING_EXECUTION_TYPES)[number] | null;
+  repsMax?: boolean;
 };
+
+const given = (value: unknown) => value !== null && value !== undefined;
+
+/**
+ * Sprint 2 rules per workout type. INTERVAL values may be left empty (the API stores the default
+ * 5 × 40 s / 20 s); CHECKLIST carries no numbers at all (the Warm-up is only ticked off).
+ */
+function executionTypeIssues(value: PrescriptionValues): { path: string; message: string }[] {
+  const issues: { path: string; message: string }[] = [];
+  const forbid = (keys: (keyof PrescriptionValues)[], message: string) => {
+    for (const key of keys) if (given(value[key])) issues.push({ path: key, message });
+  };
+  if (value.repsMax && given(value.reps)) {
+    issues.push({ path: 'reps', message: 'Bei MAX keine Wiederholungszahl angeben.' });
+  }
+  if (value.repsMax && !given(value.sets) && value.executionType !== 'STRENGTH') {
+    issues.push({ path: 'sets', message: 'Bei MAX bitte die Anzahl der Sätze angeben.' });
+  }
+  switch (value.executionType) {
+    case 'STRENGTH':
+      if (!given(value.sets)) issues.push({ path: 'sets', message: 'Bitte Sätze angeben.' });
+      if (!given(value.reps) && !value.repsMax) {
+        issues.push({ path: 'reps', message: 'Bitte Wiederholungen oder MAX angeben.' });
+      }
+      forbid(['totalReps'], 'Bei Kraftübungen keine Gesamtwiederholungen.');
+      break;
+    case 'TOTAL_REPS':
+      if (!given(value.totalReps)) {
+        issues.push({ path: 'totalReps', message: 'Bitte Gesamtwiederholungen angeben.' });
+      }
+      forbid(['sets', 'reps'], 'Sätze ergeben sich aus den erfassten Wiederholungen.');
+      if (value.repsMax)
+        issues.push({ path: 'repsMax', message: 'MAX gilt nur für Kraftübungen.' });
+      break;
+    case 'INTERVAL':
+      forbid(['reps', 'totalReps'], 'Intervalle haben keine Wiederholungsvorgabe.');
+      if (value.repsMax)
+        issues.push({ path: 'repsMax', message: 'MAX gilt nur für Kraftübungen.' });
+      break;
+    case 'CHECKLIST':
+      forbid(
+        ['sets', 'reps', 'totalReps', 'durationSeconds', 'restSeconds'],
+        'Warm-up wird nur abgehakt — keine Zahlen, kein Timer, keine Pause.',
+      );
+      if (value.repsMax)
+        issues.push({ path: 'repsMax', message: 'MAX gilt nur für Kraftübungen.' });
+      break;
+    default:
+      break;
+  }
+  return issues;
+}
 
 /** Cross-field rules shared by create and (merged) update. */
 export function prescriptionIssues(value: PrescriptionValues): { path: string; message: string }[] {
-  const issues: { path: string; message: string }[] = [];
-  const meaningful = [
-    value.sets,
-    value.reps,
-    value.totalReps,
-    value.durationSeconds,
-    value.prescriptionText,
-  ].some((field) => field !== null && field !== undefined);
+  const issues = executionTypeIssues(value);
+  const meaningful =
+    value.executionType === 'INTERVAL' ||
+    value.executionType === 'CHECKLIST' ||
+    [value.sets, value.reps, value.totalReps, value.durationSeconds, value.prescriptionText].some(
+      given,
+    );
   if (!meaningful) {
     issues.push({
       path: 'prescription',
@@ -315,6 +377,9 @@ export const adminAssignmentSchema = z.object({
   weightUnit: weightUnitSchema.nullable(),
   prescriptionText: z.string().nullable(),
   instructionsOverride: z.string().nullable(),
+  /** Sprint 2 (additive): explicit type, null for legacy rows. */
+  executionType: trainingExecutionTypeSchema.nullable().optional(),
+  repsMax: z.boolean().optional(),
 });
 export type AdminAssignment = z.infer<typeof adminAssignmentSchema>;
 
@@ -390,6 +455,9 @@ export const clientTrainingExerciseSchema = z.object({
   prescriptionText: z.string().nullable(),
   /** Assignment-specific instructions, falling back to the exercise's default description. */
   instructions: z.string().nullable(),
+  /** Sprint 2 (additive): explicit type, null for legacy rows. */
+  executionType: trainingExecutionTypeSchema.nullable().optional(),
+  repsMax: z.boolean().optional(),
 });
 export type ClientTrainingExercise = z.infer<typeof clientTrainingExerciseSchema>;
 
@@ -414,6 +482,8 @@ export const clientTrainingProgramSchema = z.object({
           title: z.string(),
           notes: z.string().nullable(),
           scheduledWeekday: z.number().int().nullable(),
+          /** Sprint 2 (additive): NOT_STARTED / IN_PROGRESS / COMPLETED from the own sessions. */
+          workoutStatus: z.enum(WORKOUT_DAY_STATUSES).optional(),
           sections: z.array(
             z.object({
               id: z.uuid(),

@@ -9,3 +9,4 @@ export * from './training';
 export * from './workouts';
 export * from './nutrition';
 export * from './welcome';
+export * from './templates';

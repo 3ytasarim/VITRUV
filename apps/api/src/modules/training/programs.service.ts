@@ -8,13 +8,19 @@ import type {
 } from '@vitruv/contracts';
 import { prescriptionIssues } from '@vitruv/contracts';
 import { schema, type DbExecutor } from '@vitruv/db';
-import type { TrainingSectionType } from '@vitruv/shared';
+import {
+  CHECKLIST_PRESCRIPTION_FALLBACK,
+  workoutDayStatus,
+  type TrainingExecutionType,
+  type TrainingSectionType,
+} from '@vitruv/shared';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Principal } from '../../auth/principal';
 import { AppError, pgErrorCode } from '../../lib/errors';
 import { recordEvent } from '../auth/auth.service';
 import { clientAccessible } from '../management/management.service';
 import type { TrainingDeps } from './exercises.service';
+import { storagePrescription, type PrescriptionInput } from './prescription-storage';
 import { nextPosition, normalize, placeAfter, reorder, type Level } from './ordering';
 
 /**
@@ -34,6 +40,7 @@ const {
   trainingExerciseAssignments: A,
   exercises: E,
   mediaAssets: M,
+  workoutSessions: WS,
   users,
 } = schema;
 
@@ -189,6 +196,8 @@ function toAdminAssignment(row: Tree['assignments'][number]): AdminAssignment {
     weightUnit: a.weightUnit,
     prescriptionText: a.prescriptionText,
     instructionsOverride: a.instructionsOverride,
+    executionType: a.executionType,
+    repsMax: a.repsMax,
   };
 }
 
@@ -260,6 +269,7 @@ async function toClientProgram(
   db: DbExecutor,
   program: ProgramRow,
   tree: Tree,
+  dayStatuses?: Map<string, { status: 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED' }[]>,
 ): Promise<ClientTrainingProgram> {
   const mediaIds = [
     ...new Set(
@@ -318,6 +328,7 @@ async function toClientProgram(
         title: day.title,
         notes: day.notes,
         scheduledWeekday: day.scheduledWeekday,
+        workoutStatus: workoutDayStatus(dayStatuses?.get(day.id) ?? []),
         sections: day.sections.map((section) => ({
           id: section.id,
           order: section.order,
@@ -340,14 +351,21 @@ async function toClientProgram(
               restSeconds: a.restSeconds,
               targetWeight: a.targetWeight,
               weightUnit: a.weightUnit,
-              prescriptionText: a.prescriptionText,
+              prescriptionText: visiblePrescription(a.executionType, a.prescriptionText),
               instructions: a.instructionsOverride ?? exercise?.description ?? null,
+              executionType: a.executionType ?? null,
+              repsMax: a.repsMax ?? false,
             };
           }),
         })),
       })),
     })),
   };
+}
+
+/** The CHECKLIST compatibility text is storage detail — the client sees no prescription. */
+function visiblePrescription(type: TrainingExecutionType | null | undefined, text: string | null) {
+  return type === 'CHECKLIST' && text === CHECKLIST_PRESCRIPTION_FALLBACK ? null : text;
 }
 
 /** Consistent snapshot for multi-query reads (never a half-applied change). */
@@ -904,17 +922,6 @@ export async function reorderSections(
 // Exercise assignments
 // ---------------------------------------------------------------------------------------------
 
-type PrescriptionInput = {
-  sets?: number | null;
-  reps?: number | null;
-  totalReps?: number | null;
-  durationSeconds?: number | null;
-  restSeconds?: number | null;
-  targetWeight?: number | null;
-  weightUnit?: 'KG' | null;
-  prescriptionText?: string | null;
-  instructionsOverride?: string | null;
-};
 const PRESCRIPTION_KEYS = [
   'sets',
   'reps',
@@ -925,6 +932,8 @@ const PRESCRIPTION_KEYS = [
   'weightUnit',
   'prescriptionText',
   'instructionsOverride',
+  'executionType',
+  'repsMax',
 ] as const;
 
 /** Only ACTIVE exercises can be newly assigned (inactive ones stay valid where already used). */
@@ -955,11 +964,13 @@ export async function addAssignment(
   const { programId } = await programOf(deps.db, actor, 'section', sectionId);
   await requireAssignableExercise(deps.db, input.exerciseId);
   return mutate(deps, actor, programId, async (tx) => {
+    const prescription = pickPrescription(input);
     await tx.insert(A).values({
       sectionId,
       exerciseId: input.exerciseId,
       sortOrder: await nextPosition(tx, 'assignment', sectionId),
-      ...pickPrescription(input),
+      ...prescription,
+      ...storagePrescription(prescription),
     });
   });
 }
@@ -983,7 +994,11 @@ export async function updateAssignment(
     if (issues.length > 0) throw AppError.validation(issues);
     await tx
       .update(A)
-      .set({ ...(input.exerciseId ? { exerciseId: input.exerciseId } : {}), ...patch })
+      .set({
+        ...(input.exerciseId ? { exerciseId: input.exerciseId } : {}),
+        ...patch,
+        ...storagePrescription(merged),
+      })
       .where(and(eq(A.id, assignmentId), eq(A.sectionId, parentId)));
   });
 }
@@ -1031,6 +1046,23 @@ export async function clientActiveProgram(
       .where(and(eq(P.clientUserId, actor.userId), eq(P.status, 'ACTIVE')))
       .limit(1);
     if (!program) return { program: null };
-    return { program: await toClientProgram(deps, tx, program, await loadTree(tx, program.id)) };
+    // Sprint 2: per-day workout status (NOT_STARTED / IN_PROGRESS / COMPLETED) of the own sessions.
+    const sessions = await tx
+      .select({ dayId: WS.trainingDayId, status: WS.status })
+      .from(WS)
+      .where(and(eq(WS.clientUserId, actor.userId), eq(WS.trainingProgramId, program.id)));
+    const dayStatuses = new Map<string, { status: (typeof sessions)[number]['status'] }[]>();
+    for (const row of sessions) {
+      if (row.dayId) dayStatuses.set(row.dayId, [...(dayStatuses.get(row.dayId) ?? []), row]);
+    }
+    return {
+      program: await toClientProgram(
+        deps,
+        tx,
+        program,
+        await loadTree(tx, program.id),
+        dayStatuses,
+      ),
+    };
   });
 }

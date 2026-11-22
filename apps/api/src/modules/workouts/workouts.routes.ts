@@ -1,4 +1,5 @@
 import {
+  recordWorkoutSetRequestSchema,
   startWorkoutRequestSchema,
   updateWorkoutExerciseRequestSchema,
   updateWorkoutNoteRequestSchema,
@@ -13,11 +14,15 @@ import { AppError, errorBody } from '../../lib/errors';
 import { validate } from '../../lib/validation';
 import type { AppEnv } from '../../types';
 import type { TrainingDeps } from '../training/exercises.service';
+import { WORKOUT_MAX_DYNAMIC_SETS } from './set-recording';
 import * as workouts from './workouts.service';
 
 const sessionParam = z.object({ sessionId: z.uuid() });
 const exerciseParam = sessionParam.extend({ exerciseId: z.uuid() });
-const setParam = exerciseParam.extend({ setNumber: z.coerce.number().int().min(1).max(50) });
+// Sprint 2: dynamic TOTAL_REPS sets can exceed the 50 planned sets (widened, never narrowed).
+const setParam = exerciseParam.extend({
+  setNumber: z.coerce.number().int().min(1).max(WORKOUT_MAX_DYNAMIC_SETS),
+});
 const clientParam = z.object({ clientId: z.uuid() });
 const clientSessionParam = clientParam.extend({ sessionId: z.uuid() });
 
@@ -70,6 +75,24 @@ export function clientWorkoutRoutes(deps: TrainingDeps) {
           c.req.valid('json'),
         ),
       );
+    },
+  );
+  // Sprint 2: append a recorded set (TOTAL_REPS), idempotent by clientSetId.
+  r.post(
+    '/:sessionId/exercises/:exerciseId/sets',
+    self,
+    validate('param', exerciseParam),
+    validate('json', recordWorkoutSetRequestSchema),
+    async (c) => {
+      const { sessionId, exerciseId } = c.req.valid('param');
+      const result = await workouts.recordWorkoutSet(
+        deps,
+        actorOf(c),
+        sessionId,
+        exerciseId,
+        c.req.valid('json'),
+      );
+      return c.json(result, result.created ? 201 : 200);
     },
   );
   r.patch(
