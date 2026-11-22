@@ -80,12 +80,11 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
+  /// [loginId]: e-mail address or username (same account as on the website).
   /// Returns null on success, otherwise the reason to show.
-  Future<LoginError?> login(String email, String password) async {
+  Future<LoginError?> login(String loginId, String password) async {
     try {
-      final result = await ref
-          .read(authApiProvider)
-          .login(email.trim(), password);
+      final result = await ref.read(authApiProvider).login(loginId, password);
       if (!result.user.isClient) {
         // Coaches/admins have no app access: revoke the just-created session right away.
         await _revoke(result.tokens.refreshToken);

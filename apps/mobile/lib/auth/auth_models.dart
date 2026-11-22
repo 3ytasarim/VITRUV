@@ -49,14 +49,16 @@ class CurrentUser {
 
   factory CurrentUser.fromJson(JsonReader json) => CurrentUser(
     id: json.string('id'),
-    email: json.string('email'),
+    email: json.stringOrNull('email'),
     displayName: json.stringOrNull('displayName'),
     role: UserRole.fromWire(json.string('role')),
     permissions: json.strings('permissions'),
   );
 
   final String id;
-  final String email;
+
+  /// Null for clients created with a username only (currentUserSchema.email is nullable).
+  final String? email;
   final String? displayName;
 
   /// `null` for an unknown future role (treated like "not a client").
@@ -82,7 +84,7 @@ class ClientProfile {
     id: json.string('id'),
     firstName: json.string('firstName'),
     lastName: json.string('lastName'),
-    email: json.string('email'),
+    email: json.stringOrNull('email'),
     coachingStatus: CoachingStatus.fromWire(json.string('coachingStatus')),
     coachName: json.objectOrNull('coach')?.string('displayName'),
   );
@@ -90,7 +92,9 @@ class ClientProfile {
   final String id;
   final String firstName;
   final String lastName;
-  final String email;
+
+  /// Null for clients without an e-mail address (clientSelfProfileSchema.email is nullable).
+  final String? email;
   final CoachingStatus coachingStatus;
   final String? coachName;
 

@@ -200,23 +200,29 @@ abstract class AppLocalizations {
   /// **'Abbrechen'**
   String get cancel;
 
+  /// No description provided for @loginEyebrow.
+  ///
+  /// In de, this message translates to:
+  /// **'Teilnehmer-Login'**
+  String get loginEyebrow;
+
   /// No description provided for @loginTitle.
   ///
   /// In de, this message translates to:
-  /// **'Anmelden'**
+  /// **'Willkommen bei VITRUV'**
   String get loginTitle;
 
   /// No description provided for @loginIntro.
   ///
   /// In de, this message translates to:
-  /// **'Melde dich mit der E-Mail-Adresse und dem Passwort an, das du über deinen Aktivierungslink festgelegt hast.'**
+  /// **'Melde dich mit deinem VITRUV-Zugang an – mit Benutzername oder E-Mail und Passwort, genau wie auf der Website.'**
   String get loginIntro;
 
-  /// No description provided for @loginEmail.
+  /// No description provided for @loginId.
   ///
   /// In de, this message translates to:
-  /// **'E-Mail-Adresse'**
-  String get loginEmail;
+  /// **'Benutzername oder E-Mail'**
+  String get loginId;
 
   /// No description provided for @loginPassword.
   ///
@@ -254,16 +260,16 @@ abstract class AppLocalizations {
   /// **'Bitte ausfüllen.'**
   String get loginFieldRequired;
 
-  /// No description provided for @loginEmailInvalid.
+  /// No description provided for @loginIdInvalid.
   ///
   /// In de, this message translates to:
-  /// **'Bitte eine gültige E-Mail-Adresse eingeben.'**
-  String get loginEmailInvalid;
+  /// **'Bitte E-Mail-Adresse oder Benutzernamen eingeben.'**
+  String get loginIdInvalid;
 
   /// No description provided for @loginErrorInvalid.
   ///
   /// In de, this message translates to:
-  /// **'E-Mail-Adresse oder Passwort ist nicht korrekt.'**
+  /// **'Benutzername, E-Mail oder Passwort ist nicht korrekt.'**
   String get loginErrorInvalid;
 
   /// No description provided for @loginErrorRateLimited.
@@ -275,7 +281,7 @@ abstract class AppLocalizations {
   /// No description provided for @loginErrorNotClient.
   ///
   /// In de, this message translates to:
-  /// **'Die App ist für Kund:innen. Coaches nutzen den Webzugang.'**
+  /// **'Diese App ist nur für Teilnehmer verfügbar. Coaches nutzen den Webzugang.'**
   String get loginErrorNotClient;
 
   /// No description provided for @loginErrorUnknown.
@@ -287,7 +293,7 @@ abstract class AppLocalizations {
   /// No description provided for @loginForgotHint.
   ///
   /// In de, this message translates to:
-  /// **'Passwort vergessen? Wende dich an deinen Coach.'**
+  /// **'Passwort vergessen? Dein Coach richtet dir ein neues Passwort ein.'**
   String get loginForgotHint;
 
   /// No description provided for @sessionExpired.

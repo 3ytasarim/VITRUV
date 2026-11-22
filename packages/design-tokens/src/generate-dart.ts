@@ -1,5 +1,5 @@
 import { toDart } from './color';
-import type { ShadowLayer, tokens as Tokens } from './tokens';
+import type { ShadowLayer, TypeRole, tokens as Tokens } from './tokens';
 
 type TokenSet = typeof Tokens;
 
@@ -40,13 +40,24 @@ export function generateDart(t: TokenSet): string {
   }
   o.push('}', '');
 
+  o.push('/// App-only brand accents (same values as the website palette).');
+  o.push('abstract final class VitruvBrandColors {');
+  for (const [theme, roles] of Object.entries(t.appBrandColors))
+    for (const [role, value] of Object.entries(roles))
+      o.push(`  static const ${role}${pascal(theme)} = ${toDart(value)};`);
+  o.push('}', '');
+
   o.push('abstract final class VitruvFonts {');
   for (const [role, f] of Object.entries(t.fontFamilies))
     o.push(`  static const ${role} = '${f.family}';`);
   o.push('}', '');
 
   o.push('abstract final class VitruvType {');
-  for (const [name, r] of Object.entries(t.typeScale)) {
+  const roles: [string, TypeRole][] = [
+    ...Object.entries(t.typeScale),
+    ...Object.entries(t.appTypeScale),
+  ];
+  for (const [name, r] of roles) {
     o.push(`  static const ${name} = VitruvTextRole(`);
     o.push(`    fontFamily: VitruvFonts.${r.family},`);
     o.push(`    fontWeight: FontWeight.w${r.weight},`);

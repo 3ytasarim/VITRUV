@@ -15,20 +15,41 @@ class FakeBackend implements HttpClientAdapter {
   final DateTime Function() _now;
 
   // ---------------------------------------------------------------- auth
-  final accounts = <String, ({String password, String role, String id})>{
-    'kunde@example.invalid': (
-      password: 'richtig-1234',
-      role: 'CLIENT',
-      id: 'u-client',
-    ),
-    'coach@example.invalid': (
-      password: 'richtig-1234',
-      role: 'COACH',
-      id: 'u-coach',
-    ),
-  };
-  final _access = <String, String>{}; // access → email
-  final _refresh = <String, String>{}; // refresh → email
+  /// Keyed by login id (e-mail OR username, already normalised like `authLoginIdSchema`).
+  /// `email` is what `currentUserSchema.email` returns — null for username-only clients.
+  final accounts =
+      <String, ({String password, String role, String id, String? email})>{
+        'kunde@example.invalid': (
+          password: 'richtig-1234',
+          role: 'CLIENT',
+          id: 'u-client',
+          email: 'kunde@example.invalid',
+        ),
+        'coach@example.invalid': (
+          password: 'richtig-1234',
+          role: 'COACH',
+          id: 'u-coach',
+          email: 'coach@example.invalid',
+        ),
+        'admin@example.invalid': (
+          password: 'richtig-1234',
+          role: 'ADMIN',
+          id: 'u-admin',
+          email: 'admin@example.invalid',
+        ),
+        // fictional client created on the website with a username only (no e-mail address)
+        'max.muster': (
+          password: 'richtig-1234',
+          role: 'CLIENT',
+          id: 'u-client-2',
+          email: null,
+        ),
+      };
+
+  /// The exact JSON bodies sent to /v1/auth/login (to assert the request contract).
+  final loginBodies = <Map<String, Object?>>[];
+  final _access = <String, String>{}; // access → login id
+  final _refresh = <String, String>{}; // refresh → login id
   int _seq = 0;
   int refreshCalls = 0;
   int logoutCalls = 0;
@@ -70,6 +91,16 @@ class FakeBackend implements HttpClientAdapter {
     'firstName': 'Erika',
     'lastName': 'Muster',
     'email': 'kunde@example.invalid',
+    'coachingStatus': 'ACTIVE',
+    'coach': {'displayName': 'Coach Alex'},
+  };
+
+  /// `GET /v1/client/me` of the username-only client: `email` is null on the wire.
+  Map<String, Object?> usernameOnlyProfile = {
+    'id': 'u-client-2',
+    'firstName': 'Max',
+    'lastName': 'Muster',
+    'email': null,
     'coachingStatus': 'ACTIVE',
     'coach': {'displayName': 'Coach Alex'},
   };
@@ -139,15 +170,17 @@ class FakeBackend implements HttpClientAdapter {
     final path = options.path;
     final method = options.method;
     if (method == 'POST' && path == '/v1/auth/login') {
-      final email = json['email'];
-      final account = accounts[email];
+      loginBodies.add(json);
+      // server-side normalisation (authLoginIdSchema: trim + lowercase)
+      final loginId = (json['email'] as String? ?? '').trim().toLowerCase();
+      final account = accounts[loginId];
       if (account == null || account.password != json['password']) {
         return _error(401, 'UNAUTHENTICATED');
       }
-      final tokens = issue(email! as String);
+      final tokens = issue(loginId);
       return (
         status: 200,
-        body: {'tokens': tokens.toJson(), 'user': _userJson(email as String)},
+        body: {'tokens': tokens.toJson(), 'user': _userJson(loginId)},
       );
     }
     if (method == 'POST' && path == '/v1/auth/refresh') {
@@ -175,7 +208,11 @@ class FakeBackend implements HttpClientAdapter {
       return (status: 200, body: {'user': _userJson(email)});
     }
     if (method == 'GET' && path == '/v1/client/me') {
-      return (status: 200, body: profile);
+      if (accounts[email]?.role != 'CLIENT') return _error(404, 'NOT_FOUND');
+      return (
+        status: 200,
+        body: email == 'max.muster' ? usernameOnlyProfile : profile,
+      );
     }
     if (method == 'GET' && path == '/v1/client/training/active') {
       return (status: 200, body: {'program': program});
@@ -183,11 +220,11 @@ class FakeBackend implements HttpClientAdapter {
     return _workouts(method, path, json);
   }
 
-  Map<String, Object?> _userJson(String email) {
-    final account = accounts[email]!;
+  Map<String, Object?> _userJson(String loginId) {
+    final account = accounts[loginId]!;
     return {
       'id': account.id,
-      'email': email,
+      'email': account.email,
       'displayName': null,
       'role': account.role,
       'status': 'ACTIVE',

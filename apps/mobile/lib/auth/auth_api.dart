@@ -9,13 +9,16 @@ class AuthApi {
 
   final ApiClient _client;
 
+  /// [loginId]: e-mail address OR username. The request field is still called `email`
+  /// (`loginRequestSchema.email` = `authLoginIdSchema`, kept for compatibility); the server trims
+  /// and lowercases it, the app sends it already normalised.
   Future<({AuthTokens tokens, CurrentUser user})> login(
-    String email,
+    String loginId,
     String password,
   ) async {
     final json = JsonReader(
       await _client.sendJson('POST', '/v1/auth/login', {
-        'email': email,
+        'email': normalizeLoginId(loginId),
         'password': password,
         'clientType': 'MOBILE',
       }),
@@ -40,4 +43,21 @@ class AuthApi {
     '/v1/auth/logout',
     {'refreshToken': refreshToken},
   );
+}
+
+/// Same normalisation as `authLoginIdSchema` (packages/contracts/src/auth.ts): trim + lowercase.
+String normalizeLoginId(String value) => value.trim().toLowerCase();
+
+final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+final _usernamePattern = RegExp(r'^[a-z0-9][a-z0-9._-]{2,31}$');
+
+/// Client-side mirror of `authLoginIdSchema`: an e-mail address when it contains "@", otherwise a
+/// username of 3–32 characters (a–z, 0–9, ".", "_", "-"; starting with a letter or digit).
+/// Never stricter than the server — it only saves a round trip for obvious typos.
+bool isValidLoginId(String value) {
+  final v = normalizeLoginId(value);
+  if (v.isEmpty || v.length > 254) return false;
+  return v.contains('@')
+      ? _emailPattern.hasMatch(v)
+      : _usernamePattern.hasMatch(v);
 }

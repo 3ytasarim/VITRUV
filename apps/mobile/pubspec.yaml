@@ -75,6 +75,9 @@ flutter:
     - assets/fonts/OFL-Barlow.txt
     - assets/fonts/OFL-BarlowCondensed.txt
     - assets/fonts/OFL-ChakraPetch.txt
+    # Owner logo (mark + VITRUV wordmark), byte-identical copy of
+    # apps/web/public/brand/vitruv-logo-v2.png — never redrawn or recoloured.
+    - assets/brand/vitruv-logo.png
 
   # VITRUV fonts (SIL OFL 1.1, from github.com/google/fonts). Must match `fontFaces` in
   # packages/design-tokens/src/tokens.ts — enforced by the design-token sync test.

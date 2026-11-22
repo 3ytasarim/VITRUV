@@ -102,8 +102,11 @@ class _Account extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _Field(label: l10n.profileEmail, value: profile.email),
-              const Divider(height: VitruvSpace.s6),
+              // Clients created with a username only have no e-mail address.
+              if (profile.email case final email?) ...[
+                _Field(label: l10n.profileEmail, value: email),
+                const Divider(height: VitruvSpace.s6),
+              ],
               _Field(
                 label: l10n.profileCoach,
                 value: profile.coachName ?? l10n.profileNoCoach,

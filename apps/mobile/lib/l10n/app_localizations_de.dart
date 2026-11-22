@@ -63,14 +63,17 @@ class AppLocalizationsDe extends AppLocalizations {
   String get cancel => 'Abbrechen';
 
   @override
-  String get loginTitle => 'Anmelden';
+  String get loginEyebrow => 'Teilnehmer-Login';
+
+  @override
+  String get loginTitle => 'Willkommen bei VITRUV';
 
   @override
   String get loginIntro =>
-      'Melde dich mit der E-Mail-Adresse und dem Passwort an, das du über deinen Aktivierungslink festgelegt hast.';
+      'Melde dich mit deinem VITRUV-Zugang an – mit Benutzername oder E-Mail und Passwort, genau wie auf der Website.';
 
   @override
-  String get loginEmail => 'E-Mail-Adresse';
+  String get loginId => 'Benutzername oder E-Mail';
 
   @override
   String get loginPassword => 'Passwort';
@@ -91,11 +94,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get loginFieldRequired => 'Bitte ausfüllen.';
 
   @override
-  String get loginEmailInvalid => 'Bitte eine gültige E-Mail-Adresse eingeben.';
+  String get loginIdInvalid =>
+      'Bitte E-Mail-Adresse oder Benutzernamen eingeben.';
 
   @override
   String get loginErrorInvalid =>
-      'E-Mail-Adresse oder Passwort ist nicht korrekt.';
+      'Benutzername, E-Mail oder Passwort ist nicht korrekt.';
 
   @override
   String get loginErrorRateLimited =>
@@ -103,7 +107,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get loginErrorNotClient =>
-      'Die App ist für Kund:innen. Coaches nutzen den Webzugang.';
+      'Diese App ist nur für Teilnehmer verfügbar. Coaches nutzen den Webzugang.';
 
   @override
   String get loginErrorUnknown =>
@@ -111,7 +115,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get loginForgotHint =>
-      'Passwort vergessen? Wende dich an deinen Coach.';
+      'Passwort vergessen? Dein Coach richtet dir ein neues Passwort ein.';
 
   @override
   String get sessionExpired =>

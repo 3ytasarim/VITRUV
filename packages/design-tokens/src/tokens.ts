@@ -351,6 +351,15 @@ export const referencePalette = {
 } as const;
 
 /**
+ * The website's second accent (Cantaloupe, owner request 2026-11-20) for the app — the SAME values
+ * as `referencePalette.*.spark`, so the website and the app can never drift apart.
+ */
+export const appBrandColors = {
+  dark: { spark: c(referencePalette.dark.spark) },
+  light: { spark: c(referencePalette.light.spark) },
+} as const;
+
+/**
  * Ready-made website palettes for the CMS theme editor ("Farben & Design"). Only the roles that
  * differ from the current theme are set; background/text stay whatever the owner chose.
  */
@@ -527,6 +536,30 @@ export const typeScale: Record<TypeRoleName, TypeRole> = {
     letterSpacing: 0.2,
   },
 };
+
+/**
+ * App-only roles (Flutter) — emitted into the Dart output only; the web CSS is unchanged.
+ * `timer`: the large workout countdown (Chakra Petch 700, like the website headlines; the app
+ * adds tabular figures so the digits do not jump). `timerCompact`: inline rest/interval timers.
+ */
+export const appTypeScale = {
+  timer: {
+    family: 'heading',
+    weight: 700,
+    min: 72,
+    max: 96,
+    lineHeight: 1,
+    letterSpacing: 0.02,
+  },
+  timerCompact: {
+    family: 'heading',
+    weight: 700,
+    min: 40,
+    max: 48,
+    lineHeight: 1,
+    letterSpacing: 0.02,
+  },
+} as const satisfies Record<string, TypeRole>;
 
 /**
  * Public surface typography (web only — the app keeps Barlow/Chakra Petch). Jost (SIL OFL) is the
@@ -763,6 +796,8 @@ export const tokens = {
   fontFamilies,
   fontFaces,
   typeScale,
+  appTypeScale,
+  appBrandColors,
   fluidRange,
   spaceBase,
   space,
