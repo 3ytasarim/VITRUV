@@ -20,8 +20,19 @@ class Countdown extends ChangeNotifier {
   DateTime? _endsAt;
   Duration _pausedRemaining = Duration.zero;
   Duration _total = Duration.zero;
+  DateTime? _startedAt;
+  int _generation = 0;
 
   CountdownPhase get phase => _phase;
+
+  /// When the current run was started (null before the first start).
+  DateTime? get startedAt => _startedAt;
+
+  /// Absolute end time while running (null when paused, idle or finished).
+  DateTime? get endsAt => _phase == CountdownPhase.running ? _endsAt : null;
+
+  /// Increases with every [start] — tells a new run apart from an extension (watch sync).
+  int get generation => _generation;
   Duration get total => _total;
   bool get isActive =>
       _phase == CountdownPhase.running || _phase == CountdownPhase.paused;
@@ -43,7 +54,9 @@ class Countdown extends ChangeNotifier {
   void start(Duration duration) {
     if (duration <= Duration.zero) return;
     _total = duration;
-    _endsAt = _clock.now().add(duration);
+    _startedAt = _clock.now();
+    _generation++;
+    _endsAt = _startedAt!.add(duration);
     _phase = CountdownPhase.running;
     notifyListeners();
   }

@@ -16,6 +16,9 @@ import '../../shared/widgets/content_page.dart';
 import '../training/exercise_media.dart';
 import 'countdown.dart';
 import 'countdown_panel.dart';
+import 'timer_sync/countdown_sync.dart';
+import 'timer_sync/synced_timer.dart';
+import 'timer_sync/timer_sync_providers.dart';
 import 'warmup_checklist.dart';
 import 'workout_controller.dart';
 import 'workout_models.dart';
@@ -27,6 +30,8 @@ import 'workout_models.dart';
 ///   "Training fortsetzen" to the next section (or "Training abschließen" if nothing follows)
 /// - execution controls by mode: sets (tick each set), total reps, timed, custom (mark done)
 /// - the rest timer starts after a set/exercise with rest; it never blocks the screen
+/// - rest and exercise countdowns are mirrored to a paired Apple Watch through [CountdownSync]
+///   (no-op without a watch / with the switch off — the iPhone timer works the same either way)
 /// - leaving the screen keeps the session IN_PROGRESS on the server ("Training fortsetzen")
 /// - every change is saved immediately (optimistic); a failed save is rolled back and offered
 ///   again — nothing is silently lost
@@ -40,8 +45,14 @@ class WorkoutScreen extends ConsumerStatefulWidget {
 class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
   late final Countdown _rest;
   late final Countdown _work;
+  late final CountdownSync _restSync;
+  late final CountdownSync _workSync;
+  late final AppLifecycleListener _lifecycle;
   final Map<String, TextEditingController> _reps = {};
   int? _index;
+
+  /// The exercise whose rest is counting down (for the watch: "Pause nach …").
+  WorkoutExercise? _restExercise;
 
   @override
   void initState() {
@@ -49,10 +60,66 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
     final clock = ref.read(clockProvider);
     _rest = Countdown(clock);
     _work = Countdown(clock);
+    final transport = ref.read(timerSyncTransportProvider);
+    final revisions = ref.read(timerRevisionSourceProvider);
+    _restSync = CountdownSync(
+      countdown: _rest,
+      transport: transport,
+      clock: clock,
+      revisions: revisions,
+      describe: () => _timerContext(
+        _restExercise,
+        _restExercise?.mode == ExecutionMode.totalReps
+            ? SyncedTimerKind.totalRepsRest
+            : SyncedTimerKind.strengthRest,
+        SyncedTimerPhase.rest,
+      ),
+    );
+    _workSync = CountdownSync(
+      countdown: _work,
+      transport: transport,
+      clock: clock,
+      revisions: revisions,
+      describe: () {
+        final session = ref.read(workoutControllerProvider).value;
+        if (session == null || session.exercises.isEmpty) return null;
+        return _timerContext(
+          session.exercises[_currentIndex(session)],
+          SyncedTimerKind.timedExercise,
+          SyncedTimerPhase.work,
+        );
+      },
+    );
+    // back from the background: the watch may have missed a change → send the state again
+    _lifecycle = AppLifecycleListener(
+      onResume: () {
+        _restSync.republish();
+        _workSync.republish();
+      },
+    );
+  }
+
+  TimerSyncContext? _timerContext(
+    WorkoutExercise? exercise,
+    SyncedTimerKind kind,
+    SyncedTimerPhase phase,
+  ) {
+    final session = ref.read(workoutControllerProvider).value;
+    if (session == null) return null;
+    return TimerSyncContext(
+      workoutSessionId: session.id,
+      exerciseId: exercise?.id,
+      exerciseName: exercise?.name,
+      kind: kind,
+      phase: phase,
+    );
   }
 
   @override
   void dispose() {
+    _lifecycle.dispose();
+    _restSync.dispose();
+    _workSync.dispose();
     _rest.dispose();
     _work.dispose();
     for (final c in _reps.values) {
@@ -81,7 +148,9 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
 
   void _startRest(WorkoutExercise exercise) {
     final seconds = exercise.target.restSeconds ?? 0;
-    if (seconds > 0) _rest.start(Duration(seconds: seconds));
+    if (seconds <= 0) return;
+    _restExercise = exercise;
+    _rest.start(Duration(seconds: seconds));
   }
 
   Future<void> _run(Future<AppFailure?> Function() mutation) async {

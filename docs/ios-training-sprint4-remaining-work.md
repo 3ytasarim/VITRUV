@@ -41,3 +41,11 @@
 - Real iPhone test on macOS/Xcode (layout, haptics, video playback, safe areas).
 - Production migration plan for 0022–0024 (only after approval; never during development).
 - Security dependency upgrades (Next.js, hono, @hono/node-server) as a separate, tested change.
+
+## Apple Watch timer (additional requirement, 2026-11-22)
+
+The iPhone side of the timer sync is prepared and tested with a fake link; the native iPhone
+bridge, the watchOS target, signing, haptics and device validation are **Sprint 5.5 on
+macOS/Xcode**. Switched off by default (`VITRUV_WATCH_TIMER_SYNC`). Interface, wire format and the
+task list: [`apple-watch-timer-sync.md`](apple-watch-timer-sync.md). Real Apple Watch integration
+is **not validated**.
