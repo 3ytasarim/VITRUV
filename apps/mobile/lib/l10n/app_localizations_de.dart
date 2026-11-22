@@ -977,4 +977,154 @@ class AppLocalizationsDe extends AppLocalizations {
   String coreNotifyDoneBody(String exercise) {
     return '$exercise ist geschafft.';
   }
+
+  @override
+  String get videoLoadFailed => 'Video konnte nicht geladen werden.';
+
+  @override
+  String get videoLoading => 'Video wird geladen';
+
+  @override
+  String get videoSeek => 'Videoposition';
+
+  @override
+  String videoPosition(String position, String duration) {
+    return '$position von $duration';
+  }
+
+  @override
+  String historyTotalReps(int reps) {
+    return 'Gesamt: $reps Wiederholungen';
+  }
+
+  @override
+  String historySetCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Sätze',
+      one: '1 Satz',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String historyRoundCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Runden',
+      one: '1 Runde',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get historyLoadMore => 'Mehr laden';
+
+  @override
+  String get historyLoadMoreFailed =>
+      'Weitere Einträge konnten nicht geladen werden.';
+
+  @override
+  String historyTotalGoal(int target) {
+    return 'Gesamtziel: $target Wdh.';
+  }
+
+  @override
+  String historyTotalDone(int done) {
+    return 'Geschafft: $done Wdh.';
+  }
+
+  @override
+  String historyTotalSetsNeeded(int count) {
+    return 'Benötigte Sätze: $count';
+  }
+
+  @override
+  String historyCoreConfig(int rounds, int work, int rest) {
+    return '$rounds Runden · $work Sek. Belastung · $rest Sek. Pause';
+  }
+
+  @override
+  String historyCoreDone(int done, int rounds) {
+    return 'Runden geschafft: $done von $rounds';
+  }
+
+  @override
+  String get historyWarmupDone => 'Aufwärmen erledigt';
+
+  @override
+  String get compareTitle => 'Vergleich';
+
+  @override
+  String comparePrevious(String date) {
+    return 'Vorheriges Training: $date';
+  }
+
+  @override
+  String get compareCurrent => 'Aktuelles Training';
+
+  @override
+  String get compareNoData => 'Noch keine Vergleichsdaten';
+
+  @override
+  String compareDifference(String value) {
+    return 'Differenz: $value';
+  }
+
+  @override
+  String compareSetLine(int number, String previous, String current) {
+    return 'Satz $number: $previous → $current';
+  }
+
+  @override
+  String compareTotalLine(String previous, String current) {
+    return 'Gesamt: $previous → $current Wdh.';
+  }
+
+  @override
+  String compareRoundsLine(String previous, String current) {
+    return 'Runden: $previous → $current';
+  }
+
+  @override
+  String compareSetsUsed(String previous, String current) {
+    return 'Sätze: $previous → $current';
+  }
+
+  @override
+  String get compareConfigChanged =>
+      'Andere Runden-Einstellung als beim letzten Mal';
+
+  @override
+  String get compareNotRecorded => 'nicht erfasst';
+
+  @override
+  String get progressChartOpen => 'Verlauf ansehen';
+
+  @override
+  String progressChartTitle(String name) {
+    return 'Verlauf: $name';
+  }
+
+  @override
+  String get progressChartEmpty => 'Noch zu wenige Daten für einen Verlauf';
+
+  @override
+  String progressChartSummary(
+    int count,
+    int first,
+    int last,
+    int best,
+    String unit,
+  ) {
+    return '$count Trainings. Erster Wert $first, letzter Wert $last, bester Wert $best $unit.';
+  }
+
+  @override
+  String get progressUnitReps => 'Wiederholungen';
+
+  @override
+  String get progressUnitRounds => 'Runden';
 }

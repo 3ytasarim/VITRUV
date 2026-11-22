@@ -58,16 +58,25 @@ class WarmupChecklist extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Own semantics node: with a single item nothing conflicts, and Flutter would otherwise
+        // merge heading, hint and checkbox into one "header button" for VoiceOver.
         // Wrap, not Row: the "done" badge moves below the title when both don't fit.
-        Wrap(
-          spacing: VitruvSpace.s3,
-          runSpacing: VitruvSpace.s2,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            SectionTitle(l10n.warmupTitle, size: SectionTitleSize.h2),
-            if (allDone)
-              VitruvBadge(l10n.warmupDone, tone: VitruvTone.success, dot: true),
-          ],
+        Semantics(
+          container: true,
+          child: Wrap(
+            spacing: VitruvSpace.s3,
+            runSpacing: VitruvSpace.s2,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SectionTitle(l10n.warmupTitle, size: SectionTitleSize.h2),
+              if (allDone)
+                VitruvBadge(
+                  l10n.warmupDone,
+                  tone: VitruvTone.success,
+                  dot: true,
+                ),
+            ],
+          ),
         ),
         const SizedBox(height: VitruvSpace.s2),
         Text(
@@ -112,7 +121,10 @@ class _ChecklistItem extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // container: the checkbox is always its own VoiceOver element, never merged with the
+          // section heading (Sprint 6 finding for a one-item warm-up)
           Semantics(
+            container: true,
             checked: checked,
             button: true,
             label: checked
@@ -156,25 +168,7 @@ class _ChecklistItem extends StatelessWidget {
           ],
           if (media != null) ...[
             const SizedBox(height: VitruvSpace.s2),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: VitruvButton(
-                label: media.kind == MediaKind.video
-                    ? l10n.watchVideo
-                    : l10n.showImage,
-                variant: VitruvButtonVariant.ghost,
-                leadingIcon: media.kind == MediaKind.video
-                    ? Icons.play_circle_outline
-                    : Icons.image_outlined,
-                semanticLabel:
-                    '${media.kind == MediaKind.video ? l10n.watchVideo : l10n.showImage}: ${exercise.name}',
-                onPressed: () => showExerciseMediaSheet(
-                  context,
-                  media: media,
-                  exerciseName: exercise.name,
-                ),
-              ),
-            ),
+            MediaButton(media: media, exerciseName: exercise.name),
           ],
         ],
       ),
@@ -182,7 +176,47 @@ class _ChecklistItem extends StatelessWidget {
   }
 }
 
-/// Technique media in a bottom sheet (the inline player is only created when opened).
+/// "Video ansehen" / "Bild ansehen" — opens the exercise medium in a sheet (Sprint 7: the same
+/// button for every exercise type; not shown at all without a medium).
+class MediaButton extends StatelessWidget {
+  const MediaButton({
+    super.key,
+    required this.media,
+    required this.exerciseName,
+  });
+
+  final ResolvedMedia media;
+  final String exerciseName;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final video = media.kind == MediaKind.video;
+    final label = video ? l10n.watchVideo : l10n.showImage;
+    // Own semantics node: without it a single button merges into the explainer text above
+    // and VoiceOver reads both as one element.
+    return Semantics(
+      container: true,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: VitruvButton(
+          label: label,
+          variant: VitruvButtonVariant.ghost,
+          leadingIcon: video ? Icons.play_circle_outline : Icons.image_outlined,
+          semanticLabel: '$label: $exerciseName',
+          onPressed: () => showExerciseMediaSheet(
+            context,
+            media: media,
+            exerciseName: exerciseName,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Technique media in a bottom sheet over the current screen (the player is only created when
+/// opened and disposed when closed). Nothing of the running workout is touched.
 Future<void> showExerciseMediaSheet(
   BuildContext context, {
   required ResolvedMedia media,
@@ -193,7 +227,7 @@ Future<void> showExerciseMediaSheet(
   useSafeArea: true,
   builder: (context) {
     final l10n = AppLocalizations.of(context);
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(VitruvSpace.s4),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -201,7 +235,11 @@ Future<void> showExerciseMediaSheet(
         children: [
           SectionTitle(exerciseName, size: SectionTitleSize.h3),
           const SizedBox(height: VitruvSpace.s3),
-          ExerciseMedia(media: media, exerciseName: exerciseName),
+          ExerciseMedia(
+            media: media,
+            exerciseName: exerciseName,
+            controls: true,
+          ),
           const SizedBox(height: VitruvSpace.s3),
           VitruvButton(
             label: l10n.closeLabel,

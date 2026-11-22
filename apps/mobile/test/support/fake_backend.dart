@@ -120,6 +120,18 @@ class FakeBackend implements HttpClientAdapter {
   Map<String, Object?>? current;
   final history = <Map<String, Object?>>[];
 
+  /// Sprint 7: query parameters of every history request (pagination checks).
+  final historyRequests = <Map<String, dynamic>>[];
+
+  /// Sprint 7: the next N "load more" requests (with a cursor) fail with 503.
+  int failHistoryPages = 0;
+
+  /// Sprint 7: GET …/:id/comparison answers by session id (default: no items).
+  final comparisons = <String, Map<String, Object?>>{};
+
+  /// Sprint 7: GET …/progress/exercises/:id answers by exercise id (default: no points).
+  final exerciseProgress = <String, Map<String, Object?>>{};
+
   /// Finished sessions with all exercises and sets (GET /v1/client/workouts/:id).
   final finishedSessions = <String, Map<String, Object?>>{};
   final mutationBodies = <Map<String, Object?>>[];
@@ -252,7 +264,7 @@ class FakeBackend implements HttpClientAdapter {
       if (accounts[email]?.role != 'CLIENT') return _error(403, 'FORBIDDEN');
       return (status: 200, body: {'program': _withStatuses(program)});
     }
-    return _workouts(method, path, json);
+    return _workouts(method, path, json, options.queryParameters);
   }
 
   /// Adds the derived day status (Sprint 2 `workoutStatus`) unless a test set one explicitly:
@@ -291,14 +303,61 @@ class FakeBackend implements HttpClientAdapter {
   Future<({int status, Object? body})> _workouts(
     String method,
     String path,
-    Map<String, Object?> json,
-  ) async {
+    Map<String, Object?> json, [
+    Map<String, dynamic> query = const {},
+  ]) async {
     const base = '/v1/client/workouts';
     if (method == 'GET' && path == '$base/current') {
       return (status: 200, body: {'session': current});
     }
     if (method == 'GET' && path == base) {
-      return (status: 200, body: {'items': history});
+      historyRequests.add(Map.of(query));
+      // Sprint 7: cursor pages like the API (here the cursor is simply the next index).
+      if (failHistoryPages > 0 && query['cursor'] != null) {
+        failHistoryPages--;
+        return _error(503, 'UNAVAILABLE');
+      }
+      final limit = int.tryParse('${query['limit'] ?? 20}') ?? 20;
+      final from = int.tryParse('${query['cursor'] ?? 0}') ?? 0;
+      final page = history.skip(from).take(limit).toList();
+      final next = from + page.length;
+      return (
+        status: 200,
+        body: {
+          'items': page,
+          'nextCursor': next < history.length ? '$next' : null,
+        },
+      );
+    }
+    final progress = RegExp(r'^/v1/client/workouts/progress/exercises/([^/]+)$')
+        .firstMatch(path);
+    if (method == 'GET' && progress != null) {
+      final id = progress.group(1)!;
+      return (
+        status: 200,
+        body:
+            exerciseProgress[id] ??
+            {
+              'exerciseId': id,
+              'name': null,
+              'executionMode': null,
+              'repsMax': false,
+              'kind': 'NONE',
+              'points': <Object?>[],
+            },
+      );
+    }
+    final compare = RegExp(r'^/v1/client/workouts/([^/]+)/comparison$')
+        .firstMatch(path);
+    if (method == 'GET' && compare != null) {
+      final id = compare.group(1)!;
+      if (current?['id'] != id && !finishedSessions.containsKey(id)) {
+        return _error(404, 'NOT_FOUND');
+      }
+      return (
+        status: 200,
+        body: comparisons[id] ?? {'sessionId': id, 'items': <Object?>[]},
+      );
     }
     if (method == 'POST' && path == base) {
       final dayId = json['trainingDayId'];
@@ -334,9 +393,10 @@ class FakeBackend implements HttpClientAdapter {
         match.group(4) == null) {
       final id = match.group(1);
       final found = current?['id'] == id ? current : finishedSessions[id];
+      // like the API: the session itself (workoutSessionSchema), no wrapper
       return found == null
           ? _error(404, 'NOT_FOUND')
-          : (status: 200, body: {'session': found});
+          : (status: 200, body: found);
     }
     final session = current;
     if (match == null || session == null || session['id'] != match.group(1)) {

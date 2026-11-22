@@ -7,7 +7,8 @@ import 'training_api.dart';
 
 /// App resume: when the app returns to the foreground (after the coach may have assigned or
 /// edited a workout, or the client trained on another device), the ACTIVE plan and the current
-/// workout session are read again from the server. Signed out → nothing is requested.
+/// workout session are read again from the server — and (Sprint 7) the history, comparisons and
+/// progress charts, if they are on screen. Signed out → nothing is requested.
 ///
 /// A failed reload keeps what is on screen (the workout controller keeps a loaded session;
 /// the plan view shows its retry state) — no fake "up to date".
@@ -33,7 +34,12 @@ class _TrainingResumeRefresherState
 
   void _refresh() {
     if (ref.read(signedInUserIdProvider) == null) return;
-    ref.invalidate(activeTrainingProvider);
+    ref
+      ..invalidate(activeTrainingProvider)
+      // Sprint 7: history, comparisons and charts may have changed on another device.
+      ..invalidate(workoutHistoryProvider)
+      ..invalidate(workoutComparisonProvider)
+      ..invalidate(exerciseProgressProvider);
     ref.read(workoutControllerProvider.notifier).reload();
   }
 

@@ -16,7 +16,6 @@ import '../../shared/format/training_format.dart';
 import '../../shared/ui/ui.dart';
 import '../../shared/widgets/async_value_view.dart';
 import '../../shared/widgets/content_page.dart';
-import '../training/exercise_media.dart';
 import 'countdown.dart';
 import 'countdown_panel.dart';
 import 'interval_panel.dart';
@@ -877,11 +876,10 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
                   );
                 },
               ),
-              if (exercise.media != null) ...[
-                ExerciseMedia(
-                  media: exercise.media,
-                  exerciseName: exercise.name,
-                ),
+              // Sprint 7: the video opens in a sheet over this screen — the session, the
+              // entered values and every running timer stay untouched; closing returns here.
+              if (exercise.media case final media?) ...[
+                MediaButton(media: media, exerciseName: exercise.name),
                 const SizedBox(height: VitruvSpace.s4),
               ],
               _Execution(

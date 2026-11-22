@@ -1,5 +1,6 @@
 import '../../api/api_client.dart';
 import '../../core/json/json_reader.dart';
+import '../progress/history_models.dart';
 import 'workout_models.dart';
 
 typedef RecordedSet = ({
@@ -88,8 +89,30 @@ class WorkoutApi {
   }
 
   /// One of the client's own sessions with all exercises and recorded sets (history detail).
-  Future<WorkoutSession> get(String sessionId) async => WorkoutSession.fromJson(
-    JsonReader(await _client.getJson('$_base/$sessionId')).object('session'),
+  /// The API answers the session itself (workoutSessionSchema); Sprint 7 fix: the app expected a
+  /// `session` wrapper here — both shapes are read.
+  Future<WorkoutSession> get(String sessionId) async {
+    final json = JsonReader(await _client.getJson('$_base/$sessionId'));
+    return WorkoutSession.fromJson(json.objectOrNull('session') ?? json);
+  }
+
+  /// Sprint 7: every exercise of the session next to its previous comparable result.
+  Future<WorkoutComparison> comparison(String sessionId) async =>
+      WorkoutComparison.fromJson(
+        JsonReader(await _client.getJson('$_base/$sessionId/comparison')),
+      );
+
+  /// Sprint 7: the progress series of one exercise (completed sessions only).
+  Future<ExerciseProgress> exerciseProgress(
+    String exerciseId, {
+    int limit = 12,
+  }) async => ExerciseProgress.fromJson(
+    JsonReader(
+      await _client.getJson(
+        '$_base/progress/exercises/$exerciseId',
+        query: {'limit': limit},
+      ),
+    ),
   );
 
   Future<WorkoutSummary> complete(String sessionId) =>
@@ -98,9 +121,16 @@ class WorkoutApi {
   Future<WorkoutSummary> abandon(String sessionId) =>
       _finish(sessionId, 'abandon');
 
-  Future<List<WorkoutSummary>> history({int limit = 30}) async =>
-      JsonReader(await _client.getJson(_base, query: {'limit': limit}))
-          .list('items', WorkoutSummary.fromJson);
+  /// One history page, newest first (Sprint 7: cursor pagination).
+  Future<HistoryPage> history({int limit = 20, String? cursor}) async =>
+      HistoryPage.fromJson(
+        JsonReader(
+          await _client.getJson(
+            _base,
+            query: {'limit': limit, 'cursor': ?cursor},
+          ),
+        ),
+      );
 
   Future<({WorkoutExercise exercise, WorkoutProgress progress})> _update(
     String path,

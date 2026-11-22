@@ -800,5 +800,195 @@
         "type": "String"
       }
     }
-  }
+  },
+  "videoLoadFailed": "Video konnte nicht geladen werden.",
+  "videoLoading": "Video wird geladen",
+  "videoSeek": "Videoposition",
+  "videoPosition": "{position} von {duration}",
+  "@videoPosition": {
+    "placeholders": {
+      "position": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "historyTotalReps": "Gesamt: {reps} Wiederholungen",
+  "@historyTotalReps": {
+    "placeholders": {
+      "reps": {
+        "type": "int"
+      }
+    }
+  },
+  "historySetCount": "{count, plural, =1{1 Satz} other{{count} Sätze}}",
+  "@historySetCount": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      }
+    }
+  },
+  "historyRoundCount": "{count, plural, =1{1 Runde} other{{count} Runden}}",
+  "@historyRoundCount": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      }
+    }
+  },
+  "historyLoadMore": "Mehr laden",
+  "historyLoadMoreFailed": "Weitere Einträge konnten nicht geladen werden.",
+  "historyTotalGoal": "Gesamtziel: {target} Wdh.",
+  "@historyTotalGoal": {
+    "placeholders": {
+      "target": {
+        "type": "int"
+      }
+    }
+  },
+  "historyTotalDone": "Geschafft: {done} Wdh.",
+  "@historyTotalDone": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      }
+    }
+  },
+  "historyTotalSetsNeeded": "Benötigte Sätze: {count}",
+  "@historyTotalSetsNeeded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "historyCoreConfig": "{rounds} Runden · {work} Sek. Belastung · {rest} Sek. Pause",
+  "@historyCoreConfig": {
+    "placeholders": {
+      "rounds": {
+        "type": "int"
+      },
+      "work": {
+        "type": "int"
+      },
+      "rest": {
+        "type": "int"
+      }
+    }
+  },
+  "historyCoreDone": "Runden geschafft: {done} von {rounds}",
+  "@historyCoreDone": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "rounds": {
+        "type": "int"
+      }
+    }
+  },
+  "historyWarmupDone": "Aufwärmen erledigt",
+  "compareTitle": "Vergleich",
+  "comparePrevious": "Vorheriges Training: {date}",
+  "@comparePrevious": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "compareCurrent": "Aktuelles Training",
+  "compareNoData": "Noch keine Vergleichsdaten",
+  "compareDifference": "Differenz: {value}",
+  "@compareDifference": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "compareSetLine": "Satz {number}: {previous} → {current}",
+  "@compareSetLine": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "previous": {
+        "type": "String"
+      },
+      "current": {
+        "type": "String"
+      }
+    }
+  },
+  "compareTotalLine": "Gesamt: {previous} → {current} Wdh.",
+  "@compareTotalLine": {
+    "placeholders": {
+      "previous": {
+        "type": "String"
+      },
+      "current": {
+        "type": "String"
+      }
+    }
+  },
+  "compareRoundsLine": "Runden: {previous} → {current}",
+  "@compareRoundsLine": {
+    "placeholders": {
+      "previous": {
+        "type": "String"
+      },
+      "current": {
+        "type": "String"
+      }
+    }
+  },
+  "compareSetsUsed": "Sätze: {previous} → {current}",
+  "@compareSetsUsed": {
+    "placeholders": {
+      "previous": {
+        "type": "String"
+      },
+      "current": {
+        "type": "String"
+      }
+    }
+  },
+  "compareConfigChanged": "Andere Runden-Einstellung als beim letzten Mal",
+  "compareNotRecorded": "nicht erfasst",
+  "progressChartOpen": "Verlauf ansehen",
+  "progressChartTitle": "Verlauf: {name}",
+  "@progressChartTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "progressChartEmpty": "Noch zu wenige Daten für einen Verlauf",
+  "progressChartSummary": "{count} Trainings. Erster Wert {first}, letzter Wert {last}, bester Wert {best} {unit}.",
+  "@progressChartSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "first": {
+        "type": "int"
+      },
+      "last": {
+        "type": "int"
+      },
+      "best": {
+        "type": "int"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "progressUnitReps": "Wiederholungen",
+  "progressUnitRounds": "Runden"
 }

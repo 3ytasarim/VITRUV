@@ -316,7 +316,10 @@ void main() {
       await tapOn(tester, find.textContaining('· Klimmzug-Ziel'));
       expect(find.text('Satz 1: 30 Wdh.'), findsOneWidget);
       expect(find.text('Satz 2: 35 Wdh.'), findsOneWidget);
-      expect(find.text('Gesamt: 65 von 60 Wdh.'), findsOneWidget);
+      // Sprint 7 detail format (was 'Gesamt: 65 von 60 Wdh.'): goal, done, sets needed
+      expect(find.text('Gesamtziel: 60 Wdh.'), findsOneWidget);
+      expect(find.text('Geschafft: 65 Wdh.'), findsOneWidget);
+      expect(find.text('Benötigte Sätze: 2'), findsOneWidget);
       expect(h.backend.finishedSessions, hasLength(1));
     });
   });

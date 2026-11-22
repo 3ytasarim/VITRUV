@@ -1614,6 +1614,204 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'{exercise} ist geschafft.'**
   String coreNotifyDoneBody(String exercise);
+
+  /// No description provided for @videoLoadFailed.
+  ///
+  /// In de, this message translates to:
+  /// **'Video konnte nicht geladen werden.'**
+  String get videoLoadFailed;
+
+  /// No description provided for @videoLoading.
+  ///
+  /// In de, this message translates to:
+  /// **'Video wird geladen'**
+  String get videoLoading;
+
+  /// No description provided for @videoSeek.
+  ///
+  /// In de, this message translates to:
+  /// **'Videoposition'**
+  String get videoSeek;
+
+  /// No description provided for @videoPosition.
+  ///
+  /// In de, this message translates to:
+  /// **'{position} von {duration}'**
+  String videoPosition(String position, String duration);
+
+  /// No description provided for @historyTotalReps.
+  ///
+  /// In de, this message translates to:
+  /// **'Gesamt: {reps} Wiederholungen'**
+  String historyTotalReps(int reps);
+
+  /// No description provided for @historySetCount.
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Satz} other{{count} Sätze}}'**
+  String historySetCount(num count);
+
+  /// No description provided for @historyRoundCount.
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Runde} other{{count} Runden}}'**
+  String historyRoundCount(num count);
+
+  /// No description provided for @historyLoadMore.
+  ///
+  /// In de, this message translates to:
+  /// **'Mehr laden'**
+  String get historyLoadMore;
+
+  /// No description provided for @historyLoadMoreFailed.
+  ///
+  /// In de, this message translates to:
+  /// **'Weitere Einträge konnten nicht geladen werden.'**
+  String get historyLoadMoreFailed;
+
+  /// No description provided for @historyTotalGoal.
+  ///
+  /// In de, this message translates to:
+  /// **'Gesamtziel: {target} Wdh.'**
+  String historyTotalGoal(int target);
+
+  /// No description provided for @historyTotalDone.
+  ///
+  /// In de, this message translates to:
+  /// **'Geschafft: {done} Wdh.'**
+  String historyTotalDone(int done);
+
+  /// No description provided for @historyTotalSetsNeeded.
+  ///
+  /// In de, this message translates to:
+  /// **'Benötigte Sätze: {count}'**
+  String historyTotalSetsNeeded(int count);
+
+  /// No description provided for @historyCoreConfig.
+  ///
+  /// In de, this message translates to:
+  /// **'{rounds} Runden · {work} Sek. Belastung · {rest} Sek. Pause'**
+  String historyCoreConfig(int rounds, int work, int rest);
+
+  /// No description provided for @historyCoreDone.
+  ///
+  /// In de, this message translates to:
+  /// **'Runden geschafft: {done} von {rounds}'**
+  String historyCoreDone(int done, int rounds);
+
+  /// No description provided for @historyWarmupDone.
+  ///
+  /// In de, this message translates to:
+  /// **'Aufwärmen erledigt'**
+  String get historyWarmupDone;
+
+  /// No description provided for @compareTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Vergleich'**
+  String get compareTitle;
+
+  /// No description provided for @comparePrevious.
+  ///
+  /// In de, this message translates to:
+  /// **'Vorheriges Training: {date}'**
+  String comparePrevious(String date);
+
+  /// No description provided for @compareCurrent.
+  ///
+  /// In de, this message translates to:
+  /// **'Aktuelles Training'**
+  String get compareCurrent;
+
+  /// No description provided for @compareNoData.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch keine Vergleichsdaten'**
+  String get compareNoData;
+
+  /// No description provided for @compareDifference.
+  ///
+  /// In de, this message translates to:
+  /// **'Differenz: {value}'**
+  String compareDifference(String value);
+
+  /// No description provided for @compareSetLine.
+  ///
+  /// In de, this message translates to:
+  /// **'Satz {number}: {previous} → {current}'**
+  String compareSetLine(int number, String previous, String current);
+
+  /// No description provided for @compareTotalLine.
+  ///
+  /// In de, this message translates to:
+  /// **'Gesamt: {previous} → {current} Wdh.'**
+  String compareTotalLine(String previous, String current);
+
+  /// No description provided for @compareRoundsLine.
+  ///
+  /// In de, this message translates to:
+  /// **'Runden: {previous} → {current}'**
+  String compareRoundsLine(String previous, String current);
+
+  /// No description provided for @compareSetsUsed.
+  ///
+  /// In de, this message translates to:
+  /// **'Sätze: {previous} → {current}'**
+  String compareSetsUsed(String previous, String current);
+
+  /// No description provided for @compareConfigChanged.
+  ///
+  /// In de, this message translates to:
+  /// **'Andere Runden-Einstellung als beim letzten Mal'**
+  String get compareConfigChanged;
+
+  /// No description provided for @compareNotRecorded.
+  ///
+  /// In de, this message translates to:
+  /// **'nicht erfasst'**
+  String get compareNotRecorded;
+
+  /// No description provided for @progressChartOpen.
+  ///
+  /// In de, this message translates to:
+  /// **'Verlauf ansehen'**
+  String get progressChartOpen;
+
+  /// No description provided for @progressChartTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Verlauf: {name}'**
+  String progressChartTitle(String name);
+
+  /// No description provided for @progressChartEmpty.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch zu wenige Daten für einen Verlauf'**
+  String get progressChartEmpty;
+
+  /// No description provided for @progressChartSummary.
+  ///
+  /// In de, this message translates to:
+  /// **'{count} Trainings. Erster Wert {first}, letzter Wert {last}, bester Wert {best} {unit}.'**
+  String progressChartSummary(
+    int count,
+    int first,
+    int last,
+    int best,
+    String unit,
+  );
+
+  /// No description provided for @progressUnitReps.
+  ///
+  /// In de, this message translates to:
+  /// **'Wiederholungen'**
+  String get progressUnitReps;
+
+  /// No description provided for @progressUnitRounds.
+  ///
+  /// In de, this message translates to:
+  /// **'Runden'**
+  String get progressUnitRounds;
 }
 
 class _AppLocalizationsDelegate

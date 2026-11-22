@@ -138,6 +138,7 @@ class WorkoutExercise {
     this.sectionOrder = 0,
     this.timer,
     this.serverTotalReps,
+    this.exerciseId,
   });
 
   factory WorkoutExercise.fromJson(JsonReader json) => WorkoutExercise(
@@ -157,6 +158,7 @@ class WorkoutExercise {
     sectionOrder: json.intOrNull('sectionOrder') ?? 0,
     timer: WorkoutTimer.fromJsonOrNull(json.objectOrNull('timer')),
     serverTotalReps: _totalRepsOrNull(json.objectOrNull('totalReps')),
+    exerciseId: json.stringOrNull('exerciseId'),
   );
 
   static TotalRepsProgress? _totalRepsOrNull(JsonReader? json) => json == null
@@ -191,6 +193,9 @@ class WorkoutExercise {
 
   /// Total reps progress as computed by the API (null for other modes / older APIs).
   final TotalRepsProgress? serverTotalReps;
+
+  /// The library exercise (stable across sessions; Sprint 7 progress chart). Null in old fakes.
+  final String? exerciseId;
 
   bool get isDone => status != ExerciseStatus.pending;
 
@@ -239,6 +244,7 @@ class WorkoutExercise {
     sectionOrder: sectionOrder,
     timer: timer,
     serverTotalReps: serverTotalReps,
+    exerciseId: exerciseId,
   );
 }
 
@@ -407,6 +413,9 @@ class WorkoutSummary {
     required this.total,
     required this.completed,
     required this.skipped,
+    this.totalReps,
+    this.setsCompleted,
+    this.roundsCompleted,
   });
 
   factory WorkoutSummary.fromJson(JsonReader json) => WorkoutSummary(
@@ -424,6 +433,10 @@ class WorkoutSummary {
     total: json.integer('exercisesTotal'),
     completed: json.integer('exercisesCompleted'),
     skipped: json.integer('exercisesSkipped'),
+    // Sprint 7 (additive; older servers omit them → null, never shown as 0)
+    totalReps: json.intOrNull('totalReps'),
+    setsCompleted: json.intOrNull('setsCompleted'),
+    roundsCompleted: json.intOrNull('roundsCompleted'),
   );
 
   final String id;
@@ -438,6 +451,15 @@ class WorkoutSummary {
   final int total;
   final int completed;
   final int skipped;
+
+  /// Sprint 7: sum of the recorded reps (Strength + Total reps); null = nothing recorded.
+  final int? totalReps;
+
+  /// Sprint 7: sets with a recorded result; null = unknown (older server).
+  final int? setsCompleted;
+
+  /// Sprint 7: completed Core rounds; null = unknown (older server).
+  final int? roundsCompleted;
 
   int get open => total - completed - skipped;
 }
