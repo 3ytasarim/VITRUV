@@ -123,6 +123,7 @@ class WorkoutExercise {
     required this.actualReps,
     required this.actualDurationSeconds,
     required this.sets,
+    this.sectionOrder = 0,
   });
 
   factory WorkoutExercise.fromJson(JsonReader json) => WorkoutExercise(
@@ -139,6 +140,7 @@ class WorkoutExercise {
     actualReps: json.intOrNull('actualReps'),
     actualDurationSeconds: json.intOrNull('actualDurationSeconds'),
     sets: json.list('sets', WorkoutSet.fromJson),
+    sectionOrder: json.intOrNull('sectionOrder') ?? 0,
   );
 
   final String id;
@@ -154,6 +156,9 @@ class WorkoutExercise {
   final int? actualReps;
   final int? actualDurationSeconds;
   final List<WorkoutSet> sets;
+
+  /// 0-based section position at start time (groups a Warm-up checklist).
+  final int sectionOrder;
 
   bool get isDone => status != ExerciseStatus.pending;
 
@@ -176,6 +181,7 @@ class WorkoutExercise {
     actualReps: actualReps ?? this.actualReps,
     actualDurationSeconds: actualDurationSeconds ?? this.actualDurationSeconds,
     sets: sets ?? this.sets,
+    sectionOrder: sectionOrder,
   );
 }
 

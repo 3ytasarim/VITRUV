@@ -16,12 +16,15 @@ import '../../shared/widgets/content_page.dart';
 import '../training/exercise_media.dart';
 import 'countdown.dart';
 import 'countdown_panel.dart';
+import 'warmup_checklist.dart';
 import 'workout_controller.dart';
 import 'workout_models.dart';
 
 /// The live workout of the current session.
 ///
-/// - one exercise at a time, explicit "Vorherige/Nächste Übung" buttons (no swipe-only control)
+/// - one exercise at a time, explicit "Vorherige/Nächste Übung" buttons (no swipe-only control);
+///   a Warm-up of CHECKLIST items is one page: all items below each other, tick off, then
+///   "Training fortsetzen" to the next section (or "Training abschließen" if nothing follows)
 /// - execution controls by mode: sets (tick each set), total reps, timed, custom (mark done)
 /// - the rest timer starts after a set/exercise with rest; it never blocks the screen
 /// - leaving the screen keeps the session IN_PROGRESS on the server ("Training fortsetzen")
@@ -135,6 +138,17 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
     );
     _startRest(exercise);
     _advance(session);
+  }
+
+  /// Warm-up checklist tick: no timer, no rest, no reps — only the status is saved. The page
+  /// stays put (explicit index) so ticking the last item does not jump away by itself.
+  void _toggleChecklist(int index, WorkoutExercise exercise) {
+    HapticFeedback.selectionClick();
+    if (_index == null) setState(() => _index = index);
+    final next = exercise.status == ExerciseStatus.completed
+        ? ExerciseStatus.pending
+        : ExerciseStatus.completed;
+    _run(() => _controller.setStatus(exercise.id, next));
   }
 
   void _setStatus(
@@ -259,6 +273,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
     final exercise = session.exercises[index];
     final last = index == session.exercises.length - 1;
     final total = session.exercises.length;
+    final group = checklistGroupAt(session, index);
 
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
@@ -290,77 +305,111 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
           ],
         ),
         body: ContentPage(
-          bottom: _Navigation(
-            canGoBack: index > 0,
-            last: last,
-            onPrevious: () => _goTo(index - 1),
-            onNext: () => _goTo(index + 1),
-            onFinish: () => _finish(session, abandon: false),
-          ),
+          bottom: group != null
+              ? _Navigation(
+                  canGoBack: group.start > 0,
+                  last: group.end == total - 1,
+                  nextLabel: l10n.continueWorkout,
+                  onPrevious: () => _goTo(group.start - 1),
+                  onNext: () => _goTo(group.end + 1),
+                  onFinish: () => _finish(session, abandon: false),
+                )
+              : _Navigation(
+                  canGoBack: index > 0,
+                  last: last,
+                  onPrevious: () => _goTo(index - 1),
+                  onNext: () => _goTo(index + 1),
+                  onFinish: () => _finish(session, abandon: false),
+                ),
           children: [
-            Semantics(
-              container: true,
-              label: l10n.workoutPositionLabel(index + 1, total),
-              excludeSemantics: true,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Eyebrow(
-                      TrainingFormat(l10n).section(exercise.sectionType),
-                    ),
-                  ),
-                  Text(
-                    l10n.workoutPosition(index + 1, total),
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ],
+            if (group != null) ...[
+              VitruvProgress(
+                value: total == 0
+                    ? 0
+                    : (session.progress.completed + session.progress.skipped) /
+                          total,
+                label: l10n.workoutProgressLabel,
+                valueText: l10n.workoutProgressValue(
+                  session.progress.completed + session.progress.skipped,
+                  total,
+                ),
               ),
-            ),
-            const SizedBox(height: VitruvSpace.s3),
-            VitruvProgress(
-              value: total == 0
-                  ? 0
-                  : (session.progress.completed + session.progress.skipped) /
-                        total,
-              label: l10n.workoutProgressLabel,
-              valueText: l10n.workoutProgressValue(
-                session.progress.completed + session.progress.skipped,
-                total,
-              ),
-            ),
-            const SizedBox(height: VitruvSpace.s6),
-            _ExerciseHeader(exercise: exercise),
-            const SizedBox(height: VitruvSpace.s4),
-            ListenableBuilder(
-              listenable: _rest,
-              builder: (context, _) => _rest.phase == CountdownPhase.idle
-                  ? const SizedBox.shrink()
-                  : Padding(
-                      padding: const EdgeInsets.only(bottom: VitruvSpace.s4),
-                      child: CountdownPanel(countdown: _rest),
-                    ),
-            ),
-            if (exercise.media != null) ...[
-              ExerciseMedia(media: exercise.media, exerciseName: exercise.name),
-              const SizedBox(height: VitruvSpace.s4),
-            ],
-            _Execution(
-              exercise: exercise,
-              work: _work,
-              repsController: _repsController(exercise),
-              onToggleSet: (set) => _toggleSet(session, exercise, set),
-              onComplete: () => _complete(session, exercise),
-              onSkip: () =>
-                  _setStatus(session, exercise, ExerciseStatus.skipped),
-              onReopen: () =>
-                  _setStatus(session, exercise, ExerciseStatus.pending),
-              onStartRest: () => _startRest(exercise),
-            ),
-            if (exercise.instructions != null) ...[
               const SizedBox(height: VitruvSpace.s6),
-              MetaLabel(l10n.instructionsLabel),
-              const SizedBox(height: VitruvSpace.s1),
-              Text(exercise.instructions!),
+              WarmupChecklist(
+                exercises: session.exercises.sublist(
+                  group.start,
+                  group.end + 1,
+                ),
+                onToggle: (e) => _toggleChecklist(index, e),
+              ),
+            ] else ...[
+              Semantics(
+                container: true,
+                label: l10n.workoutPositionLabel(index + 1, total),
+                excludeSemantics: true,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Eyebrow(
+                        TrainingFormat(l10n).section(exercise.sectionType),
+                      ),
+                    ),
+                    Text(
+                      l10n.workoutPosition(index + 1, total),
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: VitruvSpace.s3),
+              VitruvProgress(
+                value: total == 0
+                    ? 0
+                    : (session.progress.completed + session.progress.skipped) /
+                          total,
+                label: l10n.workoutProgressLabel,
+                valueText: l10n.workoutProgressValue(
+                  session.progress.completed + session.progress.skipped,
+                  total,
+                ),
+              ),
+              const SizedBox(height: VitruvSpace.s6),
+              _ExerciseHeader(exercise: exercise),
+              const SizedBox(height: VitruvSpace.s4),
+              ListenableBuilder(
+                listenable: _rest,
+                builder: (context, _) => _rest.phase == CountdownPhase.idle
+                    ? const SizedBox.shrink()
+                    : Padding(
+                        padding: const EdgeInsets.only(bottom: VitruvSpace.s4),
+                        child: CountdownPanel(countdown: _rest),
+                      ),
+              ),
+              if (exercise.media != null) ...[
+                ExerciseMedia(
+                  media: exercise.media,
+                  exerciseName: exercise.name,
+                ),
+                const SizedBox(height: VitruvSpace.s4),
+              ],
+              _Execution(
+                exercise: exercise,
+                work: _work,
+                repsController: _repsController(exercise),
+                onToggleSet: (set) => _toggleSet(session, exercise, set),
+                onComplete: () => _complete(session, exercise),
+                onSkip: () =>
+                    _setStatus(session, exercise, ExerciseStatus.skipped),
+                onReopen: () =>
+                    _setStatus(session, exercise, ExerciseStatus.pending),
+                onStartRest: () => _startRest(exercise),
+              ),
+              if (exercise.instructions != null) ...[
+                const SizedBox(height: VitruvSpace.s6),
+                MetaLabel(l10n.instructionsLabel),
+                const SizedBox(height: VitruvSpace.s1),
+                Text(exercise.instructions!),
+              ],
             ],
           ],
         ),
@@ -605,8 +654,11 @@ class _Navigation extends StatelessWidget {
     required this.onPrevious,
     required this.onNext,
     required this.onFinish,
+    this.nextLabel,
   });
 
+  /// Replaces "Nächste Übung" (Warm-up: "Training fortsetzen").
+  final String? nextLabel;
   final bool canGoBack;
   final bool last;
   final VoidCallback onPrevious;
@@ -631,7 +683,7 @@ class _Navigation extends StatelessWidget {
             onPressed: onFinish,
           )
         : VitruvButton(
-            label: l10n.nextExercise,
+            label: nextLabel ?? l10n.nextExercise,
             trailingIcon: Icons.chevron_right,
             fullWidth: true,
             onPressed: onNext,

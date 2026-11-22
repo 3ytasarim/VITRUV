@@ -61,6 +61,18 @@ class FakeBackend implements HttpClientAdapter {
   /// The next N workout mutations (PATCH) fail with a connection error.
   int failMutations = 0;
 
+  /// The next N reads of the plan (GET /v1/client/training/active) time out.
+  int timeoutPlanReads = 0;
+
+  /// The next N workout mutations (PATCH) answer 409 (e.g. the session was finished elsewhere).
+  int conflictMutations = 0;
+
+  /// Days whose workout was completed (→ `workoutStatus` COMPLETED, like the API derives it).
+  final completedDayIds = <String>{};
+
+  /// Request headers of the last request (to assert the capability header).
+  Map<String, dynamic> lastHeaders = const {};
+
   /// Delay of /v1/auth/refresh (to make concurrent 401s overlap).
   Duration refreshDelay = Duration.zero;
   final requests = <String>[];
@@ -118,6 +130,14 @@ class FakeBackend implements HttpClientAdapter {
   ) async {
     final key = '${options.method} ${options.path}';
     requests.add(key);
+    lastHeaders = Map.of(options.headers);
+    if (timeoutPlanReads > 0 && key == 'GET /v1/client/training/active') {
+      timeoutPlanReads--;
+      throw DioException(
+        requestOptions: options,
+        type: DioExceptionType.receiveTimeout,
+      );
+    }
     if (offline) {
       throw DioException(
         requestOptions: options,
@@ -215,9 +235,28 @@ class FakeBackend implements HttpClientAdapter {
       );
     }
     if (method == 'GET' && path == '/v1/client/training/active') {
-      return (status: 200, body: {'program': program});
+      if (accounts[email]?.role != 'CLIENT') return _error(403, 'FORBIDDEN');
+      return (status: 200, body: {'program': _withStatuses(program)});
     }
     return _workouts(method, path, json);
+  }
+
+  /// Adds the derived day status (Sprint 2 `workoutStatus`) unless a test set one explicitly:
+  /// running session → IN_PROGRESS, completed → COMPLETED, otherwise NOT_STARTED.
+  Map<String, Object?>? _withStatuses(Map<String, Object?>? plan) {
+    if (plan == null) return null;
+    final copy = jsonDecode(jsonEncode(plan)) as Map<String, Object?>;
+    for (final week in (copy['weeks']! as List).cast<Map<String, Object?>>()) {
+      for (final day in (week['days']! as List).cast<Map<String, Object?>>()) {
+        if (day.containsKey('workoutStatus')) continue;
+        day['workoutStatus'] = current?['dayId'] == day['id']
+            ? 'IN_PROGRESS'
+            : completedDayIds.contains(day['id'])
+            ? 'COMPLETED'
+            : 'NOT_STARTED';
+      }
+    }
+    return copy;
   }
 
   Map<String, Object?> _userJson(String loginId) {
@@ -271,6 +310,10 @@ class FakeBackend implements HttpClientAdapter {
     }
     if (method == 'PATCH') {
       mutationBodies.add(json);
+      if (conflictMutations > 0) {
+        conflictMutations--;
+        return _error(409, 'CONFLICT');
+      }
       if (failMutations > 0) {
         failMutations--;
         throw DioException(
@@ -324,6 +367,9 @@ class FakeBackend implements HttpClientAdapter {
         'exercisesSkipped': progress['skipped'],
       };
       history.insert(0, summary);
+      if (!abandon && session['dayId'] is String) {
+        completedDayIds.add(session['dayId']! as String);
+      }
       current = null;
       return (status: 200, body: {'summary': summary});
     }
@@ -342,7 +388,14 @@ class FakeBackend implements HttpClientAdapter {
             in (day['sections']! as List).cast<Map<String, Object?>>()) {
           for (final e
               in (section['exercises']! as List).cast<Map<String, Object?>>()) {
-            final mode = e['sets'] != null || e['reps'] != null
+            final type = e['executionType'];
+            final mode = type == 'CHECKLIST'
+                ? 'CHECKLIST'
+                : type == 'INTERVAL'
+                ? 'INTERVAL'
+                : type == 'TOTAL_REPS'
+                ? 'TOTAL_REPS'
+                : e['sets'] != null || e['reps'] != null
                 ? 'SETS_REPS'
                 : e['totalReps'] != null
                 ? 'TOTAL_REPS'
@@ -441,13 +494,15 @@ Map<String, Object?> _exercise(
   double? targetWeight,
   String? prescriptionText,
   String? instructions,
+  String? executionType,
+  Map<String, Object?>? media,
 }) => {
   'assignmentId': 'a-$id',
   'exerciseId': 'e-$id',
   'order': 0,
   'name': name,
   'description': null,
-  'media': null,
+  'media': media,
   'sets': sets,
   'reps': reps,
   'totalReps': totalReps,
@@ -457,6 +512,157 @@ Map<String, Object?> _exercise(
   'weightUnit': targetWeight == null ? null : 'KG',
   'prescriptionText': prescriptionText,
   'instructions': instructions,
+  'executionType': ?executionType,
+};
+
+/// Fictional technique video (resolved delivery URL, never a storage key).
+Map<String, Object?> demoVideo({String mimeType = 'video/mp4'}) => {
+  'assetId': 'm-video',
+  'kind': 'VIDEO',
+  'url': 'https://media.example.invalid/technik.mp4',
+  'mimeType': mimeType,
+  'width': 1280,
+  'height': 720,
+  'altText': null,
+};
+
+Map<String, Object?> _day(
+  String id,
+  int order,
+  String title,
+  int? weekday,
+  List<Map<String, Object?>> sections, {
+  String? status,
+}) => {
+  'id': id,
+  'order': order,
+  'title': title,
+  'notes': null,
+  'scheduledWeekday': weekday,
+  'workoutStatus': ?status,
+  'sections': [
+    for (var i = 0; i < sections.length; i++) {...sections[i], 'order': i},
+  ],
+};
+
+Map<String, Object?> _section(
+  String id,
+  String type,
+  List<Map<String, Object?>> exercises, {
+  String? title,
+}) => {
+  'id': id,
+  'order': 0,
+  'type': type,
+  'title': title,
+  'exercises': exercises,
+};
+
+/// Warm-up checklist of four items (Sprint 2 CHECKLIST type: no reps, timer or rest).
+List<Map<String, Object?>> demoWarmup({bool withVideo = false}) => [
+  _exercise(
+    'w1',
+    'Schulterkreisen',
+    executionType: 'CHECKLIST',
+    instructions: 'Langsam und kontrolliert.',
+    media: withVideo ? demoVideo() : null,
+  ),
+  _exercise('w2', 'Armkreisen', executionType: 'CHECKLIST'),
+  _exercise('w3', 'Hüftmobilisation', executionType: 'CHECKLIST'),
+  _exercise('w4', 'Kniebeugen ohne Gewicht', executionType: 'CHECKLIST'),
+];
+
+/// Fictional ACTIVE plan WITH a calendar (Sprint 4): starts Monday 2026-10-12; the harness clock
+/// is Thursday 2026-10-15.
+/// - week 1: Mo 12.10. "Oberkörper A" (completed), We 14.10. "Rücken kurz" + "Core kurz" (two
+///   workouts on one day), Th 15.10. "Aufwärmen und Kraft" (Warm-up checklist + strength)
+/// - week 2: Tu 20.10. "Ganzkörper"
+/// - no weekday: "Mobility frei" (only in the Trainingsübersicht)
+Map<String, Object?> weekProgram({
+  bool warmupOnly = false,
+  bool warmupVideo = false,
+  String startsOn = '2026-10-12',
+}) => {
+  'id': 'p-2',
+  'title': 'Herbstblock',
+  'description': null,
+  'startsOn': startsOn,
+  'endsOn': null,
+  'currentWeekId': 'w-a',
+  'weeks': [
+    {
+      'id': 'w-a',
+      'order': 0,
+      'title': null,
+      'notes': null,
+      'days': [
+        _day('d-mo', 0, 'Oberkörper A', 1, [
+          _section('s-mo', 'MAIN', [
+            _exercise(
+              'mo1',
+              'Klimmzüge',
+              sets: 4,
+              reps: 8,
+              executionType: 'STRENGTH',
+            ),
+          ]),
+        ], status: 'COMPLETED'),
+        _day('d-mi1', 1, 'Rücken kurz', 3, [
+          _section('s-mi1', 'MAIN', [
+            _exercise(
+              'mi1',
+              'Rudern',
+              totalReps: 60,
+              restSeconds: 60,
+              executionType: 'TOTAL_REPS',
+            ),
+          ]),
+        ]),
+        _day('d-mi2', 2, 'Core kurz', 3, [
+          _section('s-mi2', 'MAIN', [
+            _exercise('mi2', 'Plank', durationSeconds: 40),
+          ]),
+        ]),
+        _day('d-do', 3, 'Aufwärmen und Kraft', 4, [
+          _section(
+            's-do-w',
+            'WARMUP',
+            demoWarmup(withVideo: warmupVideo),
+            title: 'Aufwärmen',
+          ),
+          if (!warmupOnly)
+            _section('s-do-m', 'MAIN', [
+              _exercise(
+                'do1',
+                'Bankdrücken',
+                sets: 3,
+                reps: 10,
+                restSeconds: 90,
+                executionType: 'STRENGTH',
+              ),
+            ]),
+        ]),
+        _day('d-frei', 4, 'Mobility frei', null, [
+          _section('s-frei', 'MAIN', [
+            _exercise('fr1', 'Dehnen', prescriptionText: 'locker'),
+          ]),
+        ]),
+      ],
+    },
+    {
+      'id': 'w-b',
+      'order': 1,
+      'title': null,
+      'notes': null,
+      'days': [
+        _day('d-di', 0, 'Ganzkörper', 2, [
+          _section('s-di', 'MAIN', [
+            _exercise('di1', 'Kreuzheben', sets: 5, reps: 5),
+          ]),
+        ]),
+      ],
+    },
+  ],
 };
 
 /// Fictional ACTIVE plan: week 1 = "Oberkörper A" (all four execution styles) + "Unterkörper",

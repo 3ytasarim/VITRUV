@@ -6,9 +6,10 @@ import '../../l10n/app_localizations.dart';
 import '../../shared/format/training_format.dart';
 import '../../shared/ui/ui.dart';
 import 'training_models.dart';
+import 'week_schedule_view.dart';
 
-/// One training day as a single tappable card ("Tag 1 · Oberkörper A", exercises, weekday hint,
-/// "Läuft" when its workout is in progress).
+/// One training day as a single tappable card ("Tag 1 · Oberkörper A", type, exercises, weekday
+/// hint and the day status: Nicht begonnen / In Bearbeitung / Abgeschlossen).
 class TrainingDayTile extends StatelessWidget {
   const TrainingDayTile({
     super.key,
@@ -28,18 +29,18 @@ class TrainingDayTile extends StatelessWidget {
     final theme = Theme.of(context);
     final c = VitruvTheme.of(context);
     final title = '${l10n.dayLabel(day.order + 1)} · ${day.title}';
+    final status = running ? DayStatus.inProgress : day.workoutStatus;
     final meta = [
+      format.workoutType(day),
       l10n.exerciseCount(day.exerciseCount),
       if (day.scheduledWeekday != null) format.weekday(day.scheduledWeekday!),
     ];
     return VitruvCard.tappable(
       onTap: onTap,
-      semanticLabel: [
-        title,
-        ...meta,
-        if (running) l10n.workoutRunningBadge,
-      ].join(', '),
-      tone: running ? VitruvCardTone.accent : VitruvCardTone.standard,
+      semanticLabel: [title, ...meta, format.dayStatus(status)].join(', '),
+      tone: status == DayStatus.inProgress
+          ? VitruvCardTone.accent
+          : VitruvCardTone.standard,
       padding: VitruvCardPadding.sm,
       child: Row(
         children: [
@@ -50,17 +51,11 @@ class TrainingDayTile extends StatelessWidget {
                 Text(title, style: theme.textTheme.titleMedium),
                 const SizedBox(height: VitruvSpace.s1),
                 VitruvMetaRow(meta),
+                const SizedBox(height: VitruvSpace.s2),
+                DayStatusBadge(status: status),
               ],
             ),
           ),
-          if (running) ...[
-            const SizedBox(width: VitruvSpace.s2),
-            VitruvBadge(
-              l10n.workoutRunningBadge,
-              tone: VitruvTone.accent,
-              dot: true,
-            ),
-          ],
           const SizedBox(width: VitruvSpace.s2),
           Icon(Icons.chevron_right, color: c.fgSubtle),
         ],

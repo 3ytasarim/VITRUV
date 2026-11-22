@@ -86,14 +86,15 @@ void main() {
   });
 
   testWidgets(
-    '"Heute geplant" only with a real calendar week and matching weekday',
+    'a workout is placed on today only with a real start date and matching weekday',
     (tester) async {
-      // FakeClock: Thursday 2026-10-15 → ISO weekday 4
+      // FakeClock: Thursday 2026-10-15 → ISO weekday 4; plan starts Monday 2026-10-12.
       final h = AppHarness();
-      h.backend.program = demoProgram(currentWeekId: 'w-1', weekday: 4);
-      await h.pump(tester);
-      expect(find.text('HEUTE GEPLANT'), findsOneWidget);
-      expect(find.text('Tag 1 · Oberkörper A'), findsOneWidget);
+      h.backend.program = weekProgram();
+      await h.pump(tester, height: 4000);
+      expect(find.text('HEUTE'), findsOneWidget); // badge on Donnerstag, 15.10.
+      expect(find.text('Donnerstag, 15.10.'), findsWidgets);
+      expect(find.text('Aufwärmen und Kraft'), findsWidgets);
     },
   );
 
@@ -102,9 +103,18 @@ void main() {
   ) async {
     final h = AppHarness();
     h.backend.program = demoProgram(weekday: 4); // weekday hint but no calendar
-    await h.pump(tester);
-    expect(find.text('HEUTE GEPLANT'), findsNothing);
+    await h.pump(tester, height: 3000);
+    expect(find.text('HEUTE'), findsNothing);
     expect(find.text('DEIN TRAININGSPLAN'), findsOneWidget);
-    expect(find.text('2 Wochen · 3 Trainingstage'), findsOneWidget);
+    // No invented dates: the plan says so and lists the workouts without a date.
+    expect(
+      find.textContaining('Dein Plan hat noch keine festen Termine'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('OHNE FESTEN TERMIN'),
+      findsOneWidget,
+    ); // "Nächstes Training"
+    expect(find.text('3 TRAININGSTAGE'), findsOneWidget);
   });
 }

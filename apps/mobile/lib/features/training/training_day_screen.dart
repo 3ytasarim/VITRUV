@@ -16,10 +16,19 @@ import '../workout/workout_controller.dart';
 import 'exercise_media.dart';
 import 'training_api.dart';
 import 'training_models.dart';
+import 'training_schedule.dart';
+import 'week_schedule_view.dart';
 
-/// One training day of the ACTIVE plan: sections → exercises with target, rest, instructions and
-/// media. Primary action "Training starten" — or "Training fortsetzen" when this day's workout
-/// is running. While ANOTHER day's workout runs, the screen offers to open that one instead.
+/// Workout overview — one training day of the ACTIVE plan: name, type, planned date, status,
+/// sections → exercises in the coach's order (Warm-up as a tick-off list without reps/timer),
+/// target, rest, instructions, media and a video indicator.
+///
+/// Primary action by state:
+/// - this day's workout is running → "Training fortsetzen" (resume, same session)
+/// - the day is COMPLETED (server status) → "Abgeschlossen" (disabled) — a finished workout is
+///   never restarted by accident
+/// - ANOTHER day's workout runs → offer to open that one
+/// - otherwise → "Training starten" (POST /v1/client/workouts — the existing start/resume API)
 class TrainingDayScreen extends ConsumerStatefulWidget {
   const TrainingDayScreen({super.key, required this.dayId});
 
@@ -65,7 +74,23 @@ class _TrainingDayScreenState extends ConsumerState<TrainingDayScreen> {
 
     Widget? action;
     if (found != null && found.day.exerciseCount > 0) {
-      if (running == null) {
+      if (running == null && found.day.workoutStatus == DayStatus.completed) {
+        action = Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l10n.workoutAlreadyCompleted, textAlign: TextAlign.center),
+            const SizedBox(height: VitruvSpace.s3),
+            VitruvButton(
+              label: l10n.dayStatusCompleted,
+              leadingIcon: Icons.check,
+              size: VitruvButtonSize.lg,
+              fullWidth: true,
+              onPressed: null,
+            ),
+          ],
+        );
+      } else if (running == null) {
         action = VitruvButton(
           label: l10n.startWorkout,
           leadingIcon: Icons.play_arrow,
@@ -110,7 +135,17 @@ class _TrainingDayScreenState extends ConsumerState<TrainingDayScreen> {
             : ContentPage(
                 bottom: action,
                 children: [
-                  _DayHeader(week: found.week, day: found.day),
+                  _DayHeader(
+                    week: found.week,
+                    day: found.day,
+                    date: scheduleOf(program!)
+                        .where((w) => w.day.id == found.day.id)
+                        .firstOrNull
+                        ?.date,
+                    status: running?.dayId == found.day.id
+                        ? DayStatus.inProgress
+                        : found.day.workoutStatus,
+                  ),
                   if (found.day.exerciseCount == 0) ...[
                     const SizedBox(height: VitruvSpace.s6),
                     Text(l10n.dayNoExercises),
@@ -156,10 +191,17 @@ class _OtherRunning extends StatelessWidget {
 }
 
 class _DayHeader extends StatelessWidget {
-  const _DayHeader({required this.week, required this.day});
+  const _DayHeader({
+    required this.week,
+    required this.day,
+    required this.date,
+    required this.status,
+  });
 
   final TrainingWeek week;
   final TrainingDay day;
+  final DateTime? date;
+  final DayStatus status;
 
   @override
   Widget build(BuildContext context) {
@@ -178,7 +220,24 @@ class _DayHeader extends StatelessWidget {
         const SizedBox(height: VitruvSpace.s2),
         SectionTitle(day.title, size: SectionTitleSize.h2),
         const SizedBox(height: VitruvSpace.s2),
-        VitruvMetaRow([l10n.exerciseCount(day.exerciseCount)]),
+        VitruvMetaRow([
+          format.workoutType(day),
+          l10n.exerciseCount(day.exerciseCount),
+        ]),
+        const SizedBox(height: VitruvSpace.s2),
+        Wrap(
+          spacing: VitruvSpace.s2,
+          runSpacing: VitruvSpace.s2,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            DayStatusBadge(status: status),
+            Text(
+              date == null
+                  ? l10n.noFixedDate
+                  : l10n.plannedOn(format.longDate(date!)),
+            ),
+          ],
+        ),
         if (day.notes != null) ...[
           const SizedBox(height: VitruvSpace.s3),
           Text(day.notes!),
@@ -204,11 +263,71 @@ class _SectionBlock extends StatelessWidget {
           size: SectionTitleSize.h3,
         ),
         const SizedBox(height: VitruvSpace.s3),
-        for (final exercise in section.exercises) ...[
-          PlanExerciseCard(exercise: exercise),
-          const SizedBox(height: VitruvSpace.s3),
-        ],
+        if (isChecklistSection(section))
+          _ChecklistPreview(section: section)
+        else
+          for (final exercise in section.exercises) ...[
+            PlanExerciseCard(exercise: exercise),
+            const SizedBox(height: VitruvSpace.s3),
+          ],
       ],
+    );
+  }
+}
+
+/// A Warm-up whose exercises are all CHECKLIST items (Sprint 2 type): shown as a tick-off list
+/// preview — no reps, no timer, no rest. Legacy warm-ups keep the normal exercise cards.
+bool isChecklistSection(TrainingSection section) =>
+    section.exercises.isNotEmpty &&
+    section.exercises.every((e) => e.executionType == ExecutionType.checklist);
+
+class _ChecklistPreview extends StatelessWidget {
+  const _ChecklistPreview({required this.section});
+
+  final TrainingSection section;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final c = VitruvTheme.of(context);
+    return VitruvCard(
+      padding: VitruvCardPadding.sm,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            l10n.warmupHint,
+            style: theme.textTheme.bodyMedium?.copyWith(color: c.fgMuted),
+          ),
+          for (final exercise in section.exercises) ...[
+            const SizedBox(height: VitruvSpace.s3),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.check_box_outline_blank, color: c.fgSubtle),
+                const SizedBox(width: VitruvSpace.s3),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(exercise.name, style: theme.textTheme.titleMedium),
+                      if (exercise.instructions != null) ...[
+                        const SizedBox(height: VitruvSpace.s1),
+                        Text(exercise.instructions!),
+                      ],
+                    ],
+                  ),
+                ),
+                if (exercise.hasVideo) ...[
+                  const SizedBox(width: VitruvSpace.s2),
+                  VitruvBadge(l10n.videoBadge, tone: VitruvTone.accent),
+                ],
+              ],
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -236,7 +355,18 @@ class PlanExerciseCard extends StatelessWidget {
             ExerciseMedia(media: exercise.media, exerciseName: exercise.name),
             const SizedBox(height: VitruvSpace.s3),
           ],
-          Text(exercise.name, style: theme.textTheme.titleMedium),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(exercise.name, style: theme.textTheme.titleMedium),
+              ),
+              if (exercise.hasVideo) ...[
+                const SizedBox(width: VitruvSpace.s2),
+                VitruvBadge(l10n.videoBadge, tone: VitruvTone.accent),
+              ],
+            ],
+          ),
           const SizedBox(height: VitruvSpace.s1),
           if (target.isNotEmpty)
             Text(

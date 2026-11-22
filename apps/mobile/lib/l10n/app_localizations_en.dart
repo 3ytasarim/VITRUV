@@ -573,4 +573,159 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileCoaching => 'Coaching';
+
+  @override
+  String get homeCurrentWeek => 'Current training week';
+
+  @override
+  String get homeNextTraining => 'Next training';
+
+  @override
+  String get homeNoNextTraining => 'No further training planned';
+
+  @override
+  String get homeNoNextTrainingBody =>
+      'As soon as your coach plans a new workout, it appears here.';
+
+  @override
+  String get openWorkout => 'Open workout';
+
+  @override
+  String get trainingOverview => 'Training overview';
+
+  @override
+  String get trainingOverviewBody =>
+      'All workouts of your active training plan.';
+
+  @override
+  String get showAllWorkouts => 'Show all workouts';
+
+  @override
+  String get showHistory => 'Show training history';
+
+  @override
+  String get previousWeek => 'Previous week';
+
+  @override
+  String get nextWeek => 'Next week';
+
+  @override
+  String get backToThisWeek => 'Back to this week';
+
+  @override
+  String weekRange(String start, String end) {
+    return '$start – $end';
+  }
+
+  @override
+  String get noTrainingPlanned => 'No training planned';
+
+  @override
+  String get weekOutsidePlan => 'No training is planned for this week.';
+
+  @override
+  String get planWithoutDates =>
+      'Your plan has no fixed dates yet. You find all workouts in the training overview.';
+
+  @override
+  String get statPlanned => 'Planned';
+
+  @override
+  String get statCompleted => 'Completed';
+
+  @override
+  String get statOpen => 'Open';
+
+  @override
+  String get statInProgress => 'In progress';
+
+  @override
+  String weekStatsLabel(int planned, int completed, int inProgress, int open) {
+    return 'This week: $planned planned, $completed completed, $inProgress in progress, $open open';
+  }
+
+  @override
+  String get dayStatusNotStarted => 'Not started';
+
+  @override
+  String get dayStatusInProgress => 'In progress';
+
+  @override
+  String get dayStatusCompleted => 'Completed';
+
+  @override
+  String get workoutTypeStrength => 'Strength';
+
+  @override
+  String get workoutTypeTotalReps => 'Total reps';
+
+  @override
+  String get workoutTypeInterval => 'Core intervals';
+
+  @override
+  String get workoutTypeChecklist => 'Warm-up';
+
+  @override
+  String get workoutTypeGeneral => 'Training';
+
+  @override
+  String plannedOn(String date) {
+    return 'Planned for $date';
+  }
+
+  @override
+  String get noFixedDate => 'No fixed date';
+
+  @override
+  String get todayLabel => 'Today';
+
+  @override
+  String get workoutAlreadyCompleted =>
+      'You have already completed this training.';
+
+  @override
+  String get warmupTitle => 'Warm-up';
+
+  @override
+  String get warmupHint =>
+      'No reps, no timer: tick off each exercise once you have done it.';
+
+  @override
+  String warmupProgress(int done, int total) {
+    return '$done of $total done';
+  }
+
+  @override
+  String get warmupDone => 'Warm-up completed';
+
+  @override
+  String warmupCheck(String name) {
+    return 'Tick off $name';
+  }
+
+  @override
+  String warmupChecked(String name) {
+    return '$name, done';
+  }
+
+  @override
+  String get warmupSaving => 'Saving …';
+
+  @override
+  String get watchVideo => 'Watch video';
+
+  @override
+  String get showImage => 'Show image';
+
+  @override
+  String get videoBadge => 'Video';
+
+  @override
+  String get videoUnsupported => 'This video can not be played on this device.';
+
+  @override
+  String get closeLabel => 'Close';
+
+  @override
+  String get checklistItemLabel => 'Tick off';
 }

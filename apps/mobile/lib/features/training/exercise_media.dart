@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
@@ -6,6 +7,18 @@ import '../../core/theme/vitruv_tokens.g.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/ui/ui.dart';
 import 'training_models.dart';
+
+/// Whether the platform player can decode [mimeType]. Apple's AVPlayer (iOS/macOS) has no WebM
+/// or Ogg support — such a video is announced as unavailable instead of being handed to the
+/// player (no failed decode, no crash). Everything else is tried; a failing initialise still
+/// ends in "Medium nicht verfügbar".
+bool canPlayVideo(String mimeType, TargetPlatform platform) {
+  final type = mimeType.toLowerCase().split(';').first.trim();
+  final apple =
+      platform == TargetPlatform.iOS || platform == TargetPlatform.macOS;
+  if (apple && (type == 'video/webm' || type == 'video/ogg')) return false;
+  return type.startsWith('video/');
+}
 
 /// Exercise demonstration media from the API (resolved delivery URL — never a storage key).
 ///
@@ -39,7 +52,22 @@ class ExerciseMedia extends StatelessWidget {
           errorBuilder: (context, error, stack) => const SizedBox.shrink(),
         ),
       ),
-      MediaKind.video => _ExerciseVideo(url: m.url, label: label),
+      MediaKind.video =>
+        canPlayVideo(m.mimeType, defaultTargetPlatform)
+            ? _ExerciseVideo(url: m.url, label: label)
+            : VitruvMediaFrame(
+                semanticLabel: label,
+                placeholderLabel: l10n.videoUnsupported,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(VitruvSpace.s4),
+                    child: Text(
+                      l10n.videoUnsupported,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ),
     };
   }
 }

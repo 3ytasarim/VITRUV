@@ -588,8 +588,18 @@ export async function updateWorkoutExercise(
       await tx
         .update(WE)
         .set({
+          // Sprint 4: a repeated COMPLETED (retry, double tap) keeps the first completedAt —
+          // the record stays exactly as it was (idempotent), it is never "completed again".
           ...(input.status !== undefined
-            ? { status: input.status, completedAt: input.status === 'COMPLETED' ? now : null }
+            ? {
+                status: input.status,
+                completedAt:
+                  input.status !== 'COMPLETED'
+                    ? null
+                    : exercise.status === 'COMPLETED' && exercise.completedAt
+                      ? exercise.completedAt
+                      : now,
+              }
             : {}),
           ...(input.actualReps !== undefined ? { actualReps: input.actualReps } : {}),
           ...(input.actualDurationSeconds !== undefined

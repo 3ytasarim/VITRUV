@@ -19,6 +19,38 @@ enum SectionType {
   };
 }
 
+/// Derived status of one training day for the client: the API's `workoutStatus` (Sprint 2;
+/// NOT_STARTED is never stored, it means "no running or completed session").
+enum DayStatus {
+  notStarted,
+  inProgress,
+  completed;
+
+  /// Missing on older API versions → not started (backward compatible).
+  static DayStatus fromWire(String? value) => switch (value) {
+    'IN_PROGRESS' => inProgress,
+    'COMPLETED' => completed,
+    _ => notStarted,
+  };
+}
+
+/// Sprint 2 execution type of a plan exercise (null = legacy row, derived by the API).
+/// Unknown future values are ignored (null) instead of failing the whole plan.
+enum ExecutionType {
+  strength,
+  totalReps,
+  interval,
+  checklist;
+
+  static ExecutionType? fromWire(String? value) => switch (value) {
+    'STRENGTH' => strength,
+    'TOTAL_REPS' => totalReps,
+    'INTERVAL' => interval,
+    'CHECKLIST' => checklist,
+    _ => null,
+  };
+}
+
 enum MediaKind { image, video }
 
 /// Mirrors `resolvedMediaSchema` — a delivery URL, never a storage key.
@@ -102,6 +134,8 @@ class TrainingExercise {
     required this.media,
     required this.prescription,
     required this.instructions,
+    this.executionType,
+    this.repsMax = false,
   });
 
   factory TrainingExercise.fromJson(JsonReader json) => TrainingExercise(
@@ -111,6 +145,8 @@ class TrainingExercise {
     media: ResolvedMedia.fromJson(json.objectOrNull('media')),
     prescription: Prescription.fromJson(json),
     instructions: json.stringOrNull('instructions'),
+    executionType: ExecutionType.fromWire(json.stringOrNull('executionType')),
+    repsMax: json.booleanOrNull('repsMax') ?? false,
   );
 
   final String assignmentId;
@@ -121,6 +157,12 @@ class TrainingExercise {
 
   /// Plan-specific instructions, else the exercise's default description (resolved by the API).
   final String? instructions;
+
+  /// Sprint 2 (optional on the wire): explicit type; null for legacy rows.
+  final ExecutionType? executionType;
+  final bool repsMax;
+
+  bool get hasVideo => media?.kind == MediaKind.video;
 }
 
 @immutable
@@ -154,6 +196,7 @@ class TrainingDay {
     required this.notes,
     required this.scheduledWeekday,
     required this.sections,
+    this.workoutStatus = DayStatus.notStarted,
   });
 
   factory TrainingDay.fromJson(JsonReader json) => TrainingDay(
@@ -163,6 +206,7 @@ class TrainingDay {
     notes: json.stringOrNull('notes'),
     scheduledWeekday: json.intOrNull('scheduledWeekday'),
     sections: json.list('sections', TrainingSection.fromJson),
+    workoutStatus: DayStatus.fromWire(json.stringOrNull('workoutStatus')),
   );
 
   final String id;
@@ -170,12 +214,21 @@ class TrainingDay {
   final String title;
   final String? notes;
 
+  /// From the own sessions (server); see [DayStatus].
+  final DayStatus workoutStatus;
+
   /// ISO weekday 1 (Mo) … 7 (So) — a planning hint from the coach, or null.
   final int? scheduledWeekday;
   final List<TrainingSection> sections;
 
   int get exerciseCount =>
       sections.fold(0, (sum, section) => sum + section.exercises.length);
+
+  /// Distinct execution types in plan order (legacy rows contribute nothing).
+  List<ExecutionType> get executionTypes => <ExecutionType>{
+    for (final section in sections)
+      for (final exercise in section.exercises) ?exercise.executionType,
+  }.toList();
 }
 
 @immutable
@@ -211,6 +264,8 @@ class TrainingProgram {
     required this.description,
     required this.currentWeekId,
     required this.weeks,
+    this.startsOn,
+    this.endsOn,
   });
 
   factory TrainingProgram.fromJson(JsonReader json) => TrainingProgram(
@@ -219,6 +274,8 @@ class TrainingProgram {
     description: json.stringOrNull('description'),
     currentWeekId: json.stringOrNull('currentWeekId'),
     weeks: json.list('weeks', TrainingWeek.fromJson),
+    startsOn: json.stringOrNull('startsOn'),
+    endsOn: json.stringOrNull('endsOn'),
   );
 
   final String id;
@@ -228,6 +285,10 @@ class TrainingProgram {
   /// Only set when the plan has a start date (then it is a real calendar week).
   final String? currentWeekId;
   final List<TrainingWeek> weeks;
+
+  /// Calendar dates "YYYY-MM-DD" (never converted through a time zone) or null.
+  final String? startsOn;
+  final String? endsOn;
 
   ({TrainingWeek week, TrainingDay day})? findDay(String dayId) {
     for (final week in weeks) {

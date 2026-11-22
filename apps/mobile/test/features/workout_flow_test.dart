@@ -246,7 +246,8 @@ void main() {
       h.backend.startSession('d-1');
       await h.pump(tester, height: 1400);
       await tapOn(tester, find.byIcon(Icons.fitness_center_outlined));
-      expect(find.text('LÄUFT'), findsOneWidget); // badge on day 1
+      // Sprint 4 status label of day 1 (was "Läuft"): In Bearbeitung.
+      expect(find.text('IN BEARBEITUNG'), findsOneWidget);
       await tapOn(tester, find.text('Tag 2 · Unterkörper'));
       expect(find.text('TRAINING STARTEN'), findsNothing);
       expect(find.text('LAUFENDES TRAINING ÖFFNEN'), findsOneWidget);

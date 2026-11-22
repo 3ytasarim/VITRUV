@@ -979,6 +979,282 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Coaching'**
   String get profileCoaching;
+
+  /// No description provided for @homeCurrentWeek.
+  ///
+  /// In de, this message translates to:
+  /// **'Aktuelle Trainingswoche'**
+  String get homeCurrentWeek;
+
+  /// No description provided for @homeNextTraining.
+  ///
+  /// In de, this message translates to:
+  /// **'Nächstes Training'**
+  String get homeNextTraining;
+
+  /// No description provided for @homeNoNextTraining.
+  ///
+  /// In de, this message translates to:
+  /// **'Kein weiteres Training geplant'**
+  String get homeNoNextTraining;
+
+  /// No description provided for @homeNoNextTrainingBody.
+  ///
+  /// In de, this message translates to:
+  /// **'Sobald dein Coach ein neues Workout plant, erscheint es hier.'**
+  String get homeNoNextTrainingBody;
+
+  /// No description provided for @openWorkout.
+  ///
+  /// In de, this message translates to:
+  /// **'Workout öffnen'**
+  String get openWorkout;
+
+  /// No description provided for @trainingOverview.
+  ///
+  /// In de, this message translates to:
+  /// **'Trainingsübersicht'**
+  String get trainingOverview;
+
+  /// No description provided for @trainingOverviewBody.
+  ///
+  /// In de, this message translates to:
+  /// **'Alle Workouts deines aktiven Trainingsplans.'**
+  String get trainingOverviewBody;
+
+  /// No description provided for @showAllWorkouts.
+  ///
+  /// In de, this message translates to:
+  /// **'Alle Workouts ansehen'**
+  String get showAllWorkouts;
+
+  /// No description provided for @showHistory.
+  ///
+  /// In de, this message translates to:
+  /// **'Trainingsverlauf ansehen'**
+  String get showHistory;
+
+  /// No description provided for @previousWeek.
+  ///
+  /// In de, this message translates to:
+  /// **'Vorherige Woche'**
+  String get previousWeek;
+
+  /// No description provided for @nextWeek.
+  ///
+  /// In de, this message translates to:
+  /// **'Nächste Woche'**
+  String get nextWeek;
+
+  /// No description provided for @backToThisWeek.
+  ///
+  /// In de, this message translates to:
+  /// **'Zur aktuellen Woche'**
+  String get backToThisWeek;
+
+  /// No description provided for @weekRange.
+  ///
+  /// In de, this message translates to:
+  /// **'{start} – {end}'**
+  String weekRange(String start, String end);
+
+  /// No description provided for @noTrainingPlanned.
+  ///
+  /// In de, this message translates to:
+  /// **'Kein Training geplant'**
+  String get noTrainingPlanned;
+
+  /// No description provided for @weekOutsidePlan.
+  ///
+  /// In de, this message translates to:
+  /// **'In dieser Woche ist kein Training geplant.'**
+  String get weekOutsidePlan;
+
+  /// No description provided for @planWithoutDates.
+  ///
+  /// In de, this message translates to:
+  /// **'Dein Plan hat noch keine festen Termine. Alle Workouts findest du in der Trainingsübersicht.'**
+  String get planWithoutDates;
+
+  /// No description provided for @statPlanned.
+  ///
+  /// In de, this message translates to:
+  /// **'Geplant'**
+  String get statPlanned;
+
+  /// No description provided for @statCompleted.
+  ///
+  /// In de, this message translates to:
+  /// **'Abgeschlossen'**
+  String get statCompleted;
+
+  /// No description provided for @statOpen.
+  ///
+  /// In de, this message translates to:
+  /// **'Offen'**
+  String get statOpen;
+
+  /// No description provided for @statInProgress.
+  ///
+  /// In de, this message translates to:
+  /// **'In Bearbeitung'**
+  String get statInProgress;
+
+  /// No description provided for @weekStatsLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Diese Woche: {planned} geplant, {completed} abgeschlossen, {inProgress} in Bearbeitung, {open} offen'**
+  String weekStatsLabel(int planned, int completed, int inProgress, int open);
+
+  /// No description provided for @dayStatusNotStarted.
+  ///
+  /// In de, this message translates to:
+  /// **'Nicht begonnen'**
+  String get dayStatusNotStarted;
+
+  /// No description provided for @dayStatusInProgress.
+  ///
+  /// In de, this message translates to:
+  /// **'In Bearbeitung'**
+  String get dayStatusInProgress;
+
+  /// No description provided for @dayStatusCompleted.
+  ///
+  /// In de, this message translates to:
+  /// **'Abgeschlossen'**
+  String get dayStatusCompleted;
+
+  /// No description provided for @workoutTypeStrength.
+  ///
+  /// In de, this message translates to:
+  /// **'Kraft'**
+  String get workoutTypeStrength;
+
+  /// No description provided for @workoutTypeTotalReps.
+  ///
+  /// In de, this message translates to:
+  /// **'Wiederholungsziel'**
+  String get workoutTypeTotalReps;
+
+  /// No description provided for @workoutTypeInterval.
+  ///
+  /// In de, this message translates to:
+  /// **'Core-Intervalle'**
+  String get workoutTypeInterval;
+
+  /// No description provided for @workoutTypeChecklist.
+  ///
+  /// In de, this message translates to:
+  /// **'Warm-up'**
+  String get workoutTypeChecklist;
+
+  /// No description provided for @workoutTypeGeneral.
+  ///
+  /// In de, this message translates to:
+  /// **'Training'**
+  String get workoutTypeGeneral;
+
+  /// No description provided for @plannedOn.
+  ///
+  /// In de, this message translates to:
+  /// **'Geplant am {date}'**
+  String plannedOn(String date);
+
+  /// No description provided for @noFixedDate.
+  ///
+  /// In de, this message translates to:
+  /// **'Ohne festen Termin'**
+  String get noFixedDate;
+
+  /// No description provided for @todayLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Heute'**
+  String get todayLabel;
+
+  /// No description provided for @workoutAlreadyCompleted.
+  ///
+  /// In de, this message translates to:
+  /// **'Dieses Training hast du bereits abgeschlossen.'**
+  String get workoutAlreadyCompleted;
+
+  /// No description provided for @warmupTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Aufwärmen'**
+  String get warmupTitle;
+
+  /// No description provided for @warmupHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Keine Wiederholungen, kein Timer: Hake jede Übung ab, sobald du sie gemacht hast.'**
+  String get warmupHint;
+
+  /// No description provided for @warmupProgress.
+  ///
+  /// In de, this message translates to:
+  /// **'{done} von {total} erledigt'**
+  String warmupProgress(int done, int total);
+
+  /// No description provided for @warmupDone.
+  ///
+  /// In de, this message translates to:
+  /// **'Aufwärmen abgeschlossen'**
+  String get warmupDone;
+
+  /// No description provided for @warmupCheck.
+  ///
+  /// In de, this message translates to:
+  /// **'{name} abhaken'**
+  String warmupCheck(String name);
+
+  /// No description provided for @warmupChecked.
+  ///
+  /// In de, this message translates to:
+  /// **'{name}, erledigt'**
+  String warmupChecked(String name);
+
+  /// No description provided for @warmupSaving.
+  ///
+  /// In de, this message translates to:
+  /// **'Wird gespeichert …'**
+  String get warmupSaving;
+
+  /// No description provided for @watchVideo.
+  ///
+  /// In de, this message translates to:
+  /// **'Video ansehen'**
+  String get watchVideo;
+
+  /// No description provided for @showImage.
+  ///
+  /// In de, this message translates to:
+  /// **'Bild ansehen'**
+  String get showImage;
+
+  /// No description provided for @videoBadge.
+  ///
+  /// In de, this message translates to:
+  /// **'Video'**
+  String get videoBadge;
+
+  /// No description provided for @videoUnsupported.
+  ///
+  /// In de, this message translates to:
+  /// **'Dieses Video kann auf diesem Gerät nicht abgespielt werden.'**
+  String get videoUnsupported;
+
+  /// No description provided for @closeLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Schließen'**
+  String get closeLabel;
+
+  /// No description provided for @checklistItemLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Zum Abhaken'**
+  String get checklistItemLabel;
 }
 
 class _AppLocalizationsDelegate

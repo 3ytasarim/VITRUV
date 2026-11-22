@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/routing/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'features/training/training_resume_refresher.dart';
 import 'l10n/app_localizations.dart';
 
 class VitruvApp extends ConsumerWidget {
@@ -28,6 +29,9 @@ class VitruvApp extends ConsumerWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       routerConfig: ref.watch(appRouterProvider),
+      // App resume → re-read plan + current workout (coach changes, other device).
+      builder: (context, child) =>
+          TrainingResumeRefresher(child: child ?? const SizedBox.shrink()),
     );
   }
 }

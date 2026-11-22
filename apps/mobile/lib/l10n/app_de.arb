@@ -411,5 +411,108 @@
   "profileEmail": "E-Mail",
   "profileCoach": "Coach",
   "profileNoCoach": "Noch kein Coach zugewiesen",
-  "profileCoaching": "Coaching"
+  "profileCoaching": "Coaching",
+  "homeCurrentWeek": "Aktuelle Trainingswoche",
+  "homeNextTraining": "Nächstes Training",
+  "homeNoNextTraining": "Kein weiteres Training geplant",
+  "homeNoNextTrainingBody": "Sobald dein Coach ein neues Workout plant, erscheint es hier.",
+  "openWorkout": "Workout öffnen",
+  "trainingOverview": "Trainingsübersicht",
+  "trainingOverviewBody": "Alle Workouts deines aktiven Trainingsplans.",
+  "showAllWorkouts": "Alle Workouts ansehen",
+  "showHistory": "Trainingsverlauf ansehen",
+  "previousWeek": "Vorherige Woche",
+  "nextWeek": "Nächste Woche",
+  "backToThisWeek": "Zur aktuellen Woche",
+  "weekRange": "{start} – {end}",
+  "@weekRange": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "noTrainingPlanned": "Kein Training geplant",
+  "weekOutsidePlan": "In dieser Woche ist kein Training geplant.",
+  "planWithoutDates": "Dein Plan hat noch keine festen Termine. Alle Workouts findest du in der Trainingsübersicht.",
+  "statPlanned": "Geplant",
+  "statCompleted": "Abgeschlossen",
+  "statOpen": "Offen",
+  "statInProgress": "In Bearbeitung",
+  "weekStatsLabel": "Diese Woche: {planned} geplant, {completed} abgeschlossen, {inProgress} in Bearbeitung, {open} offen",
+  "@weekStatsLabel": {
+    "placeholders": {
+      "planned": {
+        "type": "int"
+      },
+      "completed": {
+        "type": "int"
+      },
+      "inProgress": {
+        "type": "int"
+      },
+      "open": {
+        "type": "int"
+      }
+    }
+  },
+  "dayStatusNotStarted": "Nicht begonnen",
+  "dayStatusInProgress": "In Bearbeitung",
+  "dayStatusCompleted": "Abgeschlossen",
+  "workoutTypeStrength": "Kraft",
+  "workoutTypeTotalReps": "Wiederholungsziel",
+  "workoutTypeInterval": "Core-Intervalle",
+  "workoutTypeChecklist": "Warm-up",
+  "workoutTypeGeneral": "Training",
+  "plannedOn": "Geplant am {date}",
+  "@plannedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "noFixedDate": "Ohne festen Termin",
+  "todayLabel": "Heute",
+  "workoutAlreadyCompleted": "Dieses Training hast du bereits abgeschlossen.",
+  "warmupTitle": "Aufwärmen",
+  "warmupHint": "Keine Wiederholungen, kein Timer: Hake jede Übung ab, sobald du sie gemacht hast.",
+  "warmupProgress": "{done} von {total} erledigt",
+  "@warmupProgress": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "warmupDone": "Aufwärmen abgeschlossen",
+  "warmupCheck": "{name} abhaken",
+  "@warmupCheck": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "warmupChecked": "{name}, erledigt",
+  "@warmupChecked": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "warmupSaving": "Wird gespeichert …",
+  "watchVideo": "Video ansehen",
+  "showImage": "Bild ansehen",
+  "videoBadge": "Video",
+  "videoUnsupported": "Dieses Video kann auf diesem Gerät nicht abgespielt werden.",
+  "closeLabel": "Schließen",
+  "checklistItemLabel": "Zum Abhaken"
 }

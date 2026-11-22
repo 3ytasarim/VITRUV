@@ -2,6 +2,14 @@ import 'package:dio/dio.dart';
 
 import '../core/errors/app_failure.dart';
 
+/// Training capability level this app supports (mirrors `TRAINING_CAPABILITY_LEVEL` in
+/// packages/shared/src/workout.ts): 2 = Warm-up checklist (CHECKLIST) on one page, extended
+/// execution types tolerated (unknown modes fall back to "mark done"). Core interval timer and
+/// MAX entry come in later sprints — the server flag TRAINING_EXTENDED_TYPES stays off until the
+/// minimum app version is enforced (Sprint 8).
+const kTrainingCapabilityLevel = 2;
+const kCapabilityHeader = 'X-Vitruv-App-Capability';
+
 /// Thin wrapper around Dio for the shared VITRUV API.
 ///
 /// - one place for base URL, timeouts and headers
@@ -22,7 +30,12 @@ class ApiClient {
       connectTimeout: const Duration(seconds: 8),
       receiveTimeout: const Duration(seconds: 15),
       sendTimeout: const Duration(seconds: 15),
-      headers: {'Accept': 'application/json'},
+      headers: {
+        'Accept': 'application/json',
+        // Training capability of this build (see [kTrainingCapabilityLevel]). Informational for
+        // the API — it never unlocks a feature by itself (the server flag decides).
+        kCapabilityHeader: '$kTrainingCapabilityLevel',
+      },
       responseType: ResponseType.json,
     ),
   );

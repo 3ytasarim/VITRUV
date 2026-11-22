@@ -72,6 +72,37 @@ class TrainingFormat {
   };
 
   String weekday(int isoWeekday) => l10n.weekday('$isoWeekday');
+
+  /// Calendar date (UTC midnight, see training_schedule.dart) → "23.11." — formatted from the
+  /// date parts directly, never through a time zone.
+  String dayMonth(DateTime date) =>
+      '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.';
+
+  /// "Montag, 23.11."
+  String longDate(DateTime date) =>
+      '${weekday(date.weekday)}, ${dayMonth(date)}';
+
+  String dayStatus(DayStatus status) => switch (status) {
+    DayStatus.notStarted => l10n.dayStatusNotStarted,
+    DayStatus.inProgress => l10n.dayStatusInProgress,
+    DayStatus.completed => l10n.dayStatusCompleted,
+  };
+
+  /// "Kraft · Wiederholungsziel" from the explicit execution types; legacy days → "Training".
+  String workoutType(TrainingDay day) {
+    final types = day.executionTypes;
+    if (types.isEmpty) return l10n.workoutTypeGeneral;
+    return types
+        .map(
+          (type) => switch (type) {
+            ExecutionType.strength => l10n.workoutTypeStrength,
+            ExecutionType.totalReps => l10n.workoutTypeTotalReps,
+            ExecutionType.interval => l10n.workoutTypeInterval,
+            ExecutionType.checklist => l10n.workoutTypeChecklist,
+          },
+        )
+        .join(' · ');
+  }
 }
 
 /// 60 → "01:00", 150 → "02:30" (timers and rest).
