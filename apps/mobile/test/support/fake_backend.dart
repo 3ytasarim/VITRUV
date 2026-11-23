@@ -77,6 +77,10 @@ class FakeBackend implements HttpClientAdapter {
   Duration refreshDelay = Duration.zero;
   final requests = <String>[];
 
+  /// Sprint 8A: asset ids whose URL the app renewed, and the URL the fake API answers.
+  final renewedMedia = <String>[];
+  String? Function(String assetId)? mediaUrlFor;
+
   AuthTokens issue(
     String email, {
     Duration accessTtl = const Duration(minutes: 15),
@@ -263,6 +267,20 @@ class FakeBackend implements HttpClientAdapter {
     if (method == 'GET' && path == '/v1/client/training/active') {
       if (accounts[email]?.role != 'CLIENT') return _error(403, 'FORBIDDEN');
       return (status: 200, body: {'program': _withStatuses(program)});
+    }
+    // Sprint 8A: fresh signed URL of a training medium (null entry → 404).
+    final mediaUrl = RegExp(r'^/v1/client/training/media/([^/]+)/url$')
+        .firstMatch(path);
+    if (method == 'GET' && mediaUrl != null) {
+      if (accounts[email]?.role != 'CLIENT') return _error(403, 'FORBIDDEN');
+      final assetId = mediaUrl.group(1)!;
+      renewedMedia.add(assetId);
+      final url = mediaUrlFor?.call(assetId);
+      if (url == null) return _error(404, 'NOT_FOUND');
+      return (
+        status: 200,
+        body: {'assetId': assetId, 'url': url, 'expiresAt': null},
+      );
     }
     return _workouts(method, path, json, options.queryParameters);
   }

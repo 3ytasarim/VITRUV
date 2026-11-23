@@ -24,6 +24,18 @@ class ClientApi {
     ).objectOrNull('program');
     return program == null ? null : TrainingProgram.fromJson(program);
   }
+
+  /// Sprint 8A: a fresh (signed) URL of a training medium the client may see; null when the
+  /// API refuses it (404: not in the client's plan/history any more).
+  Future<String?> trainingMediaUrl(String assetId) async {
+    final json = JsonReader(
+      await _client.getJson(
+        '/v1/client/training/media/${Uri.encodeComponent(assetId)}/url',
+      ),
+    );
+    final url = json.string('url');
+    return url.isEmpty ? null : url;
+  }
 }
 
 final clientApiProvider = Provider<ClientApi>(

@@ -2,12 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/vitruv_tokens.g.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/ui/ui.dart';
+import 'media_url_renewal.dart';
 import 'training_models.dart';
 
 /// Whether the platform player can decode [mimeType]. Apple's AVPlayer (iOS/macOS) has no WebM
@@ -41,6 +43,8 @@ const videoOpenTimeout = Duration(seconds: 20);
 /// - VIDEO, [controls] (Sprint 7 "Video ansehen" sheet): opens right away (the tap on the button
 ///   is the request) with loading state, play/pause, seek bar, time, error + retry
 /// - the player pauses when the app leaves the foreground and is disposed with its route
+/// - Sprint 8A: a signed (private) video URL is renewed before it expires and once after a
+///   playback error; the player reopens at the same position (media_url_renewal.dart)
 class ExerciseMedia extends StatelessWidget {
   const ExerciseMedia({
     super.key,
@@ -72,7 +76,12 @@ class ExerciseMedia extends StatelessWidget {
       ),
       MediaKind.video =>
         canPlayVideo(m.mimeType, defaultTargetPlatform)
-            ? _ExerciseVideo(url: m.url, label: label, controls: controls)
+            ? _ExerciseVideo(
+                assetId: m.assetId,
+                url: m.url,
+                label: label,
+                controls: controls,
+              )
             : VitruvMediaFrame(
                 semanticLabel: label,
                 placeholderLabel: l10n.videoUnsupported,
@@ -90,26 +99,46 @@ class ExerciseMedia extends StatelessWidget {
   }
 }
 
-class _ExerciseVideo extends StatefulWidget {
+class _ExerciseVideo extends ConsumerStatefulWidget {
   const _ExerciseVideo({
+    required this.assetId,
     required this.url,
     required this.label,
     required this.controls,
   });
 
+  final String assetId;
   final String url;
   final String label;
   final bool controls;
 
   @override
-  State<_ExerciseVideo> createState() => _ExerciseVideoState();
+  ConsumerState<_ExerciseVideo> createState() => _ExerciseVideoState();
 }
 
-class _ExerciseVideoState extends State<_ExerciseVideo>
+class _ExerciseVideoState extends ConsumerState<_ExerciseVideo>
     with WidgetsBindingObserver {
   VideoPlayerController? _controller;
   bool _failed = false;
   bool _opening = false;
+  bool _recovering = false;
+  late MediaUrlRenewal _source = _newSource();
+
+  MediaUrlRenewal _newSource() => MediaUrlRenewal(
+    assetId: widget.assetId,
+    initialUrl: widget.url,
+    renewer: ref.read(mediaUrlRenewerProvider),
+    now: ref.read(mediaClockProvider),
+  );
+
+  @override
+  void didUpdateWidget(covariant _ExerciseVideo oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A refreshed screen brings a newer URL of the same video: use it for the next open.
+    if (oldWidget.url != widget.url || oldWidget.assetId != widget.assetId) {
+      _source = _newSource();
+    }
+  }
 
   @override
   void initState() {
@@ -135,45 +164,84 @@ class _ExerciseVideoState extends State<_ExerciseVideo>
     if (state != AppLifecycleState.resumed) _controller?.pause();
   }
 
-  /// A playback error later on (e.g. network lost) → error state, never a crash.
+  /// A playback error later on (e.g. network lost, signed URL expired while seeking) → one
+  /// renewal + reopen at the same position; otherwise the error state, never a crash.
   void _onValue() {
     final controller = _controller;
     if (!mounted || controller == null) return;
-    if (controller.value.hasError && !_failed) {
-      setState(() => _failed = true);
+    if (controller.value.hasError && !_failed && !_recovering) {
+      unawaited(_recover(controller));
     } else if (widget.controls) {
       setState(() {}); // position / buffering for the controls
     }
   }
 
-  Future<VideoPlayerController?> _open({bool play = false}) async {
+  Future<void> _recover(VideoPlayerController failed) async {
+    _recovering = true;
+    final position = failed.value.position;
+    final wasPlaying = failed.value.isPlaying || widget.controls;
+    try {
+      final fresh = await _source.renewAfterFailure();
+      if (!mounted) return;
+      if (fresh == null) {
+        setState(() => _failed = true);
+        return;
+      }
+      await _open(play: wasPlaying, resumeAt: position, renewOnFailure: false);
+    } finally {
+      _recovering = false;
+    }
+  }
+
+  /// Opens the video (optionally at [resumeAt]). A failed open of a signed URL (expired → 403)
+  /// is retried ONCE with a renewed URL; then the error state.
+  Future<VideoPlayerController?> _open({
+    bool play = false,
+    Duration resumeAt = Duration.zero,
+    bool renewOnFailure = true,
+  }) async {
     if (_opening) return null;
-    final old = _controller;
-    old?.removeListener(_onValue);
-    final controller = VideoPlayerController.networkUrl(Uri.parse(widget.url));
     setState(() {
-      _controller = controller;
       _failed = false;
       _opening = true;
     });
-    unawaited(old?.dispose());
+    var allowRenew = renewOnFailure;
     try {
-      await controller.initialize().timeout(videoOpenTimeout);
-      await controller.setLooping(true);
-      controller.addListener(_onValue);
-      if (play) await controller.play();
-    } on Object {
-      if (mounted) setState(() => _failed = true);
-      return null;
+      while (true) {
+        final url = await _source.urlForOpen();
+        if (!mounted) return null;
+        final old = _controller;
+        old?.removeListener(_onValue);
+        final controller = VideoPlayerController.networkUrl(Uri.parse(url));
+        setState(() => _controller = controller);
+        unawaited(old?.dispose());
+        try {
+          await controller.initialize().timeout(videoOpenTimeout);
+          await controller.setLooping(true);
+          if (resumeAt > Duration.zero) await controller.seekTo(resumeAt);
+          controller.addListener(_onValue);
+          _source.markPlaying();
+          if (play) await controller.play();
+          return controller;
+        } on Object {
+          if (!mounted) return null;
+          if (allowRenew && await _source.renewAfterFailure() != null) {
+            allowRenew = false;
+            continue;
+          }
+          if (mounted) setState(() => _failed = true);
+          return null;
+        }
+      }
     } finally {
       if (mounted) setState(() => _opening = false);
     }
-    return controller;
   }
 
   Future<void> _toggle() async {
     var controller = _controller;
     if (controller == null || _failed) {
+      if (_failed) _source.userRetry();
       controller = await _open();
       if (controller == null) return;
     }
@@ -270,7 +338,10 @@ class _ExerciseVideoState extends State<_ExerciseVideo>
           VitruvButton(
             label: l10n.retry,
             variant: VitruvButtonVariant.secondary,
-            onPressed: () => unawaited(_open(play: true)),
+            onPressed: () {
+              _source.userRetry();
+              unawaited(_open(play: true));
+            },
           ),
         ],
       );
