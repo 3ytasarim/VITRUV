@@ -158,6 +158,16 @@ describe('section schemas', () => {
     }).map((r) => r.ref.assetId);
     expect(refs).toEqual([A, B]);
   });
+
+  it('home apply: optional footer logo (old content without it stays valid)', () => {
+    const apply = sectionContentSchemas.home.shape.apply;
+    // shape check only for the new key: absent, null and a media ref are fine, a raw URL is not
+    const shape = apply.shape.badge;
+    expect(shape.safeParse(undefined).success).toBe(true);
+    expect(shape.safeParse(null).success).toBe(true);
+    expect(shape.safeParse({ desktop: { assetId: A } }).success).toBe(true);
+    expect(shape.safeParse('https://x.test/logo.png').success).toBe(false);
+  });
 });
 
 describe('media references', () => {

@@ -842,6 +842,13 @@ export function HomeEditor({ value: v, onChange, errors }: EditorProps<'home'>) 
           lead
           onChange={(apply) => set('apply', apply)}
         />
+        <Media
+          legend="Logo im Footer (optional, z. B. Nature Heart) – neben den Kontakt-Buttons"
+          field="badge"
+          value={v.apply.badge ?? null}
+          errors={e('apply')}
+          onChange={(badge) => set('apply', { ...v.apply, badge })}
+        />
         <RepeatableList
           heading="Kanäle"
           addLabel="Kanal hinzufügen"

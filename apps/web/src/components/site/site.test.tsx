@@ -560,6 +560,25 @@ describe('homepage composition', () => {
     expect(markup.indexOf('id="bewerben"')).toBeLessThan(markup.indexOf('df-bottom'));
   });
 
+  it('footer logo slot ("Nature Heart"): rendered only when set, after the contact block', () => {
+    const without = html(<ReferenceFooter logoSrc={null} links={[]} apply={CONTENT.home.apply} />);
+    expect(without).not.toContain('df-badge');
+    expect(without).not.toContain('df-top--badge');
+    const badge = img({ url: 'https://media.example.test/public/website/2026/11/heart.webp' });
+    const withBadge = html(
+      <ReferenceFooter
+        logoSrc={null}
+        links={[]}
+        apply={{ ...CONTENT.home.apply, badge: { desktop: badge } }}
+      />,
+    );
+    expect(withBadge).toContain('class="df-top df-top--badge"');
+    expect(withBadge).toContain('heart.webp');
+    // between the brand/contact section and the link columns
+    expect(withBadge.indexOf('df-badge')).toBeGreaterThan(withBadge.indexOf('df-channels'));
+    expect(withBadge.indexOf('df-badge')).toBeLessThan(withBadge.indexOf('df-bottom'));
+  });
+
   it('takes the hero video from the CMS; empty slots render only their frame', async () => {
     publicSite.getPublicHome.mockResolvedValue({
       ok: true,

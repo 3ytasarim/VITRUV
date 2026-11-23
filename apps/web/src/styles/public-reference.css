@@ -1463,6 +1463,32 @@
     flex-direction: column;
     gap: 44px;
   }
+  /* owner 2026-11-24: the CTA's noise shader behind the package cards, faded out at the edges so
+     the section melts into the page; the cards sit on it slightly translucent */
+  .r-pakete {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+  .r-pakete__shader {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.75;
+    -webkit-mask-image:
+      linear-gradient(to bottom, transparent, black 22%, black 78%, transparent),
+      linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+    -webkit-mask-composite: source-in;
+    mask-image:
+      linear-gradient(to bottom, transparent, black 22%, black 78%, transparent),
+      linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+    mask-composite: intersect;
+  }
+  .r-pakete .r-package {
+    background: color-mix(in srgb, var(--r-card-package) 84%, transparent);
+    backdrop-filter: blur(8px);
+  }
   .r-pakete__grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
@@ -2972,63 +2998,62 @@
   }
 
   /* -- Testimonials 2 (@efferd) -- Dein Coach */
+  /* Coach (owner 2026-11-24): heading on top, text left + photo right in a framed card with a
+     soft orange glow (site orange = --r-spark-rgb); phones: photo first, then the text */
   .t2 {
-    margin: 0 auto;
-    max-width: 980px;
+    margin: 0;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    gap: 36px;
   }
   .t2-portrait {
     position: relative;
-    flex: none;
+    isolation: isolate;
+    width: min(100%, 420px);
+    margin-inline: auto;
   }
-  .r-slot.t2-portrait__img {
-    width: 180px;
-    height: 180px;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    -webkit-mask-image: radial-gradient(circle, black 60%, transparent);
-    mask-image: radial-gradient(circle, black 60%, transparent);
-  }
-  .t2-line {
+  /* blurred orange light behind the card */
+  .t2-glow {
     position: absolute;
-    background: rgba(var(--r-fg-rgb), 0.2);
+    inset: 8% -6% -6% 8%;
+    z-index: -2;
+    border-radius: 32px;
+    background: radial-gradient(
+      60% 60% at 60% 55%,
+      rgba(var(--r-spark-rgb), 0.55),
+      rgba(var(--r-spark-rgb), 0.12) 60%,
+      transparent 75%
+    );
+    filter: blur(40px);
     pointer-events: none;
   }
-  .t2-line--v {
-    top: -50%;
-    bottom: -50%;
-    width: 1px;
-    -webkit-mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);
-    mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);
+  /* a second, offset outline card for depth */
+  .t2-backcard {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: 24px;
+    border: 1px solid rgba(var(--r-spark-rgb), 0.35);
+    background: rgba(var(--r-spark-rgb), 0.04);
+    transform: translate(18px, 18px);
+    pointer-events: none;
   }
-  .t2-line--h {
-    left: -50%;
-    right: -50%;
-    height: 1px;
-    -webkit-mask-image: linear-gradient(to right, transparent, black 20%, black 80%, transparent);
-    mask-image: linear-gradient(to right, transparent, black 20%, black 80%, transparent);
-  }
-  .t2-line--left {
-    left: 0;
-  }
-  .t2-line--right {
-    right: 0;
-  }
-  .t2-line--top {
-    top: 0;
-  }
-  .t2-line--bottom {
-    bottom: 0;
+  .r-slot.t2-portrait__img {
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    border-radius: 24px;
+    border: 1px solid rgba(var(--r-spark-rgb), 0.3);
+    background: var(--r-card);
+    box-shadow:
+      0 0 0 1px rgba(var(--r-spark-rgb), 0.08),
+      0 24px 60px -20px rgba(var(--r-spark-rgb), 0.45),
+      0 0 120px -30px rgba(var(--r-spark-rgb), 0.5);
   }
   .t2-caption {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    padding: 32px;
-    text-align: center;
+    gap: 20px;
+    text-align: left;
   }
   .t2-quote {
     margin: 0;
@@ -3063,21 +3088,17 @@
   @media (min-width: 768px) {
     .t2 {
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
       align-items: center;
+      gap: clamp(40px, 6vw, 96px);
     }
-    .r-slot.t2-portrait__img {
-      width: 240px;
-      height: 240px;
-    }
-    .t2-line--h {
-      /* stops before the quote column */
-      left: -25%;
-      right: -12%;
-    }
+    /* text left, photo right */
     .t2-caption {
-      padding: 24px 24px 24px 48px;
-      text-align: left;
+      order: -1;
+    }
+    .t2-portrait {
+      width: min(100%, 460px);
+      margin-inline: auto 18px;
     }
   }
 
@@ -3230,13 +3251,41 @@
     outline-offset: 2px;
     border-radius: 3px;
   }
+  /* optional CMS footer logo ("Nature Heart"): full row under the buttons on phones,
+     its own column between brand and links from 768px */
+  .df-badge {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-start;
+  }
+  .df-badge__media {
+    position: relative;
+    width: auto;
+    height: 120px;
+    max-width: 100%;
+  }
+  .df-badge__media img {
+    object-fit: contain;
+  }
   @media (min-width: 768px) {
     .df-top {
       grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
       column-gap: 40px;
     }
+    .df-top--badge {
+      grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.9fr) repeat(3, minmax(0, 1fr));
+    }
     .df-brand {
       grid-column: auto;
+    }
+    .df-badge {
+      grid-column: auto;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .df-badge__media {
+      height: auto;
+      width: min(100%, 160px);
     }
   }
 

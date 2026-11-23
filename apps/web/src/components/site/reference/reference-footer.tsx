@@ -1,6 +1,7 @@
 import type { PublicSectionContent } from '@vitruv/contracts';
 import { ArrowUpRight } from 'lucide-react';
 import Link from 'next/link';
+import { CmsMedia } from '@/components/cms/cms-media';
 import { DitherBand } from './dither-band';
 import type { ReferenceLink } from './reference-header';
 
@@ -39,10 +40,15 @@ export function ReferenceFooter({
     { label: 'Ablauf', items: sections.slice(half) },
     { label: 'Konto', items: links },
   ].filter((c) => c.items.length > 0);
+  const badge = apply?.badge ?? null;
+  const badgeRatio =
+    badge?.desktop.width && badge.desktop.height
+      ? `${badge.desktop.width} / ${badge.desktop.height}`
+      : '1 / 1';
 
   return (
     <footer className="r-footer">
-      <div className="df-top">
+      <div className={badge ? 'df-top df-top--badge' : 'df-top'}>
         <section id="bewerben" className="df-brand" aria-labelledby="bewerben-title">
           <Link href="/#top" className="df-logo" aria-label="VITRUV – nach oben">
             {logoSrc ? <img src={logoSrc} alt="" width={127} height={72} /> : 'VITRUV'}
@@ -73,6 +79,15 @@ export function ReferenceFooter({
             </div>
           )}
         </section>
+        {/* owner 2026-11-24: optional CMS logo ("Nature Heart") between the brand block and the
+            link columns on desktop, below the contact buttons on phones. */}
+        {badge && (
+          <div className="df-badge">
+            <div className="df-badge__media" style={{ aspectRatio: badgeRatio }}>
+              <CmsMedia slot={badge} sizes="180px" mobileSizes="160px" />
+            </div>
+          </div>
+        )}
         {columns.map((col) => (
           <nav key={col.label} aria-label={col.label} className="df-col">
             <p className="df-col__title">{col.label}</p>

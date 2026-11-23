@@ -463,6 +463,11 @@ function defineSectionSchemas<Slot extends z.ZodType>(slot: Slot) {
         },
         6,
       ),
+      /**
+       * Optional logo/graphic in the footer next to the contact block (owner 2026-11-24:
+       * "Nature Heart"). Optional so earlier content stays valid; alt text from the media.
+       */
+      badge: media.optional(),
     }),
     /** Glass button in the header centre (appears after the intro video). */
     headerCta: ctaSchema,

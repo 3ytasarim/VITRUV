@@ -387,7 +387,9 @@ export function ReferenceHome({ content: c }: { content: HomeContent }) {
       </section>
 
       {/* ---- Pakete ---- */}
-      <section id="pakete" className="r-sec r-sec--rule" aria-labelledby="pakete-title">
+      <section id="pakete" className="r-sec r-sec--rule r-pakete" aria-labelledby="pakete-title">
+        {/* owner 2026-11-24: the CTA's noise shader behind both package cards */}
+        <CtaShader className="r-pakete__shader" />
         <div className="r-wrap r-pakete__inner">
           <Head
             eyebrow={c.packages.eyebrow}
@@ -451,16 +453,16 @@ export function ReferenceHome({ content: c }: { content: HomeContent }) {
             </h2>
           </div>
           <figure className="t2">
+            {/* owner 2026-11-24: text left, photo right in a framed card with an orange glow
+              (after the 21st.dev "about" idea, built in the site's own tokens) */}
             <div className="t2-portrait">
-              <span aria-hidden className="t2-line t2-line--v t2-line--left" />
-              <span aria-hidden className="t2-line t2-line--v t2-line--right" />
-              <span aria-hidden className="t2-line t2-line--h t2-line--top" />
-              <span aria-hidden className="t2-line t2-line--h t2-line--bottom" />
-              {/* the square frame crops with object-fit: cover — a landscape portrait renders up to
+              <span aria-hidden className="t2-glow" />
+              <span aria-hidden className="t2-backcard" />
+              {/* the 4:5 frame crops with object-fit: cover — a landscape portrait renders up to
                 2x the frame width, so ask for that (owner: pixelated on desktop, 2026-11-19) */}
               <MediaSlot
                 slot={c.coach.media}
-                sizes="(min-width: 820px) 560px, 400px"
+                sizes="(min-width: 768px) 900px, 100vw"
                 className="t2-portrait__img"
               />
             </div>
