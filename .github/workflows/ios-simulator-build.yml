@@ -47,16 +47,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # the Flutter app = a pubspec.yaml next to ios/Runner.xcodeproj (outside build/caches)
-          mapfile -t found < <(find . -path ./node_modules -prune -o -path '*/build' -prune -o \
-            -name pubspec.yaml -print | while read -r p; do
-              d="$(dirname "$p")"; [ -d "$d/ios/Runner.xcodeproj" ] && echo "$d"; done)
-          if [ "${#found[@]}" -ne 1 ]; then
-            echo "::error::expected exactly one Flutter iOS project, found ${#found[@]}: ${found[*]:-none}"
-            exit 1
-          fi
-          echo "dir=${found[0]}" >> "$GITHUB_OUTPUT"
-          echo "Flutter iOS project: ${found[0]}"
+          # macOS default bash is 3.2 (no mapfile/readarray): fixed, verified path instead of a search
+          dir="apps/mobile"
+          [ -d "$dir" ] || { echo "::error::$dir not found"; exit 1; }
+          [ -f "$dir/pubspec.yaml" ] || { echo "::error::$dir/pubspec.yaml not found"; exit 1; }
+          [ -d "$dir/ios/Runner.xcodeproj" ] || { echo "::error::$dir/ios/Runner.xcodeproj not found"; exit 1; }
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+          echo "Flutter iOS project: $dir"
 
       - name: Xcode and SDK versions
         shell: bash
