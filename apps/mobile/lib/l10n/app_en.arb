@@ -283,5 +283,11 @@
   "progressChartEmpty": "Not enough data for a progress chart yet",
   "progressChartSummary": "{count} workouts. First value {first}, last value {last}, best value {best} {unit}.",
   "progressUnitReps": "reps",
-  "progressUnitRounds": "rounds"
+  "progressUnitRounds": "rounds",
+  "appUpdateTitle": "Update required",
+  "appUpdateBody": "This version of the VITRUV app is no longer supported. Please update the app in the App Store. You stay signed in and your data is kept.",
+  "appUpdateInstalled": "Installed: {installed}",
+  "appUpdateVersions": "Installed: {installed} · Minimum: {minimum}",
+  "appUpdateCopyLink": "Copy link",
+  "appUpdateRetry": "Check again"
 }

@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../auth/auth_state.dart';
+import '../config/app_version.dart';
 import '../config/release_features.dart';
+import '../../features/app_update/app_update_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/design_gallery/design_gallery_access.dart';
 import '../../features/design_gallery/design_gallery_screen.dart';
@@ -34,16 +36,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     authControllerProvider,
     (previous, next) => authChanges.value = next,
   );
+  final updateChanges = ValueNotifier<AppUpdateRequirement?>(
+    ref.read(appUpdateProvider),
+  );
+  ref.listen(appUpdateProvider, (previous, next) => updateChanges.value = next);
 
   // Sprint 8B: hidden placeholder tabs are not registered at all (no route, no destination).
   final nutritionTab = ref.watch(nutritionTabEnabledProvider);
 
   final router = GoRouter(
     initialLocation: AppRoutes.today,
-    refreshListenable: authChanges,
+    refreshListenable: Listenable.merge([authChanges, updateChanges]),
     redirect: (context, state) {
       final auth = authChanges.value;
       final at = state.matchedLocation;
+      // Sprint 8B: an outdated build sees only the update screen (session untouched).
+      if (updateChanges.value != null) {
+        return at == AppRoutes.appUpdate ? null : AppRoutes.appUpdate;
+      }
+      if (at == AppRoutes.appUpdate) return AppRoutes.today;
       // Development-only gallery: shows no account data, reachable without a session.
       if (at == AppRoutes.designGallery) return null;
       // A deep link to a hidden tab never shows an empty/unknown page.
@@ -69,6 +80,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.login,
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.appUpdate,
+        builder: (context, state) => const AppUpdateScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => AppShell(navigationShell: shell),
@@ -129,6 +144,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   ref.onDispose(() {
     router.dispose();
     authChanges.dispose();
+    updateChanges.dispose();
   });
   return router;
 });

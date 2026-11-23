@@ -58,6 +58,9 @@ class FakeBackend implements HttpClientAdapter {
   /// All requests fail with a connection error.
   bool offline = false;
 
+  /// Sprint 8B: every /v1/client/* request answers 426 APP_UPDATE_REQUIRED (server policy).
+  bool requireUpdate = false;
+
   /// The next N workout mutations (PATCH) fail with a connection error.
   int failMutations = 0;
 
@@ -183,7 +186,15 @@ class FakeBackend implements HttpClientAdapter {
       if (bytes.isNotEmpty) body = jsonDecode(utf8.decode(bytes));
     }
     final json = body is Map<String, Object?> ? body : <String, Object?>{};
-    final reply = await _route(options, json);
+    final reply = requireUpdate && options.path.startsWith('/v1/client/')
+        ? _error(426, 'APP_UPDATE_REQUIRED', [
+            {'path': 'minimumVersion', 'message': '9.0.0'},
+            {
+              'path': 'updateUrl',
+              'message': 'https://apps.apple.com/app/id0000000000',
+            },
+          ])
+        : await _route(options, json);
     return ResponseBody.fromString(
       reply.body == null ? '' : jsonEncode(reply.body),
       reply.status,

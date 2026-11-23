@@ -21,6 +21,9 @@ abstract final class AppRoutes {
   static const workout = '/einheit';
   static const workoutDone = '/einheit/abgeschlossen';
 
+  /// Sprint 8B: the server refused this build (426) — update screen, reachable in every auth state.
+  static const appUpdate = '/aktualisieren';
+
   /// Development-only design gallery (registered only when `designGalleryEnabledProvider`).
   static const designGallery = '/design';
 }

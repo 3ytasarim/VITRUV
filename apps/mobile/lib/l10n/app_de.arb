@@ -990,5 +990,28 @@
     }
   },
   "progressUnitReps": "Wiederholungen",
-  "progressUnitRounds": "Runden"
+  "progressUnitRounds": "Runden",
+  "appUpdateTitle": "Update erforderlich",
+  "appUpdateBody": "Diese Version der VITRUV App wird nicht mehr unterstützt. Bitte aktualisiere die App im App Store. Deine Anmeldung und deine Daten bleiben erhalten.",
+  "appUpdateInstalled": "Installiert: {installed}",
+  "@appUpdateInstalled": {
+    "placeholders": {
+      "installed": {
+        "type": "String"
+      }
+    }
+  },
+  "appUpdateVersions": "Installiert: {installed} · Mindestens: {minimum}",
+  "@appUpdateVersions": {
+    "placeholders": {
+      "installed": {
+        "type": "String"
+      },
+      "minimum": {
+        "type": "String"
+      }
+    }
+  },
+  "appUpdateCopyLink": "Link kopieren",
+  "appUpdateRetry": "Erneut prüfen"
 }

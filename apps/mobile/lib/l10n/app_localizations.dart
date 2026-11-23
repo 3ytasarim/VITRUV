@@ -1812,6 +1812,42 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Runden'**
   String get progressUnitRounds;
+
+  /// No description provided for @appUpdateTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Update erforderlich'**
+  String get appUpdateTitle;
+
+  /// No description provided for @appUpdateBody.
+  ///
+  /// In de, this message translates to:
+  /// **'Diese Version der VITRUV App wird nicht mehr unterstützt. Bitte aktualisiere die App im App Store. Deine Anmeldung und deine Daten bleiben erhalten.'**
+  String get appUpdateBody;
+
+  /// No description provided for @appUpdateInstalled.
+  ///
+  /// In de, this message translates to:
+  /// **'Installiert: {installed}'**
+  String appUpdateInstalled(String installed);
+
+  /// No description provided for @appUpdateVersions.
+  ///
+  /// In de, this message translates to:
+  /// **'Installiert: {installed} · Mindestens: {minimum}'**
+  String appUpdateVersions(String installed, String minimum);
+
+  /// No description provided for @appUpdateCopyLink.
+  ///
+  /// In de, this message translates to:
+  /// **'Link kopieren'**
+  String get appUpdateCopyLink;
+
+  /// No description provided for @appUpdateRetry.
+  ///
+  /// In de, this message translates to:
+  /// **'Erneut prüfen'**
+  String get appUpdateRetry;
 }
 
 class _AppLocalizationsDelegate

@@ -1116,4 +1116,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get progressUnitRounds => 'rounds';
+
+  @override
+  String get appUpdateTitle => 'Update required';
+
+  @override
+  String get appUpdateBody =>
+      'This version of the VITRUV app is no longer supported. Please update the app in the App Store. You stay signed in and your data is kept.';
+
+  @override
+  String appUpdateInstalled(String installed) {
+    return 'Installed: $installed';
+  }
+
+  @override
+  String appUpdateVersions(String installed, String minimum) {
+    return 'Installed: $installed · Minimum: $minimum';
+  }
+
+  @override
+  String get appUpdateCopyLink => 'Copy link';
+
+  @override
+  String get appUpdateRetry => 'Check again';
 }

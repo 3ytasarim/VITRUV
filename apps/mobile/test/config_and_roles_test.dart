@@ -91,7 +91,10 @@ void releaseConfigTests() {
     expect(config.environment, AppEnvironment.production);
     expect(config.apiBaseUrl.host, 'api.illustration-only-host.de');
     expect(
-      release('https://staging-api.illustration-only-host.de', 'staging').environment,
+      release(
+        'https://staging-api.illustration-only-host.de',
+        'staging',
+      ).environment,
       AppEnvironment.staging,
     );
   });
