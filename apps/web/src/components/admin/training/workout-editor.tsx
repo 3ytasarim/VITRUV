@@ -175,6 +175,15 @@ function payloadOf(row: ExerciseRow, withIds: boolean) {
   }
 }
 
+type EditorMessage = { tone: 'success' | 'error'; text: string };
+
+/**
+ * The pages key the editor by version (a newer version from the server remounts it with fresh
+ * state). A successful save bumps the version, so the router.refresh() after it remounts the
+ * editor — this one-shot store carries the success message across that remount.
+ */
+const savedMessages = new Map<string, EditorMessage>();
+
 type Target =
   | { kind: 'template-new' }
   | { kind: 'template'; template: WorkoutTemplate }
@@ -216,7 +225,17 @@ export function WorkoutEditor({
         : null,
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
+  const messageKey =
+    target.kind === 'template'
+      ? `template:${target.template.id}`
+      : target.kind === 'client'
+        ? `day:${target.workout.dayId}`
+        : null;
+  const [message, setMessage] = useState<EditorMessage | null>(() => {
+    const carried = messageKey ? savedMessages.get(messageKey) : undefined;
+    if (messageKey) savedMessages.delete(messageKey);
+    return carried ?? null;
+  });
   const [stale, setStale] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [pending, start] = useTransition();
@@ -366,13 +385,15 @@ export function WorkoutEditor({
       }
       setVersion(saved.version);
       setSections(rowsOf(saved.sections));
-      setMessage({
+      const success: EditorMessage = {
         tone: 'success',
         text:
           'dayId' in saved
             ? 'Gespeichert – nur für diese:n Teilnehmer:in.'
             : `Vorlage gespeichert (Version ${String(saved.version)}). Bereits zugewiesene Workouts bleiben unverändert.`,
-      });
+      };
+      setMessage(success);
+      if (messageKey) savedMessages.set(messageKey, success);
       router.refresh();
     });
   };
