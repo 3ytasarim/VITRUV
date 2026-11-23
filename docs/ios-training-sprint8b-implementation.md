@@ -16,7 +16,7 @@ no flag switched, no App Store Connect action, no upload.
 | 261648a | mobile: version/platform headers, update screen on 426 |
 | 2a19680 | api: private training video rollout library (copy → verify → flip → remove, rollback) |
 | 2c4c58d | ios: iPhone-first device family, source audit + release preflight test |
-| (docs commit) | these documents, privacy draft, 0026 proposal, nginx example |
+| 30aea8d | these documents, privacy draft, 0026 proposal, nginx example |
 
 ## 2. Ernährung hidden (spec §6)
 
