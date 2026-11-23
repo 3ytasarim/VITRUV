@@ -235,7 +235,10 @@ export async function runFlows(ctx) {
       await page.getByRole('link', { name: 'Plan öffnen und aktivieren' }).click();
       await page.getByRole('button', { name: 'Plan aktivieren' }).click();
       const confirm = page.getByRole('dialog').getByRole('button', { name: /aktivieren/i });
-      if (await confirm.count()) await confirm.last().click();
+      await confirm.last().waitFor({ state: 'visible', timeout: 10_000 });
+      await confirm.last().click();
+      // the server action must finish before navigating away
+      await expectVisible(page.getByText(/^Plan aktiviert/));
       await page.goto(`/admin/kunden/${ctx.users.clientA}/training`);
       await expectVisible(
         page.getByText(/Plan „Trainingsplan“ · Woche 1|Plan „Trainingsplan“ \(Aktiv\)/),
@@ -355,7 +358,8 @@ export async function runFlows(ctx) {
         await page.goto('/admin/training/workouts');
         await page.getByRole('button', { name: `${TEMPLATE} (Kopie) archivieren` }).click();
         const confirm = page.getByRole('dialog').getByRole('button', { name: /archivieren/i });
-        if (await confirm.count()) await confirm.last().click();
+        await confirm.last().waitFor({ state: 'visible', timeout: 10_000 });
+        await confirm.last().click();
         await expectVisible(page.getByText('1 Workout'));
         await page.getByRole('combobox', { name: 'Status' }).selectOption({ label: 'Archiviert' });
         await page.getByRole('button', { name: 'Suchen' }).click();
@@ -533,6 +537,10 @@ export async function runFlows(ctx) {
       },
       { independent: true },
     );
+
+    // Sprint 8A: private training media (upload, protected playback, Range, access rules).
+    const { mediaFlows } = await import('./media-flows.mjs');
+    await mediaFlows({ ctx, browser, api, step });
   } finally {
     await browser.close();
   }

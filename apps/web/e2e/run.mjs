@@ -165,6 +165,9 @@ const apiEnv = {
   DEV_AUTH: 'disabled',
   TRAINING_EXTENDED_TYPES:
     process.env.E2E_TRAINING_EXTENDED_TYPES === 'enabled' ? 'enabled' : 'disabled',
+  // Sprint 8A: new training uploads PRIVATE, signed with a random per-run key (never printed).
+  TRAINING_MEDIA_VISIBILITY: 'PRIVATE',
+  MEDIA_URL_SIGNING_KEY: randomBytes(32).toString('base64url'),
   LOG_LEVEL: 'warn',
 };
 start('api', [tsx, 'src/server.ts'], API, apiEnv);
@@ -182,6 +185,7 @@ const webEnv = {
   REVALIDATE_SECRET: randomBytes(32).toString('base64url'),
   CMS_MEDIA_ORIGINS: API_URL,
   CMS_MEDIA_ALLOW_LOCAL: 'true',
+  PRIVATE_MEDIA_ORIGINS: API_URL,
   MEDIA_MAX_IMAGE_BYTES: String(15 * 1024 * 1024),
   MEDIA_MAX_VIDEO_BYTES: String(500 * 1024 * 1024),
 };
