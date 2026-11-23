@@ -1,7 +1,7 @@
 import type { PublicWebsitePage, PublicWebsiteSection } from '@vitruv/contracts';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { registerAnalyticsAdapter, sanitizeProps, setAnalyticsConsent, track } from './analytics';
-import { buildCsp, mediaOrigins } from './csp';
+import { buildCsp, mediaOrigins, privateMediaOrigins } from './csp';
 import { absoluteUrl, buildHomeMetadata, buildStructuredData, serializeJsonLd } from './seo';
 
 const SITE = 'https://vitruv.example';
@@ -168,6 +168,29 @@ describe('content security policy', () => {
     expect(csp).toContain("'unsafe-eval'");
     expect(csp).toContain('http://localhost:4000');
     expect(csp).not.toContain('upgrade-insecure-requests');
+  });
+});
+
+describe('private training media origins (Sprint 8A)', () => {
+  it('adds the configured API / private bucket origins to img-src and media-src only', () => {
+    const csp = buildCsp({
+      nonce: 'n',
+      dev: false,
+      upgradeInsecure: true,
+      media: [
+        ...new Set([
+          ...mediaOrigins({ CMS_MEDIA_ORIGINS: 'https://cdn.example' }),
+          ...privateMediaOrigins({
+            PRIVATE_MEDIA_ORIGINS: 'https://api.vitruv.example/v1, https://private.bucket.example',
+          }),
+        ]),
+      ],
+    });
+    expect(csp).toContain(
+      "media-src 'self' blob: https://cdn.example https://api.vitruv.example https://private.bucket.example",
+    );
+    expect(csp).not.toMatch(/script-src[^;]*api\.vitruv\.example/);
+    expect(privateMediaOrigins({})).toEqual([]);
   });
 });
 

@@ -7,7 +7,7 @@ import {
   sessionCookieWrites,
   type CookieWrite,
 } from '@/lib/auth/cookies';
-import { buildCsp, mediaOrigins } from '@/lib/csp';
+import { buildCsp, mediaOrigins, privateMediaOrigins } from '@/lib/csp';
 
 /**
  * Runs before every page request:
@@ -105,7 +105,7 @@ export async function proxy(request: NextRequest) {
   const csp = buildCsp({
     nonce,
     dev: process.env.NODE_ENV === 'development',
-    media: mediaOrigins(process.env),
+    media: [...new Set([...mediaOrigins(process.env), ...privateMediaOrigins(process.env)])],
     upgradeInsecure: (process.env.PUBLIC_SITE_URL ?? '').startsWith('https://'),
   });
   const requestHeaders = new Headers(request.headers);
