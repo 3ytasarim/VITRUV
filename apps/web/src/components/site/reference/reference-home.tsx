@@ -7,6 +7,7 @@ import { ArrowUpRight, Dumbbell } from 'lucide-react';
 import { splitHighlight } from '../highlighted-title';
 import { BorderBeam } from './border-beam';
 import { CtaShader } from './cta-shader';
+import { FlipCard } from './flip-card';
 import { IncludedIcon } from './included-icon';
 import { Marquee } from './marquee';
 import { StepTimeline } from './step-timeline';
@@ -186,7 +187,24 @@ export function ReferenceHome({ content: c }: { content: HomeContent }) {
               <div className="r-rail" tabIndex={0} role="region" aria-label={c.results.title}>
                 {c.results.gallery.map((item) => (
                   <div key={item.id} className="r-rail__item">
-                    <MediaSlot slot={item.media} sizes="300px" className="r-rail__frame r-cut-14" />
+                    {item.before && item.media ? (
+                      <FlipCard
+                        who={item.who}
+                        className="r-rail__frame r-cut-14"
+                        front={
+                          <MediaSlot slot={item.media} sizes="300px" className="r-flip__img" />
+                        }
+                        back={
+                          <MediaSlot slot={item.before} sizes="300px" className="r-flip__img" />
+                        }
+                      />
+                    ) : (
+                      <MediaSlot
+                        slot={item.media}
+                        sizes="300px"
+                        className="r-rail__frame r-cut-14"
+                      />
+                    )}
                     <span className="r-rail__who">{item.who}</span>
                   </div>
                 ))}

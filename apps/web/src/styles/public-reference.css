@@ -574,30 +574,25 @@
     letter-spacing: 0.2em;
     color: rgb(var(--r-glow-rgb));
   }
-  .r-mmenu > a:nth-child(1) {
+  /* owner 2026-11-24: the words cleanly underneath each other (no zig-zag), one left edge */
+  .r-mmenu > a:not(.r-mmenu__cta) {
     justify-self: start;
-    margin-left: 4vw;
-    animation-delay: 140ms;
+    margin: 0 0 0 4vw;
   }
-  .r-mmenu > a:nth-child(2) {
-    justify-self: end;
-    margin-right: 2vw;
-    animation-delay: 360ms;
-  }
-  .r-mmenu > a:nth-child(3) {
-    justify-self: center;
-    margin-left: -10vw;
+  .r-mmenu > a:nth-child(1) {
     animation-delay: 60ms;
   }
+  .r-mmenu > a:nth-child(2) {
+    animation-delay: 160ms;
+  }
+  .r-mmenu > a:nth-child(3) {
+    animation-delay: 260ms;
+  }
   .r-mmenu > a:nth-child(4) {
-    justify-self: start;
-    margin-left: 18vw;
-    animation-delay: 480ms;
+    animation-delay: 360ms;
   }
   .r-mmenu > a:nth-child(5) {
-    justify-self: end;
-    margin-right: 12vw;
-    animation-delay: 240ms;
+    animation-delay: 460ms;
   }
   .r-mmenu > a.r-mmenu__cta {
     justify-self: center;
@@ -782,6 +777,10 @@
       max-height: none;
       align-items: flex-end;
     }
+    /* owner 2026-11-24: no hero paragraph on phones (CMS text stays for desktop) */
+    .r-hero__body {
+      display: none;
+    }
   }
 
   /* ---- Intro video ---------------------------------------------------------------------------- */
@@ -904,6 +903,87 @@
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: rgba(var(--r-fg-rgb), 0.5);
+  }
+
+  /* Before/after flip card (owner 2026-11-24): after = front, tap turns to before */
+  .r-flip {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    perspective: 1200px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .r-flip:focus-visible {
+    outline: 2px solid var(--r-accent-text);
+    outline-offset: -2px;
+  }
+  .r-flip__inner {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    transition: transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .r-flip[data-flipped] .r-flip__inner {
+    transform: rotateY(180deg);
+  }
+  .r-flip__face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .r-flip__face--back {
+    transform: rotateY(180deg);
+  }
+  .r-slot.r-flip__img {
+    position: absolute;
+    inset: 0;
+    border: 0;
+  }
+  .r-flip__tag {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    padding: 5px 9px;
+    border-radius: 2px;
+    background: rgba(var(--r-bg-rgb), 0.72);
+    backdrop-filter: blur(6px);
+    font-family: var(--font-label);
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--r-fg);
+  }
+  .r-flip__tag--before {
+    color: rgb(var(--r-spark-rgb));
+  }
+  .r-flip__hint {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    padding: 6px 10px;
+    border-radius: 2px;
+    background: rgba(var(--r-bg-rgb), 0.72);
+    backdrop-filter: blur(6px);
+    font-family: var(--font-label);
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--r-fg);
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .r-flip__inner {
+      transition: none;
+    }
   }
 
   /* Dein Weg — route map (engine: components/journey/journey-map-engine.ts) */
@@ -1082,9 +1162,9 @@
     .r-weg__title {
       font-size: 21px;
     }
+    /* owner 2026-11-24: on phones only kicker + title per stage — the CMS text stays (desktop) */
     .r-weg__text {
-      font-size: 13px;
-      line-height: 1.6;
+      display: none;
     }
   }
 

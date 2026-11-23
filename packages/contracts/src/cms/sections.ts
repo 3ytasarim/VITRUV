@@ -355,7 +355,12 @@ function defineSectionSchemas<Slot extends z.ZodType>(slot: Slot) {
       title: plainText(120),
       videos: idList({ quote: plainText(300), who: plainText(60), media }, 4),
       swipeHint: optionalText(40),
-      gallery: idList({ who: plainText(60), media }, 24),
+      /**
+       * `media` = the "after" photo (always shown). Optional `before` (owner 2026-11-24): when set,
+       * visitors can tap the card to flip it and see the before photo. Optional so content saved
+       * before this field existed stays valid.
+       */
+      gallery: idList({ who: plainText(60), media, before: media.optional() }, 24),
     }),
     journey: z.object({
       eyebrow: optionalText(60),

@@ -553,9 +553,7 @@ describe('homepage composition', () => {
   });
 
   it('renders the "Bewerben" channels in the footer (anchor #bewerben)', () => {
-    const markup = html(
-      <ReferenceFooter logoSrc={null} links={[]} apply={CONTENT.home.apply} />,
-    );
+    const markup = html(<ReferenceFooter logoSrc={null} links={[]} apply={CONTENT.home.apply} />);
     expect(markup).toContain('id="bewerben"');
     // an external channel opens in a new tab without referrer
     expect(markup).toMatch(/href="https:\/\/instagram.com\/demo"[^>]*rel="noopener noreferrer"/);
@@ -582,6 +580,52 @@ describe('homepage composition', () => {
     const markup = await render();
     expect(markup.match(/<img/g)).toHaveLength(1);
     expect(markup).toContain('class="r-hero__video"');
+  });
+
+  it('results gallery: a before photo turns the card into a flip button, "after" shown first', async () => {
+    const after = img({ url: 'https://media.example.test/public/website/2026/11/after.webp' });
+    const before = img({ url: 'https://media.example.test/public/website/2026/11/before.webp' });
+    publicSite.getPublicHome.mockResolvedValue({
+      ok: true,
+      page: {
+        slug: 'home',
+        title: 'Startseite',
+        contentRevision: 3,
+        publishedAt: null,
+        sections: [
+          {
+            key: 'home',
+            type: 'home',
+            content: {
+              ...CONTENT.home,
+              results: {
+                ...CONTENT.home.results,
+                gallery: [
+                  {
+                    id: 'mit-vorher',
+                    who: 'Flip-T',
+                    media: { desktop: after },
+                    before: { desktop: before },
+                  },
+                  { id: 'ohne-vorher', who: 'Normal-T', media: { desktop: after } },
+                ],
+              },
+            },
+          } as PublicWebsiteSection,
+        ],
+      },
+    });
+    const markup = await render();
+    // exactly one flip card (only the item with a before photo), a real button, not pressed
+    expect(markup.match(/class="r-flip /g)).toHaveLength(1);
+    expect(markup).toMatch(/<button type="button" class="r-flip [^"]*"[^>]*aria-pressed="false"/);
+    expect(markup).toContain('Flip-T: Nachher-Bild, tippen für Vorher');
+    // the after photo is the front face, the before photo the back face
+    const front = markup.indexOf('r-flip__face--front');
+    const back = markup.indexOf('r-flip__face--back');
+    expect(front).toBeGreaterThan(-1);
+    expect(markup.indexOf('after.webp', front)).toBeLessThan(back);
+    expect(markup.indexOf('before.webp', back)).toBeGreaterThan(back);
   });
 
   it('without a published home section the calm failure state shows (no invented copy)', async () => {

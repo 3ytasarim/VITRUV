@@ -7,6 +7,7 @@ import {
   parseSectionContent,
   publicWebsitePageSchema,
   publicWebsiteSectionSchema,
+  sectionContentSchemas,
   type FaqContent,
   type HeroContent,
   type JourneyCmsContent,
@@ -130,6 +131,32 @@ describe('section schemas', () => {
     expect(parseSectionContent('footer', footer).success).toBe(true);
     const unsafe = { ...footer, social: [{ ...footer.social[0], href: 'mailto:a@b.de' }] };
     expect(parseSectionContent('footer', unsafe).success).toBe(false);
+  });
+
+  it('home results gallery: optional before photo (old content without it stays valid)', () => {
+    const gallery = sectionContentSchemas.home.shape.results.shape.gallery;
+    const after = { desktop: { assetId: A } };
+    // stored before 2026-11-24: no `before` key at all
+    expect(gallery.safeParse([{ id: 'ergebnis-1', who: 'T1', media: after }]).success).toBe(true);
+    expect(
+      gallery.safeParse([
+        { id: 'ergebnis-1', who: 'T1', media: after, before: { desktop: { assetId: B } } },
+        { id: 'ergebnis-2', who: 'T2', media: after, before: null },
+      ]).success,
+    ).toBe(true);
+    // a before photo is a media reference like any other (no raw URLs)
+    expect(
+      gallery.safeParse([
+        { id: 'ergebnis-1', who: 'T1', media: after, before: 'https://x.test/a.jpg' },
+      ]).success,
+    ).toBe(false);
+    // it is collected as a media reference (usage tracking / resolution)
+    const refs = collectMediaRefs({
+      results: {
+        gallery: [{ id: 'g', who: 'T', media: after, before: { desktop: { assetId: B } } }],
+      },
+    }).map((r) => r.ref.assetId);
+    expect(refs).toEqual([A, B]);
   });
 });
 

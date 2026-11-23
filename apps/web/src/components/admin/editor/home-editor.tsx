@@ -54,18 +54,21 @@ function Media({
   value,
   errors,
   onChange,
+  field = 'media',
 }: {
   legend: string;
   value: MediaSlot | null;
   errors: FieldErrors;
   onChange: (media: MediaSlot | null) => void;
+  /** Content key of this slot (error scope), `media` unless the item has a second slot. */
+  field?: string;
 }) {
   return (
     <MediaSlotField
       legend={legend}
       kinds={KINDS}
       value={value}
-      errors={scopeErrors(errors, 'media')}
+      errors={scopeErrors(errors, field)}
       onChange={onChange}
     />
   );
@@ -294,10 +297,17 @@ export function HomeEditor({ value: v, onChange, errors }: EditorProps<'home'>) 
             return (
               <>
                 <Media
-                  legend={`Bild ${i + 1}`}
+                  legend={`Bild ${i + 1} · Nachher (wird immer angezeigt)`}
                   value={item.media}
                   errors={ie}
                   onChange={(media) => update({ media })}
+                />
+                <Media
+                  legend={`Bild ${i + 1} · Vorher (optional – Besucher tippen das Bild an, es dreht sich)`}
+                  field="before"
+                  value={item.before ?? null}
+                  errors={ie}
+                  onChange={(before) => update({ before })}
                 />
                 <TextField
                   label="Bezeichnung"
