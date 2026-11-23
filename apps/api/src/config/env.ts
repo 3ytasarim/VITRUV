@@ -1,4 +1,10 @@
-import { WEBSITE_MEDIA_MAX_BYTES, blankToUndefined, parseEnv } from '@vitruv/shared';
+import {
+  LEGACY_APP_POLICIES,
+  WEBSITE_MEDIA_MAX_BYTES,
+  blankToUndefined,
+  parseAppVersion,
+  parseEnv,
+} from '@vitruv/shared';
 import { z } from 'zod';
 
 const csv = z
@@ -121,6 +127,24 @@ export const apiEnvSchema = z
      * enforced minimum version in both stores (docs/ios-training-sprint3-rollout-plan.md).
      */
     TRAINING_EXTENDED_TYPES: z.enum(['enabled', 'disabled']).default('disabled'),
+    /**
+     * Sprint 8B — minimum supported mobile app version per platform (MAJOR.MINOR.PATCH). Unset =
+     * not enforced (default). Below it, MOBILE sessions get 426 APP_UPDATE_REQUIRED on client
+     * routes; nobody is logged out. The real values are an owner release decision.
+     */
+    MOBILE_MIN_VERSION_IOS: z
+      .string()
+      .refine((v) => parseAppVersion(v) !== null, 'must be MAJOR.MINOR.PATCH')
+      .optional(),
+    MOBILE_MIN_VERSION_ANDROID: z
+      .string()
+      .refine((v) => parseAppVersion(v) !== null, 'must be MAJOR.MINOR.PATCH')
+      .optional(),
+    /** MOBILE sessions without a version header (builds before Sprint 8B): allow (default) or update_required. */
+    MOBILE_LEGACY_APP_POLICY: z.enum(LEGACY_APP_POLICIES).default('allow'),
+    /** Store links shown on the update screen (https; optional). */
+    MOBILE_UPDATE_URL_IOS: z.url({ protocol: /^https$/ }).optional(),
+    MOBILE_UPDATE_URL_ANDROID: z.url({ protocol: /^https$/ }).optional(),
   })
   .superRefine((env, ctx) => {
     if (env.STORAGE_DRIVER === 's3') {

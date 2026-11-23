@@ -239,6 +239,7 @@ export async function resolveAccessToken(
       role: schema.users.role,
       status: schema.users.status,
       lastUsedAt: schema.authSessions.lastUsedAt,
+      clientType: schema.authSessions.clientType,
     })
     .from(schema.authSessions)
     .innerJoin(schema.users, eq(schema.users.id, schema.authSessions.userId))
@@ -258,7 +259,12 @@ export async function resolveAccessToken(
       .set({ lastUsedAt: now })
       .where(eq(schema.authSessions.id, row.sessionId));
   }
-  return { userId: row.userId, role: row.role as UserRole, sessionId: row.sessionId };
+  return {
+    userId: row.userId,
+    role: row.role as UserRole,
+    sessionId: row.sessionId,
+    clientType: row.clientType,
+  };
 }
 
 // ---------------------------------------------------------------------------------------------

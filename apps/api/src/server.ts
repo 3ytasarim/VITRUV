@@ -9,6 +9,7 @@ import { createObjectStorage } from './infra/storage/index';
 import { createClientIpResolver } from './lib/client-ip';
 import { createLogger } from './lib/logger';
 import { createRateLimiter } from '@vitruv/shared';
+import { appVersionDepsFromEnv } from './modules/app/app-version';
 import { createMediaUrlResolver } from './modules/media/media-url';
 import { createTrainingMediaSigner } from './modules/media/training-media-access';
 import { createWebRevalidationHook } from './modules/website/revalidation';
@@ -41,6 +42,11 @@ function main() {
       storage: storage.driver,
       trainingMedia: env.TRAINING_MEDIA_VISIBILITY,
       trainingMediaSigning: Boolean(trainingMediaSigner),
+      mobileMinVersion: {
+        ios: env.MOBILE_MIN_VERSION_IOS ?? null,
+        android: env.MOBILE_MIN_VERSION_ANDROID ?? null,
+        legacy: env.MOBILE_LEGACY_APP_POLICY,
+      },
     },
     'dependencies configured',
   );
@@ -57,6 +63,7 @@ function main() {
     bodyLimitBytes: env.API_BODY_LIMIT_BYTES,
     privateUrlTtlSeconds: env.PRIVATE_URL_TTL_SECONDS,
     trainingMediaSigner,
+    appVersions: appVersionDepsFromEnv(env),
     health: { version: VERSION, startedAt: Date.now(), pingDatabase: database.ping },
     auth: createAuthResolver(env, database.db, logger),
     clientIp: createClientIpResolver(env.TRUSTED_PROXY_IPS),

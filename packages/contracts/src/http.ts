@@ -18,6 +18,8 @@ export const API_ERROR_CODES = [
   'WORKOUT_ALREADY_COMPLETED',
   /** Sprint 8A: a signed training media URL is expired, invalid or not for this user → renew. */
   'MEDIA_URL_EXPIRED',
+  /** Sprint 8B: the mobile app is below the configured minimum version (HTTP 426) → update screen. */
+  'APP_UPDATE_REQUIRED',
   'SERVICE_UNAVAILABLE',
   'INTERNAL_ERROR',
 ] as const;
