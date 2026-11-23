@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useEffect, useId, useRef, useState } from 'react';
 import { searchTemplatesAction } from '@/app/admin/workout-actions';
 import { Badge, Button, ButtonLink, Card, cx } from '@/components/ui';
+import { callAction } from '@/lib/action-call';
 import {
   DAY_STATUS_LABEL,
   EXECUTION_TYPE_LABEL,
@@ -219,6 +220,7 @@ function TemplatePickerDialog({
   const [total, setTotal] = useState(0);
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [error, setError] = useState('');
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     const dialog = ref.current;
@@ -232,13 +234,16 @@ function TemplatePickerDialog({
     let cancelled = false;
     const timer = setTimeout(async () => {
       setState('loading');
-      const result = await searchTemplatesAction({ q: q.trim() || undefined, pageSize: 30 });
+      const result = await callAction(() =>
+        searchTemplatesAction({ q: q.trim() || undefined, pageSize: 30 }),
+      );
       if (cancelled) return;
       if (result.ok) {
         setItems(result.data.items);
         setTotal(result.data.total);
         setState('idle');
       } else {
+        setItems([]);
         setError(result.message);
         setState('error');
       }
@@ -247,7 +252,7 @@ function TemplatePickerDialog({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [open, q]);
+  }, [open, q, attempt]);
 
   return (
     <dialog
@@ -286,6 +291,13 @@ function TemplatePickerDialog({
                   ? `${items.length} von ${total} – Suche verfeinern`
                   : null}
         </div>
+        {state === 'error' && (
+          <div>
+            <Button type="button" variant="secondary" onClick={() => setAttempt((n) => n + 1)}>
+              Erneut versuchen
+            </Button>
+          </div>
+        )}
         <ul className="vt-workout__picker-list">
           {items.map((template) => (
             <li key={template.id}>

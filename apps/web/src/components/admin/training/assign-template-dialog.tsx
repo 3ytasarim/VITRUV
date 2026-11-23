@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import { assignTemplateAction, searchClientsAction } from '@/app/admin/workout-actions';
 import { Button } from '@/components/ui';
+import { callAction } from '@/lib/action-call';
 import { PROGRAM_STATUS_LABEL } from '@/lib/training-format';
 
 type Outcome =
@@ -81,7 +82,7 @@ export function AssignTemplateDialog({
     if (!open || fixedClient) return;
     let cancelled = false;
     const timer = setTimeout(async () => {
-      const result = await searchClientsAction(q);
+      const result = await callAction(() => searchClientsAction(q));
       if (cancelled) return;
       if (result.ok) {
         setClients(result.data);
@@ -121,12 +122,16 @@ export function AssignTemplateDialog({
           requestId = crypto.randomUUID();
           requestIds.current.set(clientId, requestId);
         }
-        const result = await assignTemplateAction(template.id, {
-          clientId,
-          requestId,
-          date,
-          ...(customTitle.trim() ? { title: customTitle.trim() } : {}),
-        });
+        // Network failure → a failed outcome with "Erneut versuchen"; the retry reuses the same
+        // requestId, so an assignment that DID reach the server is never created twice.
+        const result = await callAction(() =>
+          assignTemplateAction(template.id, {
+            clientId,
+            requestId,
+            date,
+            ...(customTitle.trim() ? { title: customTitle.trim() } : {}),
+          }),
+        );
         results.push(
           result.ok
             ? { clientId, name, ok: true, data: result.data }

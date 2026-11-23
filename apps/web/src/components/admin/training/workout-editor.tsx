@@ -3,6 +3,7 @@
 import {
   createTemplateRequestSchema,
   updateClientWorkoutRequestSchema,
+  updateTemplateRequestSchema,
   type AdminExercise,
   type ClientWorkout,
   type ExerciseMedia,
@@ -27,6 +28,7 @@ import {
   updateTemplateAction,
 } from '@/app/admin/workout-actions';
 import { Badge, Button, ButtonLink, Card, cx } from '@/components/ui';
+import { callAction } from '@/lib/action-call';
 import {
   EXECUTION_TYPE_LABEL,
   SECTION_LABEL,
@@ -319,9 +321,17 @@ export function WorkoutEditor({
             sections: sectionPayload,
             ...(target.kind === 'template' ? { expectedVersion: Number(version) } : {}),
           };
+    // Each target is checked against the schema of the request it sends. (Before Sprint 7.5 a
+    // template UPDATE was checked against the strict CREATE schema with `expectedVersion:
+    // undefined` — Zod 4 reports that key as unrecognized, so every save of an existing template
+    // failed with "Bitte prüfe die markierten Felder." and no marked field. Found by the E2E run.)
     const check = (
-      target.kind === 'client' ? updateClientWorkoutRequestSchema : createTemplateRequestSchema
-    ).safeParse(target.kind === 'template' ? { ...body, expectedVersion: undefined } : body);
+      target.kind === 'client'
+        ? updateClientWorkoutRequestSchema
+        : target.kind === 'template'
+          ? updateTemplateRequestSchema
+          : createTemplateRequestSchema
+    ).safeParse(body);
     if (!check.success) {
       const next: Record<string, string> = {};
       for (const issue of check.error.issues) {
@@ -332,15 +342,19 @@ export function WorkoutEditor({
       return;
     }
     start(async () => {
-      const result =
-        target.kind === 'client'
-          ? await saveClientWorkoutAction(target.workout.dayId, target.workout.clientId, body)
-          : target.kind === 'template'
-            ? await updateTemplateAction(target.template.id, body)
-            : await createTemplateAction(body);
+      // A network failure keeps the form (and the unsaved changes) and shows an error.
+      const result = await callAction(async () => {
+        if (target.kind === 'client') {
+          return saveClientWorkoutAction(target.workout.dayId, target.workout.clientId, body);
+        }
+        if (target.kind === 'template') return updateTemplateAction(target.template.id, body);
+        return createTemplateAction(body);
+      });
       if (!result.ok) {
         setErrors(result.fieldErrors);
-        setStale(result.status === 409 && 'expectedVersion' in result.fieldErrors);
+        setStale(
+          'status' in result && result.status === 409 && 'expectedVersion' in result.fieldErrors,
+        );
         setMessage({ tone: 'error', text: result.message });
         return;
       }
@@ -969,6 +983,7 @@ function ExercisePicker({ label, onPick }: { label: string; onPick: (e: AdminExe
   const [items, setItems] = useState<AdminExercise[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const id = useId();
 
@@ -978,19 +993,23 @@ function ExercisePicker({ label, onPick }: { label: string; onPick: (e: AdminExe
     let cancelled = false;
     const timer = setTimeout(async () => {
       setLoading(true);
-      const result = await searchExercisesAction(q);
+      const result = await callAction(() => searchExercisesAction(q));
       if (cancelled) return;
       setLoading(false);
       if (result.ok) {
         setItems(result.data.slice(0, 30));
         setError(null);
-      } else setError(result.message);
+      } else {
+        // never show results of an older query next to an error
+        setItems([]);
+        setError(result.message);
+      }
     }, 250);
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [open, q]);
+  }, [open, q, attempt]);
 
   if (!open) {
     return (
@@ -1044,6 +1063,13 @@ function ExercisePicker({ label, onPick }: { label: string; onPick: (e: AdminExe
               ? 'Keine Übungen gefunden.'
               : null}
       </div>
+      {error && !loading && (
+        <div>
+          <Button type="button" variant="secondary" onClick={() => setAttempt((n) => n + 1)}>
+            Erneut versuchen
+          </Button>
+        </div>
+      )}
       {items.length > 0 && (
         <ul className="vt-workout__picker-list">
           {items.map((exercise) => (

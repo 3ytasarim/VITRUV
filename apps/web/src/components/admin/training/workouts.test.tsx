@@ -31,6 +31,7 @@ vi.mock('next/navigation', () => ({
 
 const { WorkoutEditor } = await import('./workout-editor');
 const { TrainingWeek } = await import('./training-week');
+const { AssignTemplateDialog } = await import('./assign-template-dialog');
 
 beforeAll(() => {
   // happy-dom has no modal dialog implementation.
@@ -244,6 +245,90 @@ describe('WorkoutEditor — fields per execution type', () => {
     expect(workoutActions.createTemplateAction).not.toHaveBeenCalled();
   });
 
+  it('Sprint 7.5 regression: an existing TEMPLATE saves through updateTemplateAction with its version', async () => {
+    // Before the fix the strict create schema rejected `expectedVersion` → "Bitte prüfe die
+    // markierten Felder." with no marked field, and the action was never called (found by E2E).
+    workoutActions.updateTemplateAction.mockResolvedValue({
+      ok: true,
+      data: { ...template(false), version: 4 },
+    });
+    render(
+      <WorkoutEditor
+        target={{ kind: 'template', template: template(false) }}
+        extendedTypes={false}
+        cancelHref="/admin/training/workouts"
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Oberkörper Test v2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    await waitFor(() => expect(workoutActions.updateTemplateAction).toHaveBeenCalledTimes(1));
+    const [id, body] = workoutActions.updateTemplateAction.mock.calls[0] as [
+      string,
+      { expectedVersion: number; title: string },
+    ];
+    expect(id).toBe(uuid(100));
+    expect(body.expectedVersion).toBe(3);
+    expect(body.title).toBe('Oberkörper Test v2');
+    expect(screen.queryByText('Bitte prüfe die markierten Felder.')).toBeNull();
+    expect(await screen.findByText(/Vorlage gespeichert \(Version 4\)/)).toBeTruthy();
+    expect(workoutActions.createTemplateAction).not.toHaveBeenCalled();
+  });
+
+  it('Sprint 7.5: a template saved meanwhile elsewhere answers 409 with "Neu laden"', async () => {
+    workoutActions.updateTemplateAction.mockResolvedValue({
+      ok: false,
+      status: 409,
+      message: 'Die Vorlage wurde inzwischen geändert. Bitte neu laden.',
+      fieldErrors: { expectedVersion: 'Die Vorlage wurde inzwischen geändert.' },
+    });
+    render(
+      <WorkoutEditor
+        target={{ kind: 'template', template: template(false) }}
+        extendedTypes={false}
+        cancelHref="/admin/training/workouts"
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(await screen.findByRole('button', { name: 'Neu laden' })).toBeTruthy();
+  });
+
+  it('Sprint 7.5: a network failure in the exercise search shows an error and "Erneut versuchen" works', async () => {
+    trainingActions.searchExercisesAction
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValue({
+        ok: true,
+        data: [{ id: uuid(450), name: 'Ruderzug', code: 'RZ-1', active: true }],
+      });
+    render(
+      <WorkoutEditor
+        target={{ kind: 'template', template: template(false) }}
+        extendedTypes={false}
+        cancelHref="/admin/training/workouts"
+      />,
+    );
+    fireEvent.click(screen.getAllByRole('button', { name: 'Übung hinzufügen' })[0] as HTMLElement);
+    expect(await screen.findByText(/Keine Verbindung zum Server/)).toBeTruthy();
+    expect(screen.queryByText('Suche …')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+    expect(await screen.findByRole('button', { name: /Ruderzug/ })).toBeTruthy();
+    expect(screen.queryByText(/Keine Verbindung zum Server/)).toBeNull();
+  });
+
+  it('Sprint 7.5: a network failure while saving keeps the form and shows an error', async () => {
+    workoutActions.updateTemplateAction.mockRejectedValue(new TypeError('Failed to fetch'));
+    render(
+      <WorkoutEditor
+        target={{ kind: 'template', template: template(false) }}
+        extendedTypes={false}
+        cancelHref="/admin/training/workouts"
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Nicht verlieren' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(await screen.findByText(/Keine Verbindung zum Server/)).toBeTruthy();
+    expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('Nicht verlieren');
+  });
+
   it('shows "Neu laden" when someone else changed the plan meanwhile (409)', async () => {
     workoutActions.saveClientWorkoutAction.mockResolvedValue({
       ok: false,
@@ -370,5 +455,47 @@ describe('TrainingWeek', () => {
     );
     expect(screen.getByText(/Noch kein Trainingsplan/)).toBeTruthy();
     expect(screen.getAllByText('Kein Workout')).toHaveLength(7);
+  });
+});
+
+describe('AssignTemplateDialog — Sprint 7.5 network failure', () => {
+  it('a lost request becomes "Erneut versuchen"; the retry reuses the SAME requestId', async () => {
+    const response = {
+      created: true,
+      clientId: uuid(900),
+      programId: uuid(600),
+      programTitle: 'Trainingsplan',
+      programStatus: 'ACTIVE',
+      programCreated: false,
+      weekId: uuid(700),
+      dayId: uuid(500),
+      title: 'Oberkörper Test',
+      date: '2026-11-23',
+      scheduledWeekday: 1,
+      sourceTemplateId: uuid(100),
+      sourceTemplateVersion: 3,
+    };
+    workoutActions.assignTemplateAction
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValue({ ok: true, data: response });
+    render(
+      <AssignTemplateDialog
+        open
+        template={{ id: uuid(100), title: 'Oberkörper Test' }}
+        fixedClient={{ id: uuid(900), name: 'Mia Beispiel' }}
+        defaultDate="2026-11-23"
+        onClose={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Zuweisen' }));
+    expect(await screen.findByText(/Keine Verbindung zum Server/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+    await waitFor(() => expect(workoutActions.assignTemplateAction).toHaveBeenCalledTimes(2));
+    const calls = workoutActions.assignTemplateAction.mock.calls as [
+      string,
+      { requestId: string },
+    ][];
+    expect(calls[1]?.[1].requestId).toBe(calls[0]?.[1].requestId);
+    expect(await screen.findByText(/zugewiesen für/)).toBeTruthy();
   });
 });
