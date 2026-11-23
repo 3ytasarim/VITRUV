@@ -9,6 +9,7 @@ import { schema, type DbExecutor } from '@vitruv/db';
 import {
   WEBSITE_MEDIA_EXTENSIONS,
   websiteMediaKindForMimeType,
+  type MediaVisibility,
   type WebsiteMediaKind,
 } from '@vitruv/shared';
 import { and, count, desc, eq, inArray } from 'drizzle-orm';
@@ -70,7 +71,16 @@ export interface MediaServiceDeps {
   onPublicMediaChanged?: () => Promise<void>;
   /** HEIC → JPEG conversion (worker thread); injectable for tests. */
   convertHeic?: HeicConverter;
+  /**
+   * Sprint 8A (env TRAINING_MEDIA_VISIBILITY, default PUBLIC = previous behaviour): visibility of
+   * NEW training library uploads. PRIVATE → private bucket + signed delivery URLs. Website media
+   * are always PUBLIC; existing assets keep their visibility (also when their file is replaced).
+   */
+  trainingVisibility?: MediaVisibility;
 }
+
+const uploadVisibility = (deps: MediaServiceDeps, library: MediaLibrary): MediaVisibility =>
+  library === 'TRAINING' ? (deps.trainingVisibility ?? 'PUBLIC') : 'PUBLIC';
 
 type MediaAssetRow = typeof mediaAssets.$inferSelect;
 
@@ -94,7 +104,8 @@ export function toAdminMediaDto(
       typeof asset.focalX === 'number' && typeof asset.focalY === 'number'
         ? { x: asset.focalX, y: asset.focalY }
         : null,
-    url: urls.publicUrl(asset.storageKey),
+    // PRIVATE training media: signed for the current viewer ('' only without one).
+    url: urls.assetUrl(asset) ?? '',
     createdAt: asset.createdAt.toISOString(),
     updatedAt: asset.updatedAt.toISOString(),
     usageCount,
@@ -340,9 +351,13 @@ export async function getLibraryMedia(
 }
 
 // The key is generated from server-side values only; the client's file name never reaches it.
-const libraryStorageKey = (library: MediaLibrary, upload: ValidatedUpload) =>
+const libraryStorageKey = (
+  library: MediaLibrary,
+  upload: ValidatedUpload,
+  visibility: MediaVisibility,
+) =>
   buildStorageKey({
-    visibility: 'PUBLIC',
+    visibility,
     purpose: LIBRARY[library].storagePurpose,
     extension: upload.extension,
   });
@@ -351,6 +366,7 @@ interface StoredFile {
   upload: ValidatedUpload;
   storageKey: string;
   sizeBytes: number;
+  visibility: MediaVisibility;
 }
 
 const KIND_LABEL: Record<WebsiteMediaKind, string> = { IMAGE: 'Bild', VIDEO: 'Video' };
@@ -386,7 +402,8 @@ async function storeStagedFile(
   deps: MediaServiceDeps,
   library: MediaLibrary,
   staged: StagedUpload,
-  expectKind?: WebsiteMediaKind,
+  expectKind: WebsiteMediaKind | undefined,
+  visibility: MediaVisibility,
 ): Promise<StoredFile> {
   const kind = checkDeclaredUpload({
     declaredType: staged.declaredType,
@@ -406,17 +423,17 @@ async function storeStagedFile(
   });
   if (library === 'TRAINING') checkTrainingVideoPlayback(upload.sniffed);
   if (upload.sniffed.mimeType === 'image/heic') {
-    return storeConvertedHeic(deps, library, staged, upload);
+    return storeConvertedHeic(deps, library, staged, upload, visibility);
   }
-  const storageKey = libraryStorageKey(library, upload);
+  const storageKey = libraryStorageKey(library, upload, visibility);
   await deps.storage.putStream({
     key: storageKey,
     body: createReadStream(staged.path),
     sizeBytes: staged.sizeBytes,
     contentType: upload.sniffed.mimeType,
-    visibility: 'PUBLIC',
+    visibility,
   });
-  return { upload, storageKey, sizeBytes: staged.sizeBytes };
+  return { upload, storageKey, sizeBytes: staged.sizeBytes, visibility };
 }
 
 /**
@@ -429,6 +446,7 @@ async function storeConvertedHeic(
   library: MediaLibrary,
   staged: StagedUpload,
   original: ValidatedUpload,
+  visibility: MediaVisibility,
 ): Promise<StoredFile> {
   const heic = await staged.read(0, staged.sizeBytes);
   const converted = await (deps.convertHeic ?? convertHeicToJpeg)(heic);
@@ -444,15 +462,15 @@ async function storeConvertedHeic(
     fileName: sanitizeFileName(jpegFileName(original.fileName)),
     extension: 'jpg',
   };
-  const storageKey = libraryStorageKey(library, upload);
+  const storageKey = libraryStorageKey(library, upload, visibility);
   await deps.storage.put({
     key: storageKey,
     body: converted.jpeg,
     contentType: 'image/jpeg',
-    visibility: 'PUBLIC',
+    visibility,
   });
   deps.logger.info({ library, width: converted.width }, 'HEIC photo converted to JPEG');
-  return { upload, storageKey, sizeBytes: converted.jpeg.byteLength };
+  return { upload, storageKey, sizeBytes: converted.jpeg.byteLength, visibility };
 }
 
 /**
@@ -464,7 +482,13 @@ export async function uploadStagedLibraryMedia(
   library: MediaLibrary,
   input: { staged: StagedUpload; altText: string | null; userId: string },
 ): Promise<AdminMediaAsset> {
-  const stored = await storeStagedFile(deps, library, input.staged);
+  const stored = await storeStagedFile(
+    deps,
+    library,
+    input.staged,
+    undefined,
+    uploadVisibility(deps, library),
+  );
   return recordUploadedAsset(deps, library, {
     ...stored,
     altText: input.altText,
@@ -491,7 +515,14 @@ export async function replaceStagedLibraryMedia(
   const [current] = await deps.db.select().from(mediaAssets).where(libraryAsset(library, id));
   if (!current) throw AppError.notFound('Medium nicht gefunden.');
   const currentKind: WebsiteMediaKind = current.kind === 'VIDEO' ? 'VIDEO' : 'IMAGE';
-  const stored = await storeStagedFile(deps, library, input.staged, currentKind);
+  // The asset keeps its visibility: a replaced PUBLIC file stays public (migration = tooling).
+  const stored = await storeStagedFile(
+    deps,
+    library,
+    input.staged,
+    currentKind,
+    current.visibility,
+  );
   let switched: { id: string } | undefined;
   try {
     [switched] = await deps.db
@@ -511,11 +542,11 @@ export async function replaceStagedLibraryMedia(
       .where(and(libraryAsset(library, id), eq(mediaAssets.storageKey, current.storageKey)))
       .returning({ id: mediaAssets.id });
   } catch (error) {
-    await deps.storage.delete(stored.storageKey, 'PUBLIC').catch(() => undefined);
+    await deps.storage.delete(stored.storageKey, stored.visibility).catch(() => undefined);
     throw error;
   }
   if (!switched) {
-    await deps.storage.delete(stored.storageKey, 'PUBLIC').catch(() => undefined);
+    await deps.storage.delete(stored.storageKey, stored.visibility).catch(() => undefined);
     throw AppError.conflict(
       'Das Medium wurde inzwischen geändert oder gelöscht. Bitte die Seite neu laden.',
     );
@@ -526,7 +557,7 @@ export async function replaceStagedLibraryMedia(
       deps.logger.warn({ err: (error as Error).name }, 'public cache refresh after replace failed');
     });
   }
-  await deps.storage.delete(current.storageKey, 'PUBLIC').catch((error: unknown) => {
+  await deps.storage.delete(current.storageKey, current.visibility).catch((error: unknown) => {
     deps.logger.warn(
       { assetId: id, err: (error as Error).name },
       'media replaced but old object cleanup failed (orphaned object)',
@@ -543,18 +574,19 @@ async function recordUploadedAsset(
     upload: ValidatedUpload;
     storageKey: string;
     sizeBytes: number;
+    visibility: MediaVisibility;
     altText: string | null;
     userId: string;
   },
 ): Promise<AdminMediaAsset> {
-  const { upload, storageKey } = input;
+  const { upload, storageKey, visibility } = input;
   try {
     const [asset] = await deps.db
       .insert(mediaAssets)
       .values({
         kind: upload.kind,
         purpose: LIBRARY[library].purpose,
-        visibility: 'PUBLIC',
+        visibility,
         storageKey,
         fileName: upload.fileName,
         mimeType: upload.sniffed.mimeType,
@@ -571,7 +603,7 @@ async function recordUploadedAsset(
     return toAdminMediaDto(asset, deps.urls, 0);
   } catch (error) {
     // No metadata row → no orphaned object.
-    await deps.storage.delete(storageKey, 'PUBLIC').catch(() => undefined);
+    await deps.storage.delete(storageKey, visibility).catch(() => undefined);
     throw error;
   }
 }
@@ -661,9 +693,9 @@ export async function deleteLibraryMedia(
   library: MediaLibrary,
   id: string,
 ): Promise<void> {
-  let storageKey: string;
+  let removed: { storageKey: string; visibility: MediaVisibility };
   try {
-    storageKey = await deps.db.transaction(async (tx) => {
+    removed = await deps.db.transaction(async (tx) => {
       const [asset] = await tx
         .select()
         .from(mediaAssets)
@@ -683,7 +715,7 @@ export async function deleteLibraryMedia(
         throw inUseError(usages, byExercises, byWelcome, byRows);
       }
       await tx.delete(mediaAssets).where(eq(mediaAssets.id, id));
-      return asset.storageKey;
+      return { storageKey: asset.storageKey, visibility: asset.visibility };
     });
   } catch (error) {
     const code = pgErrorCode(error);
@@ -697,7 +729,7 @@ export async function deleteLibraryMedia(
     }
     throw error;
   }
-  await deps.storage.delete(storageKey, 'PUBLIC').catch((error: unknown) => {
+  await deps.storage.delete(removed.storageKey, removed.visibility).catch((error: unknown) => {
     deps.logger.warn(
       { assetId: id, err: (error as Error).name },
       'media row deleted but object cleanup failed (orphaned object)',

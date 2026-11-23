@@ -300,9 +300,7 @@ async function toClientProgram(
     ? await db
         .select()
         .from(M)
-        .where(
-          and(inArray(M.id, mediaIds), eq(M.visibility, 'PUBLIC'), eq(M.purpose, 'TRAINING_VIDEO')),
-        )
+        .where(and(inArray(M.id, mediaIds), eq(M.purpose, 'TRAINING_VIDEO')))
     : [];
   const assetById = new Map(assets.map((asset) => [asset.id, asset]));
   /** Sprint 7: this client's own video (assignment) wins over the library video. */
@@ -311,10 +309,12 @@ async function toClientProgram(
     const assetId = row.assignment.mediaAssetId ?? exercise.mediaAssetId;
     const asset = assetId ? assetById.get(assetId) : undefined;
     if (!asset || (asset.kind !== 'IMAGE' && asset.kind !== 'VIDEO')) return null;
+    const url = deps.urls.assetUrl(asset);
+    if (!url) return null;
     return {
       assetId: asset.id,
       kind: asset.kind,
-      url: deps.urls.publicUrl(asset.storageKey),
+      url,
       mimeType: asset.mimeType,
       width: asset.width,
       height: asset.height,

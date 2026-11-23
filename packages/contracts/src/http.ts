@@ -16,6 +16,8 @@ export const API_ERROR_CODES = [
   'WORKOUT_IN_PROGRESS',
   /** Sprint 5: this training day was already completed — it is not started again (details: sessionId). */
   'WORKOUT_ALREADY_COMPLETED',
+  /** Sprint 8A: a signed training media URL is expired, invalid or not for this user → renew. */
+  'MEDIA_URL_EXPIRED',
   'SERVICE_UNAVAILABLE',
   'INTERNAL_ERROR',
 ] as const;

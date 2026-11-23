@@ -522,6 +522,17 @@ export type ClientActiveTrainingResponse = z.infer<typeof clientActiveTrainingRe
 
 // ---------------------------------------------------------------- training media
 
+/**
+ * Sprint 8A — fresh delivery URL of a training medium (GET …/training/media/:assetId/url).
+ * PRIVATE media: signed, user-bound URL with its expiry; PUBLIC media: the public URL and null.
+ */
+export const trainingMediaUrlSchema = z.object({
+  assetId: z.uuid(),
+  url: z.string().min(1),
+  expiresAt: z.iso.datetime().nullable(),
+});
+export type TrainingMediaUrl = z.infer<typeof trainingMediaUrlSchema>;
+
 export const exerciseMediaUsageSchema = z.object({
   exerciseId: z.uuid(),
   name: z.string(),

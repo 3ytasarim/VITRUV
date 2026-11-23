@@ -63,6 +63,18 @@ export const apiEnvSchema = z
      * /media/public/… URLs keep working either way.
      */
     PUBLIC_MEDIA_BASE_URL: z.url().optional(),
+    /**
+     * Sprint 8A — private training media (docs/ios-training-sprint8a-private-media.md).
+     * Visibility of NEW training library uploads. DEFAULT PUBLIC (unchanged behaviour); PRIVATE
+     * stores them in the private bucket and delivers them only via signed, user-bound,
+     * short-lived URLs. Switch only together with the migration plan (old app versions need a
+     * build that renews expired URLs).
+     */
+    TRAINING_MEDIA_VISIBILITY: z.enum(['PUBLIC', 'PRIVATE']).default('PUBLIC'),
+    /** HMAC key for signed training media URLs (≥ 32 chars, random). Required for PRIVATE. */
+    MEDIA_URL_SIGNING_KEY: z.string().min(32, 'must be at least 32 characters').optional(),
+    /** Lifetime of a signed training media URL (seconds, 60–3600; rounded up to a window). */
+    TRAINING_MEDIA_URL_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(900),
     MEDIA_MAX_IMAGE_BYTES: z.coerce
       .number()
       .int()
@@ -131,6 +143,14 @@ export const apiEnvSchema = z
           message: 'must differ from S3_BUCKET_PUBLIC',
         });
       }
+    }
+    // Fail closed: private training uploads without a signing key would be unreachable.
+    if (env.TRAINING_MEDIA_VISIBILITY === 'PRIVATE' && !env.MEDIA_URL_SIGNING_KEY) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['MEDIA_URL_SIGNING_KEY'],
+        message: 'required when TRAINING_MEDIA_VISIBILITY=PRIVATE',
+      });
     }
     if (env.WEB_REVALIDATE_URL && !env.REVALIDATE_SECRET) {
       ctx.addIssue({

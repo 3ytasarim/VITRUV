@@ -142,17 +142,17 @@ async function mediaFor(
     ? await db
         .select()
         .from(M)
-        .where(
-          and(inArray(M.id, assetIds), eq(M.visibility, 'PUBLIC'), eq(M.purpose, 'TRAINING_VIDEO')),
-        )
+        .where(and(inArray(M.id, assetIds), eq(M.purpose, 'TRAINING_VIDEO')))
     : [];
   return (row: Pick<ExerciseRow, 'mediaAssetId'>, name: string): ResolvedMedia | null => {
     const asset = row.mediaAssetId ? rows.find((a) => a.id === row.mediaAssetId) : undefined;
     if (!asset || (asset.kind !== 'IMAGE' && asset.kind !== 'VIDEO')) return null;
+    const url = deps.urls.assetUrl(asset);
+    if (!url) return null;
     return {
       assetId: asset.id,
       kind: asset.kind,
-      url: deps.urls.publicUrl(asset.storageKey),
+      url,
       mimeType: asset.mimeType,
       width: asset.width,
       height: asset.height,
