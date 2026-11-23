@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../auth/auth_state.dart';
+import '../config/release_features.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/design_gallery/design_gallery_access.dart';
 import '../../features/design_gallery/design_gallery_screen.dart';
@@ -34,6 +35,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     (previous, next) => authChanges.value = next,
   );
 
+  // Sprint 8B: hidden placeholder tabs are not registered at all (no route, no destination).
+  final nutritionTab = ref.watch(nutritionTabEnabledProvider);
+
   final router = GoRouter(
     initialLocation: AppRoutes.today,
     refreshListenable: authChanges,
@@ -42,12 +46,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final at = state.matchedLocation;
       // Development-only gallery: shows no account data, reachable without a session.
       if (at == AppRoutes.designGallery) return null;
+      // A deep link to a hidden tab never shows an empty/unknown page.
+      final hidden =
+          !nutritionTab &&
+          (at == AppRoutes.nutrition ||
+              at.startsWith('${AppRoutes.nutrition}/'));
       return switch (auth) {
         AuthRestoring() ||
         AuthUnavailable() => at == AppRoutes.start ? null : AppRoutes.start,
         SignedOut() => at == AppRoutes.login ? null : AppRoutes.login,
         SignedIn() =>
-          at == AppRoutes.login || at == AppRoutes.start
+          at == AppRoutes.login || at == AppRoutes.start || hidden
               ? AppRoutes.today
               : null,
       };
@@ -76,7 +85,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          _branch(AppRoutes.nutrition, const NutritionScreen()),
+          if (nutritionTab)
+            _branch(AppRoutes.nutrition, const NutritionScreen()),
           _branch(
             AppRoutes.progress,
             const ProgressScreen(),
@@ -92,6 +102,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           _branch(AppRoutes.profile, const ProfileScreen()),
         ],
       ),
+      // Hidden tab: a registered target for the redirect above (never rendered).
+      if (!nutritionTab)
+        GoRoute(
+          path: AppRoutes.nutrition,
+          builder: (context, state) => const SizedBox.shrink(),
+        ),
       GoRoute(
         path: AppRoutes.workout,
         builder: (context, state) => const WorkoutScreen(),

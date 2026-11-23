@@ -1,24 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/config/release_features.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/vitruv_tokens.g.dart';
 import '../../l10n/app_localizations.dart';
 
-/// Bottom-navigation shell for the five primary client tabs. Each tab keeps its own navigation
+/// Bottom-navigation shell for the primary client tabs (four in release: "Ernährung" is hidden
+/// until it has content — `release_features.dart`; the order matches the router's branches). Each tab keeps its own navigation
 /// stack (StatefulShellRoute), so switching tabs never loses the user's place.
 ///
 /// Visual: VITRUV dark bar with a hairline top edge and a chamfered selection marker (theme).
 /// Behaviour and accessibility stay Material's NavigationBar (semantics, focus, safe areas —
 /// it pads itself for the bottom inset / gesture bar; screens' app bars handle the top inset).
-class AppShell extends StatelessWidget {
+class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final nutritionTab = ref.watch(nutritionTabEnabledProvider);
     final c = VitruvTheme.of(context);
     return Scaffold(
       body: navigationShell,
@@ -48,11 +52,12 @@ class AppShell extends StatelessWidget {
               selectedIcon: const Icon(Icons.fitness_center),
               label: l10n.navTraining,
             ),
-            NavigationDestination(
-              icon: const Icon(Icons.restaurant_outlined),
-              selectedIcon: const Icon(Icons.restaurant),
-              label: l10n.navNutrition,
-            ),
+            if (nutritionTab)
+              NavigationDestination(
+                icon: const Icon(Icons.restaurant_outlined),
+                selectedIcon: const Icon(Icons.restaurant),
+                label: l10n.navNutrition,
+              ),
             NavigationDestination(
               icon: const Icon(Icons.insights_outlined),
               selectedIcon: const Icon(Icons.insights),

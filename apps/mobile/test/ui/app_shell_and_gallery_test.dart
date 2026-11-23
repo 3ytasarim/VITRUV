@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:vitruv_mobile/core/config/release_features.dart';
 import 'package:vitruv_mobile/core/routing/app_router.dart';
 import 'package:vitruv_mobile/features/design_gallery/design_gallery_access.dart';
 import 'package:vitruv_mobile/features/design_gallery/design_gallery_screen.dart';
@@ -27,8 +28,14 @@ GoRouter routerOf(WidgetTester tester) =>
 
 void main() {
   group('navigation shell', () {
-    testWidgets('all five destinations are reachable', (tester) async {
-      await tester.pumpWidget(appUnderTest());
+    testWidgets('all five destinations are reachable (nutrition re-enabled)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        appUnderTest(
+          overrides: [nutritionTabEnabledProvider.overrideWithValue(true)],
+        ),
+      );
       await tester.pumpAndSettle();
       final tabs = {
         Icons.today_outlined: 'Heute',
@@ -57,7 +64,7 @@ void main() {
       await tester.pumpWidget(appUnderTest());
       await tester.pumpAndSettle();
       final bar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-      expect(bar.destinations, hasLength(5));
+      expect(bar.destinations, hasLength(4)); // release: Ernährung hidden
       expect(
         find.descendant(
           of: find.byType(NavigationBar),
