@@ -964,21 +964,47 @@
   .r-flip__tag--before {
     color: rgb(var(--r-spark-rgb));
   }
+  /* before/after marker, bottom centre (owner 2026-11-24) */
   .r-flip__hint {
     position: absolute;
-    right: 12px;
-    bottom: 12px;
-    padding: 6px 10px;
-    border-radius: 2px;
-    background: rgba(var(--r-bg-rgb), 0.72);
+    left: 50%;
+    bottom: 14px;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(var(--r-spark-rgb), 0.7);
+    background: rgba(var(--r-bg-rgb), 0.78);
     backdrop-filter: blur(6px);
+    box-shadow: 0 0 18px rgba(var(--r-spark-rgb), 0.35);
     font-family: var(--font-label);
     font-weight: 600;
-    font-size: 10px;
-    letter-spacing: 0.16em;
+    font-size: 11px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
+    white-space: nowrap;
     color: var(--r-fg);
     pointer-events: none;
+  }
+  .r-flip__hint-icon {
+    flex: none;
+    color: rgb(var(--r-spark-rgb));
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .r-flip:not([data-flipped]) .r-flip__hint-icon {
+      animation: r-flip-hint 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+    }
+  }
+  @keyframes r-flip-hint {
+    0%,
+    60% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
   }
   @media (prefers-reduced-motion: reduce) {
     .r-flip__inner {
@@ -3221,8 +3247,64 @@
     border-radius: 3px;
   }
   /* partner logo ("Nature Heart", owner 2026-11-24): under the contact buttons, all widths */
-  .df-badge {
+  .df-partner {
     margin-top: 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    max-width: 340px;
+  }
+  .df-badge {
+    display: inline-block;
+    border-radius: 4px;
+  }
+  .df-badge:focus-visible {
+    outline: 2px solid var(--r-accent);
+    outline-offset: 4px;
+  }
+  .df-partner__text {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: rgba(var(--r-fg-rgb), 0.72);
+  }
+  .df-partner__text strong {
+    color: var(--r-fg);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .df-partner__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .df-partner__actions .df-btn {
+    gap: 8px;
+    min-height: 48px;
+    cursor: pointer;
+    background-clip: padding-box;
+  }
+  .df-partner__code {
+    background: none;
+    font: inherit;
+    font-size: 14px;
+  }
+  .df-partner__code strong {
+    letter-spacing: 0.06em;
+  }
+  .df-partner__copied {
+    color: rgb(var(--r-spark-rgb));
+    font-size: 12px;
+  }
+  .df-partner__copied:empty {
+    display: none;
+  }
+  .df-partner__note {
+    margin: 0;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: rgba(var(--r-fg-rgb), 0.5);
   }
   .df-badge__media,
   .df-badge__logo {
@@ -3230,6 +3312,7 @@
   }
   .df-badge__media {
     position: relative;
+    display: block;
   }
   .df-badge__media img {
     object-fit: contain;

@@ -560,12 +560,22 @@ describe('homepage composition', () => {
     expect(markup.indexOf('id="bewerben"')).toBeLessThan(markup.indexOf('df-bottom'));
   });
 
-  it('footer partner logo ("Nature Heart"): bundled by default, a CMS logo replaces it', () => {
+  it('footer Nature Heart partner block: logo + text + affiliate link + code; CMS logo replaces the bundled one', () => {
     const fallback = html(<ReferenceFooter logoSrc={null} links={[]} apply={CONTENT.home.apply} />);
     expect(fallback).toMatch(
       /<img[^>]*class="df-badge__logo"[^>]*src="\/brand\/nature-heart\.png"/,
     );
-    expect(fallback).toContain('alt="Nature Heart"');
+    // the logo is the affiliate link itself (named via aria-label, the image is decorative)
+    const affiliate = 'href="https://nature-heart.de/philipp-maximilian12399199"';
+    expect(fallback).toContain(
+      `<a ${affiliate} class="df-badge" rel="sponsored noopener noreferrer" target="_blank" aria-label="Nature Heart – zum Shop`,
+    );
+    // partner text, shop button, copyable code, advertising notice
+    expect(fallback).toContain('offizieller Partner von Nature Heart');
+    expect(fallback.split(affiliate)).toHaveLength(3); // logo + "Zum Shop"
+    expect(fallback).toContain('VITRUV10');
+    expect(fallback).toContain('aria-label="Code VITRUV10 kopieren"');
+    expect(fallback).toContain('Werbung · Affiliate-Link');
     // between the brand/contact section and the link columns
     expect(fallback.indexOf('df-badge')).toBeGreaterThan(fallback.indexOf('df-channels'));
     expect(fallback.indexOf('df-badge')).toBeLessThan(fallback.indexOf('df-bottom'));
@@ -642,6 +652,9 @@ describe('homepage composition', () => {
     expect(markup.match(/class="r-flip /g)).toHaveLength(1);
     expect(markup).toMatch(/<button type="button" class="r-flip [^"]*"[^>]*aria-pressed="false"/);
     expect(markup).toContain('Flip-T: Nachher-Bild, tippen für Vorher');
+    // a visible before/after marker only on the card that has a before photo
+    expect(markup.match(/class="r-flip__hint"/g)).toHaveLength(1);
+    expect(markup).toContain('Vorher / Nachher');
     // the after photo is the front face, the before photo the back face
     const front = markup.indexOf('r-flip__face--front');
     const back = markup.indexOf('r-flip__face--back');

@@ -1,5 +1,6 @@
 'use client';
 
+import { Repeat2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { cx } from '@/components/ui';
@@ -45,8 +46,11 @@ export function FlipCard({
           <span className="r-flip__tag r-flip__tag--before">Vorher</span>
         </span>
       </span>
+      {/* owner 2026-11-24: visible marker bottom centre — only cards WITH a before photo get it,
+          so visitors can tell which participants have a before/after */}
       <span aria-hidden className="r-flip__hint">
-        {flipped ? 'Nachher ansehen' : 'Vorher ansehen'}
+        <Repeat2 className="r-flip__hint-icon" size={16} strokeWidth={2} />
+        <span>{flipped ? 'Nachher ansehen' : 'Vorher / Nachher'}</span>
       </span>
     </button>
   );

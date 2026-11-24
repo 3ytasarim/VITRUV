@@ -2,6 +2,7 @@ import type { PublicSectionContent } from '@vitruv/contracts';
 import { ArrowUpRight } from 'lucide-react';
 import Link from 'next/link';
 import { CmsMedia } from '@/components/cms/cms-media';
+import { CopyCode } from './copy-code';
 import { DitherBand } from './dither-band';
 import type { ReferenceLink } from './reference-header';
 
@@ -17,6 +18,16 @@ const PARTNER_LOGO = {
   alt: 'Nature Heart',
   width: 960,
   height: 122,
+};
+
+/**
+ * Nature Heart affiliate partnership (owner 2026-11-24): the logo and the shop button lead to the
+ * owner's affiliate link; marked as advertising (affiliate link) for transparency.
+ */
+const PARTNER = {
+  name: 'Nature Heart',
+  href: 'https://nature-heart.de/philipp-maximilian12399199',
+  code: 'VITRUV10',
 };
 
 /** Agency credit in the bottom bar (owner request 2026-11-18). */
@@ -90,23 +101,55 @@ export function ReferenceFooter({
               )}
             </div>
           )}
-          {/* owner 2026-11-24: partner logo ("Nature Heart") right under the contact buttons */}
-          <div className="df-badge">
-            {badge ? (
-              <div className="df-badge__media" style={{ aspectRatio: badgeRatio }}>
-                <CmsMedia slot={badge} sizes="200px" mobileSizes="180px" />
-              </div>
-            ) : (
-              <img
-                className="df-badge__logo"
-                src={PARTNER_LOGO.src}
-                alt={PARTNER_LOGO.alt}
-                width={PARTNER_LOGO.width}
-                height={PARTNER_LOGO.height}
-                loading="lazy"
-                decoding="async"
-              />
-            )}
+          {/* owner 2026-11-24: Nature Heart partner block right under the contact buttons — the
+              logo and the shop button use the affiliate link, the code can be copied */}
+          <div className="df-partner">
+            <a
+              href={PARTNER.href}
+              className="df-badge"
+              rel="sponsored noopener noreferrer"
+              target="_blank"
+              aria-label={`${PARTNER.name} – zum Shop (Affiliate-Link, öffnet in neuem Tab)`}
+              data-track="cta_click"
+              data-track-section="partner"
+              data-track-label="logo"
+            >
+              {badge ? (
+                <span className="df-badge__media" style={{ aspectRatio: badgeRatio }}>
+                  <CmsMedia slot={badge} sizes="200px" mobileSizes="180px" />
+                </span>
+              ) : (
+                <img
+                  className="df-badge__logo"
+                  src={PARTNER_LOGO.src}
+                  alt=""
+                  width={PARTNER_LOGO.width}
+                  height={PARTNER_LOGO.height}
+                  loading="lazy"
+                  decoding="async"
+                />
+              )}
+            </a>
+            <p className="df-partner__text">
+              Ich bin offizieller Partner von {PARTNER.name}. Mit meinem Code{' '}
+              <strong>{PARTNER.code}</strong> sparst du bei deiner Bestellung.
+            </p>
+            <div className="df-partner__actions">
+              <a
+                href={PARTNER.href}
+                className="df-btn df-btn--solid"
+                rel="sponsored noopener noreferrer"
+                target="_blank"
+                data-track="cta_click"
+                data-track-section="partner"
+                data-track-label="shop"
+              >
+                Zum Shop
+                <ArrowUpRight aria-hidden size={15} strokeWidth={2} />
+              </a>
+              <CopyCode code={PARTNER.code} className="df-btn df-partner__code" />
+            </div>
+            <p className="df-partner__note">Werbung · Affiliate-Link</p>
           </div>
         </section>
         {columns.map((col) => (
@@ -136,7 +179,7 @@ export function ReferenceFooter({
               className="df-credit"
               {...external(CREDIT_URL)}
               aria-label="Designed by Bleibsichtbar (öffnet in einem neuen Tab)"
-              data-track="outbound_click"
+              data-track="cta_click"
               data-track-label="bleibsichtbar"
             >
               <span aria-hidden className="df-credit__dot" />
