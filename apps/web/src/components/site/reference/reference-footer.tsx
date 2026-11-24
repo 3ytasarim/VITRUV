@@ -7,6 +7,18 @@ import type { ReferenceLink } from './reference-header';
 
 type Apply = PublicSectionContent<'home'>['apply'];
 
+/**
+ * Partner logo next to the contact block (owner 2026-11-24, "Nature Heart"): bundled like the
+ * VITRUV logo — black ink, inverted by the theme's logo filter on dark backgrounds. A logo uploaded
+ * in the CMS (Bewerben → "Logo im Footer") replaces it.
+ */
+const PARTNER_LOGO = {
+  src: '/brand/nature-heart.png',
+  alt: 'Nature Heart',
+  width: 960,
+  height: 122,
+};
+
 /** Agency credit in the bottom bar (owner request 2026-11-18). */
 const CREDIT_URL = 'https://www.bleibsichtbar.com';
 
@@ -48,7 +60,7 @@ export function ReferenceFooter({
 
   return (
     <footer className="r-footer">
-      <div className={badge ? 'df-top df-top--badge' : 'df-top'}>
+      <div className="df-top">
         <section id="bewerben" className="df-brand" aria-labelledby="bewerben-title">
           <Link href="/#top" className="df-logo" aria-label="VITRUV – nach oben">
             {logoSrc ? <img src={logoSrc} alt="" width={127} height={72} /> : 'VITRUV'}
@@ -81,13 +93,23 @@ export function ReferenceFooter({
         </section>
         {/* owner 2026-11-24: optional CMS logo ("Nature Heart") between the brand block and the
             link columns on desktop, below the contact buttons on phones. */}
-        {badge && (
-          <div className="df-badge">
+        <div className="df-badge">
+          {badge ? (
             <div className="df-badge__media" style={{ aspectRatio: badgeRatio }}>
-              <CmsMedia slot={badge} sizes="180px" mobileSizes="160px" />
+              <CmsMedia slot={badge} sizes="240px" mobileSizes="260px" />
             </div>
-          </div>
-        )}
+          ) : (
+            <img
+              className="df-badge__logo"
+              src={PARTNER_LOGO.src}
+              alt={PARTNER_LOGO.alt}
+              width={PARTNER_LOGO.width}
+              height={PARTNER_LOGO.height}
+              loading="lazy"
+              decoding="async"
+            />
+          )}
+        </div>
         {columns.map((col) => (
           <nav key={col.label} aria-label={col.label} className="df-col">
             <p className="df-col__title">{col.label}</p>

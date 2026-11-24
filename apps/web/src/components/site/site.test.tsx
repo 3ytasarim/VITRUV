@@ -560,23 +560,26 @@ describe('homepage composition', () => {
     expect(markup.indexOf('id="bewerben"')).toBeLessThan(markup.indexOf('df-bottom'));
   });
 
-  it('footer logo slot ("Nature Heart"): rendered only when set, after the contact block', () => {
-    const without = html(<ReferenceFooter logoSrc={null} links={[]} apply={CONTENT.home.apply} />);
-    expect(without).not.toContain('df-badge');
-    expect(without).not.toContain('df-top--badge');
+  it('footer partner logo ("Nature Heart"): bundled by default, a CMS logo replaces it', () => {
+    const fallback = html(<ReferenceFooter logoSrc={null} links={[]} apply={CONTENT.home.apply} />);
+    expect(fallback).toMatch(
+      /<img[^>]*class="df-badge__logo"[^>]*src="\/brand\/nature-heart\.png"/,
+    );
+    expect(fallback).toContain('alt="Nature Heart"');
+    // between the brand/contact section and the link columns
+    expect(fallback.indexOf('df-badge')).toBeGreaterThan(fallback.indexOf('df-channels'));
+    expect(fallback.indexOf('df-badge')).toBeLessThan(fallback.indexOf('df-bottom'));
+
     const badge = img({ url: 'https://media.example.test/public/website/2026/11/heart.webp' });
-    const withBadge = html(
+    const cms = html(
       <ReferenceFooter
         logoSrc={null}
         links={[]}
         apply={{ ...CONTENT.home.apply, badge: { desktop: badge } }}
       />,
     );
-    expect(withBadge).toContain('class="df-top df-top--badge"');
-    expect(withBadge).toContain('heart.webp');
-    // between the brand/contact section and the link columns
-    expect(withBadge.indexOf('df-badge')).toBeGreaterThan(withBadge.indexOf('df-channels'));
-    expect(withBadge.indexOf('df-badge')).toBeLessThan(withBadge.indexOf('df-bottom'));
+    expect(cms).toContain('heart.webp');
+    expect(cms).not.toContain('/brand/nature-heart.png');
   });
 
   it('takes the hero video from the CMS; empty slots render only their frame', async () => {

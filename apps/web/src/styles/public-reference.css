@@ -3249,41 +3249,44 @@
     outline-offset: 2px;
     border-radius: 3px;
   }
-  /* optional CMS footer logo ("Nature Heart"): full row under the buttons on phones,
-     its own column between brand and links from 768px */
+  /* partner logo ("Nature Heart", owner 2026-11-24): own row under the contact buttons on
+     phones, its own column between brand and link columns from 768px */
   .df-badge {
     grid-column: 1 / -1;
     display: flex;
     justify-content: flex-start;
+    align-items: flex-start;
+  }
+  .df-badge__media,
+  .df-badge__logo {
+    width: min(100%, 260px);
   }
   .df-badge__media {
     position: relative;
-    width: auto;
-    height: 120px;
-    max-width: 100%;
   }
   .df-badge__media img {
     object-fit: contain;
   }
+  .df-badge__logo {
+    display: block;
+    height: auto;
+    filter: var(--r-logo-filter);
+  }
   @media (min-width: 768px) {
     .df-top {
-      grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.2fr) repeat(3, minmax(0, 1fr));
       column-gap: 40px;
-    }
-    .df-top--badge {
-      grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.9fr) repeat(3, minmax(0, 1fr));
     }
     .df-brand {
       grid-column: auto;
     }
     .df-badge {
       grid-column: auto;
-      justify-content: center;
-      align-items: flex-start;
+      padding-top: 18px;
     }
-    .df-badge__media {
-      height: auto;
-      width: min(100%, 160px);
+    .df-badge__media,
+    .df-badge__logo {
+      width: min(100%, 240px);
     }
   }
 
