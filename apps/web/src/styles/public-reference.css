@@ -3010,42 +3010,16 @@
     width: min(100%, 420px);
     margin-inline: auto;
   }
-  /* blurred orange light behind the card */
-  .t2-glow {
-    position: absolute;
-    inset: 8% -6% -6% 8%;
-    z-index: -2;
-    border-radius: 32px;
-    background: radial-gradient(
-      60% 60% at 60% 55%,
-      rgba(var(--r-spark-rgb), 0.55),
-      rgba(var(--r-spark-rgb), 0.12) 60%,
-      transparent 75%
-    );
-    filter: blur(40px);
-    pointer-events: none;
-  }
-  /* a second, offset outline card for depth */
-  .t2-backcard {
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    border-radius: 24px;
-    border: 1px solid rgba(var(--r-spark-rgb), 0.35);
-    background: rgba(var(--r-spark-rgb), 0.04);
-    transform: translate(18px, 18px);
-    pointer-events: none;
-  }
+  /* soft orange light along the frame edges only (owner 2026-11-24: no solid square behind) */
   .r-slot.t2-portrait__img {
     width: 100%;
     aspect-ratio: 4 / 5;
     border-radius: 24px;
-    border: 1px solid rgba(var(--r-spark-rgb), 0.3);
+    border: 1px solid rgba(var(--r-spark-rgb), 0.45);
     background: var(--r-card);
     box-shadow:
-      0 0 0 1px rgba(var(--r-spark-rgb), 0.08),
-      0 24px 60px -20px rgba(var(--r-spark-rgb), 0.45),
-      0 0 120px -30px rgba(var(--r-spark-rgb), 0.5);
+      0 0 14px rgba(var(--r-spark-rgb), 0.35),
+      0 0 46px -6px rgba(var(--r-spark-rgb), 0.28);
   }
   .t2-caption {
     display: flex;
@@ -3086,17 +3060,14 @@
   @media (min-width: 768px) {
     .t2 {
       display: grid;
-      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
       align-items: center;
       gap: clamp(40px, 6vw, 96px);
     }
-    /* text left, photo right */
-    .t2-caption {
-      order: -1;
-    }
+    /* photo left, text right */
     .t2-portrait {
       width: min(100%, 460px);
-      margin-inline: auto 18px;
+      margin-inline: 0 auto;
     }
   }
 
@@ -3249,17 +3220,13 @@
     outline-offset: 2px;
     border-radius: 3px;
   }
-  /* partner logo ("Nature Heart", owner 2026-11-24): own row under the contact buttons on
-     phones, its own column between brand and link columns from 768px */
+  /* partner logo ("Nature Heart", owner 2026-11-24): under the contact buttons, all widths */
   .df-badge {
-    grid-column: 1 / -1;
-    display: flex;
-    justify-content: flex-start;
-    align-items: flex-start;
+    margin-top: 28px;
   }
   .df-badge__media,
   .df-badge__logo {
-    width: min(100%, 260px);
+    width: min(100%, 180px);
   }
   .df-badge__media {
     position: relative;
@@ -3274,19 +3241,15 @@
   }
   @media (min-width: 768px) {
     .df-top {
-      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.2fr) repeat(3, minmax(0, 1fr));
+      grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
       column-gap: 40px;
     }
     .df-brand {
       grid-column: auto;
     }
-    .df-badge {
-      grid-column: auto;
-      padding-top: 18px;
-    }
     .df-badge__media,
     .df-badge__logo {
-      width: min(100%, 240px);
+      width: min(100%, 200px);
     }
   }
 

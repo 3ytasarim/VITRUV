@@ -454,11 +454,9 @@ export function ReferenceHome({ content: c }: { content: HomeContent }) {
             </h2>
           </div>
           <figure className="t2">
-            {/* owner 2026-11-24: text left, photo right in a framed card with an orange glow
-              (after the 21st.dev "about" idea, built in the site's own tokens) */}
+            {/* owner 2026-11-24: photo left, text right; the CMS photo (Admin → Coach) sits in a
+              rounded frame with a soft orange light only along its edges */}
             <div className="t2-portrait">
-              <span aria-hidden className="t2-glow" />
-              <span aria-hidden className="t2-backcard" />
               {/* the 4:5 frame crops with object-fit: cover — a landscape portrait renders up to
                 2x the frame width, so ask for that (owner: pixelated on desktop, 2026-11-19) */}
               <MediaSlot

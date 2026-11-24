@@ -90,26 +90,25 @@ export function ReferenceFooter({
               )}
             </div>
           )}
+          {/* owner 2026-11-24: partner logo ("Nature Heart") right under the contact buttons */}
+          <div className="df-badge">
+            {badge ? (
+              <div className="df-badge__media" style={{ aspectRatio: badgeRatio }}>
+                <CmsMedia slot={badge} sizes="200px" mobileSizes="180px" />
+              </div>
+            ) : (
+              <img
+                className="df-badge__logo"
+                src={PARTNER_LOGO.src}
+                alt={PARTNER_LOGO.alt}
+                width={PARTNER_LOGO.width}
+                height={PARTNER_LOGO.height}
+                loading="lazy"
+                decoding="async"
+              />
+            )}
+          </div>
         </section>
-        {/* owner 2026-11-24: optional CMS logo ("Nature Heart") between the brand block and the
-            link columns on desktop, below the contact buttons on phones. */}
-        <div className="df-badge">
-          {badge ? (
-            <div className="df-badge__media" style={{ aspectRatio: badgeRatio }}>
-              <CmsMedia slot={badge} sizes="240px" mobileSizes="260px" />
-            </div>
-          ) : (
-            <img
-              className="df-badge__logo"
-              src={PARTNER_LOGO.src}
-              alt={PARTNER_LOGO.alt}
-              width={PARTNER_LOGO.width}
-              height={PARTNER_LOGO.height}
-              loading="lazy"
-              decoding="async"
-            />
-          )}
-        </div>
         {columns.map((col) => (
           <nav key={col.label} aria-label={col.label} className="df-col">
             <p className="df-col__title">{col.label}</p>
