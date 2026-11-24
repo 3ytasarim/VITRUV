@@ -1,6 +1,7 @@
 'use server';
 
 import {
+  collectMediaRefs,
   focalPointSchema,
   sectionKeySchema,
   type AdminMediaDetail,
@@ -43,8 +44,32 @@ export async function saveDraftAction(
   const c = contentSchema.safeParse(content);
   if (!k.success || !c.success) return invalid('Ungültige Anfrage.');
   const result = toAction(await adminApi.saveDraft(k.data, c.data));
-  if (result.ok) refreshWebsiteAdmin();
-  return result;
+  if (!result.ok) return result;
+  refreshWebsiteAdmin();
+  return { ok: true, data: withDroppedMediaWarning(c.data, result.data) };
+}
+
+/**
+ * Owner 2026-11-24: an API build older than the web app silently drops content fields it does
+ * not know yet (e.g. the gallery "Vorher" photo) — the save looked successful but the photos were
+ * gone. Compare the image references sent with those stored and say so loudly.
+ */
+function withDroppedMediaWarning(
+  sent: Record<string, unknown>,
+  saved: SaveDraftResponse,
+): SaveDraftResponse {
+  const dropped = collectMediaRefs(sent).length - collectMediaRefs(saved.draft.content).length;
+  if (dropped <= 0) return saved;
+  return {
+    ...saved,
+    warnings: [
+      {
+        path: '',
+        message: `${dropped} Bild(er) wurden vom Server NICHT gespeichert (z. B. „Vorher“-Fotos). Die API auf dem Server ist älter als das Admin — bitte die API neu bauen und neu starten, dann erneut speichern.`,
+      },
+      ...saved.warnings,
+    ],
+  };
 }
 
 export async function publishAction(key: string): Promise<ActionResult<PublishResponse>> {

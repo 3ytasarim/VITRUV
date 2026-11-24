@@ -11,6 +11,7 @@ import { StarField } from './star-field';
 import { FlipCard } from './flip-card';
 import { IncludedIcon } from './included-icon';
 import { Marquee } from './marquee';
+import { RailNav } from './rail-nav';
 import { StepTimeline } from './step-timeline';
 import { VerticalMarquee } from './vertical-marquee';
 
@@ -181,11 +182,15 @@ export function ReferenceHome({ content: c }: { content: HomeContent }) {
           {c.results.gallery.length > 0 && (
             <>
               {c.results.swipeHint && (
-                <div aria-hidden className="r-swipe">
-                  {c.results.swipeHint}
-                </div>
+                <RailNav railId="ergebnisse-rail" label={c.results.swipeHint} />
               )}
-              <div className="r-rail" tabIndex={0} role="region" aria-label={c.results.title}>
+              <div
+                id="ergebnisse-rail"
+                className="r-rail"
+                tabIndex={0}
+                role="region"
+                aria-label={c.results.title}
+              >
                 {c.results.gallery.map((item) => (
                   <div key={item.id} className="r-rail__item">
                     {item.before && item.media ? (

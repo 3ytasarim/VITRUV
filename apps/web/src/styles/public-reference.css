@@ -860,17 +860,49 @@
     text-transform: uppercase;
     color: rgba(var(--r-fg-rgb), 0.55);
   }
+  /* rail prev/next (rail-nav.tsx, owner 2026-11-24: the hint must actually work) */
   .r-swipe {
     display: flex;
     justify-content: flex-end;
-    margin-bottom: -24px;
-    padding-top: 20px;
+    gap: 8px;
+    margin-bottom: -12px;
+    padding-top: 12px;
+  }
+  .r-swipe__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 48px;
+    min-height: 48px;
+    padding: 0 14px;
+    border: 1px solid rgba(var(--r-line-rgb), 0.18);
+    border-radius: 999px;
+    background: none;
     font-family: var(--font-label);
     font-weight: 600;
     font-size: 12px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: rgba(var(--r-fg-rgb), 0.5);
+    color: rgba(var(--r-fg-rgb), 0.75);
+    cursor: pointer;
+    transition:
+      border-color 200ms ease,
+      color 200ms ease;
+  }
+  .r-swipe__btn--prev {
+    padding: 0;
+  }
+  .r-swipe__btn:hover {
+    border-color: var(--r-accent);
+    color: var(--r-fg);
+  }
+  .r-swipe__btn:focus-visible {
+    outline: 2px solid var(--r-accent-text);
+    outline-offset: 2px;
+  }
+  .r-swipe__btn:active {
+    transform: scale(0.97);
   }
   .r-rail {
     display: flex;
