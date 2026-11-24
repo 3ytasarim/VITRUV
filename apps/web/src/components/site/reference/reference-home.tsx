@@ -7,6 +7,7 @@ import { ArrowUpRight, Dumbbell } from 'lucide-react';
 import { splitHighlight } from '../highlighted-title';
 import { BorderBeam } from './border-beam';
 import { CtaShader } from './cta-shader';
+import { StarField } from './star-field';
 import { FlipCard } from './flip-card';
 import { IncludedIcon } from './included-icon';
 import { Marquee } from './marquee';
@@ -389,7 +390,7 @@ export function ReferenceHome({ content: c }: { content: HomeContent }) {
       {/* ---- Pakete ---- */}
       <section id="pakete" className="r-sec r-sec--rule r-pakete" aria-labelledby="pakete-title">
         {/* owner 2026-11-24: the CTA's noise shader behind both package cards */}
-        <CtaShader className="r-pakete__shader" />
+        <StarField className="r-pakete__stars" />
         <div className="r-wrap r-pakete__inner">
           <Head
             eyebrow={c.packages.eyebrow}

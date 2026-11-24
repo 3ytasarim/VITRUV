@@ -1463,27 +1463,25 @@
     flex-direction: column;
     gap: 44px;
   }
-  /* owner 2026-11-24: the CTA's noise shader behind the package cards, faded out at the edges so
-     the section melts into the page; the cards sit on it slightly translucent */
+  /* owner 2026-11-24: interactive starfield behind the package cards (star-field.tsx), faded out
+     at the top and bottom so the section melts into the page; the cards sit on it slightly translucent */
   .r-pakete {
     position: relative;
     isolation: isolate;
     overflow: hidden;
   }
-  .r-pakete__shader {
+  .r-pakete__stars {
     position: absolute;
     inset: 0;
     z-index: -1;
     pointer-events: none;
-    opacity: 0.75;
-    -webkit-mask-image:
-      linear-gradient(to bottom, transparent, black 22%, black 78%, transparent),
-      linear-gradient(to right, transparent, black 15%, black 85%, transparent);
-    -webkit-mask-composite: source-in;
-    mask-image:
-      linear-gradient(to bottom, transparent, black 22%, black 78%, transparent),
-      linear-gradient(to right, transparent, black 15%, black 85%, transparent);
-    mask-composite: intersect;
+    -webkit-mask-image: linear-gradient(to bottom, transparent, black 12%, black 88%, transparent);
+    mask-image: linear-gradient(to bottom, transparent, black 12%, black 88%, transparent);
+  }
+  .r-stars__canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
   }
   .r-pakete .r-package {
     background: color-mix(in srgb, var(--r-card-package) 84%, transparent);
