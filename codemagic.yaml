@@ -1,0 +1,40 @@
+# Codemagic CI — VITRUV mobile (Flutter, apps/mobile)
+#
+# First workflow: unsigned iOS *simulator* build, same steps as
+# .github/workflows/ios-simulator-build.yml. No code signing, no Apple
+# credentials, no secrets, no App Store upload. Started manually only
+# (no triggering section).
+#
+# A signed TestFlight workflow needs owner decisions first: Apple Team,
+# final bundle ID (current com.vitruv.vitruvMobile is provisional) and an
+# App Store Connect API key stored in Codemagic (never in this repo).
+
+workflows:
+  ios-simulator:
+    name: iOS simulator build (unsigned)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    working_directory: apps/mobile
+    environment:
+      flutter: 3.47.7 # same as the Windows dev machine and GitHub CI
+      xcode: latest
+      cocoapods: default
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Flutter analyze
+        script: flutter analyze --no-pub
+      - name: Flutter tests
+        script: flutter test --no-pub
+      - name: Build iOS app for simulator (no signing)
+        script: flutter build ios --simulator --debug
+      - name: Package simulator app
+        script: |
+          set -e
+          cd build/ios/iphonesimulator
+          zip -qr Runner-simulator.zip Runner.app
+    artifacts:
+      - "**/build/ios/iphonesimulator/Runner-simulator.zip"
