@@ -19,6 +19,11 @@ workflows:
       flutter: 3.47.7 # same as the Windows dev machine and GitHub CI
       xcode: latest
       cocoapods: default
+      vars:
+        # Public HTTPS API (nginx on the live server). Not a secret: the app only
+        # holds the public base URL. staging => the app enforces https.
+        API_BASE_URL: https://api.vitruv-move.com
+        APP_ENV: staging
     scripts:
       - name: Get Flutter packages
         script: flutter pub get
@@ -27,7 +32,10 @@ workflows:
       - name: Flutter tests
         script: flutter test --no-pub
       - name: Build iOS app for simulator (no signing)
-        script: flutter build ios --simulator --debug
+        script: |
+          flutter build ios --simulator --debug \
+            --dart-define=API_BASE_URL="$API_BASE_URL" \
+            --dart-define=APP_ENV="$APP_ENV"
     artifacts:
       # Codemagic "Quick Launch" (in-browser simulator) needs the .app bundle
       # itself as artifact, not a zip. Path is relative to working_directory.
