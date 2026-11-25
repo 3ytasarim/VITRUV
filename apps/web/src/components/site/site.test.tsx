@@ -566,7 +566,7 @@ describe('homepage composition', () => {
       /<img[^>]*class="df-badge__logo"[^>]*src="\/brand\/nature-heart\.png"/,
     );
     // the logo is the affiliate link itself (named via aria-label, the image is decorative)
-    const affiliate = 'href="https://nature-heart.de/philipp-maximilian12399199"';
+    const affiliate = 'href="https://nature-heart.de/vitruv"';
     expect(fallback).toContain(
       `<a ${affiliate} class="df-badge" rel="sponsored noopener noreferrer" target="_blank" aria-label="Nature Heart – zum Shop`,
     );

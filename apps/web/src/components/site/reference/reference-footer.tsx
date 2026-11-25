@@ -26,7 +26,7 @@ const PARTNER_LOGO = {
  */
 const PARTNER = {
   name: 'Nature Heart',
-  href: 'https://nature-heart.de/philipp-maximilian12399199',
+  href: 'https://nature-heart.de/vitruv',
   code: 'VITRUV10',
 };
 
