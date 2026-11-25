@@ -8,14 +8,23 @@ import type {
 } from '@vitruv/contracts';
 import { prescriptionIssues } from '@vitruv/contracts';
 import { schema, type DbExecutor } from '@vitruv/db';
-import type { TrainingSectionType } from '@vitruv/shared';
+import {
+  CHECKLIST_PRESCRIPTION_FALLBACK,
+  workoutDayStatus,
+  type TrainingExecutionType,
+  type TrainingSectionType,
+} from '@vitruv/shared';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Principal } from '../../auth/principal';
 import { AppError, pgErrorCode } from '../../lib/errors';
 import { recordEvent } from '../auth/auth.service';
 import { clientAccessible } from '../management/management.service';
 import type { TrainingDeps } from './exercises.service';
+import { assertExtendedTypesAllowed } from './capabilities';
+import { storagePrescription, type PrescriptionInput } from './prescription-storage';
 import { nextPosition, normalize, placeAfter, reorder, type Level } from './ordering';
+import { exerciseMediaDto, requireTrainingMediaRows } from './row-media';
+import type { MediaUrlResolver } from '../media/media-url';
 
 /**
  * Client training programs (Sprint 6, docs/TRAINING-ARCHITECTURE.md).
@@ -34,6 +43,7 @@ const {
   trainingExerciseAssignments: A,
   exercises: E,
   mediaAssets: M,
+  workoutSessions: WS,
   users,
 } = schema;
 
@@ -47,7 +57,12 @@ const DEFAULT_SECTIONS: TrainingSectionType[] = ['WARMUP', 'MAIN', 'FINISHER'];
 // Scoped lookups
 // ---------------------------------------------------------------------------------------------
 
-async function scopedProgram(db: DbExecutor, actor: Principal, programId: string, lock = false) {
+export async function scopedProgram(
+  db: DbExecutor,
+  actor: Principal,
+  programId: string,
+  lock = false,
+) {
   const query = db
     .select()
     .from(P)
@@ -59,7 +74,7 @@ async function scopedProgram(db: DbExecutor, actor: Principal, programId: string
 }
 
 /** Resolves a nested id to its program — through the scope — and returns the owning program id. */
-async function programOf(db: DbExecutor, actor: Principal, level: Level, id: string) {
+export async function programOf(db: DbExecutor, actor: Principal, level: Level, id: string) {
   const scope = clientAccessible(actor, P.clientUserId);
   let rows: { programId: string; parentId: string }[];
   if (level === 'week') {
@@ -102,7 +117,7 @@ async function programOf(db: DbExecutor, actor: Principal, level: Level, id: str
   return row;
 }
 
-function assertEditable(program: ProgramRow) {
+export function assertEditable(program: ProgramRow) {
   if (program.status !== 'DRAFT' && program.status !== 'ACTIVE') {
     throw AppError.conflict('Abgeschlossene oder archivierte Pläne sind schreibgeschützt.');
   }
@@ -112,7 +127,7 @@ function assertEditable(program: ProgramRow) {
  * Runs a structural change: program row locked, editability checked, changes applied, program
  * `updated_at` touched — all in one transaction. Returns the fresh tree.
  */
-async function mutate(
+export async function mutate(
   deps: TrainingDeps,
   actor: Principal,
   programId: string,
@@ -158,9 +173,11 @@ async function loadTree(db: DbExecutor, programId: string) {
   const sectionIds = sections.map((s) => s.id);
   const assignments = sectionIds.length
     ? await db
-        .select({ assignment: A, exercise: E })
+        .select({ assignment: A, exercise: E, rowMedia: M })
         .from(A)
         .innerJoin(E, eq(E.id, A.exerciseId))
+        // Sprint 7: this client's own video for the exercise (null = library video)
+        .leftJoin(M, eq(M.id, A.mediaAssetId))
         .where(inArray(A.sectionId, sectionIds))
         .orderBy(asc(A.sortOrder))
     : [];
@@ -174,7 +191,10 @@ const byParent = <T, K extends keyof T>(rows: T[], key: K) => {
   return map;
 };
 
-function toAdminAssignment(row: Tree['assignments'][number]): AdminAssignment {
+function toAdminAssignment(
+  urls: MediaUrlResolver,
+  row: Tree['assignments'][number],
+): AdminAssignment {
   const { assignment: a, exercise: e } = row;
   return {
     id: a.id,
@@ -189,6 +209,9 @@ function toAdminAssignment(row: Tree['assignments'][number]): AdminAssignment {
     weightUnit: a.weightUnit,
     prescriptionText: a.prescriptionText,
     instructionsOverride: a.instructionsOverride,
+    executionType: a.executionType,
+    repsMax: a.repsMax,
+    media: exerciseMediaDto(urls, row.rowMedia),
   };
 }
 
@@ -212,7 +235,7 @@ function summary(
   };
 }
 
-function toAdminProgram(program: ProgramRow, tree: Tree): AdminProgram {
+function toAdminProgram(urls: MediaUrlResolver, program: ProgramRow, tree: Tree): AdminProgram {
   const daysByWeek = byParent(tree.days, 'weekId');
   const sectionsByDay = byParent(tree.sections, 'dayId');
   const assignmentsBySection = new Map<string, Tree['assignments']>();
@@ -235,12 +258,16 @@ function toAdminProgram(program: ProgramRow, tree: Tree): AdminProgram {
         title: day.title,
         notes: day.notes,
         scheduledWeekday: day.scheduledWeekday,
+        sourceTemplateId: day.sourceTemplateId,
+        sourceTemplateVersion: day.sourceTemplateVersion,
         sections: (sectionsByDay.get(day.id) ?? []).map((section) => ({
           id: section.id,
           order: section.sortOrder,
           type: section.type,
           title: section.title,
-          assignments: (assignmentsBySection.get(section.id) ?? []).map(toAdminAssignment),
+          assignments: (assignmentsBySection.get(section.id) ?? []).map((row) =>
+            toAdminAssignment(urls, row),
+          ),
         })),
       })),
     })),
@@ -248,7 +275,7 @@ function toAdminProgram(program: ProgramRow, tree: Tree): AdminProgram {
 }
 
 /** Today's date in Europe/Berlin as YYYY-MM-DD. */
-const berlinToday = (now: Date) =>
+export const berlinToday = (now: Date) =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(now);
 
 /**
@@ -260,11 +287,12 @@ async function toClientProgram(
   db: DbExecutor,
   program: ProgramRow,
   tree: Tree,
+  dayStatuses?: Map<string, { status: 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED' }[]>,
 ): Promise<ClientTrainingProgram> {
   const mediaIds = [
     ...new Set(
       tree.assignments
-        .map((row) => row.exercise.mediaAssetId)
+        .flatMap((row) => [row.assignment.mediaAssetId, row.exercise.mediaAssetId])
         .filter((id): id is string => Boolean(id)),
     ),
   ];
@@ -272,18 +300,21 @@ async function toClientProgram(
     ? await db
         .select()
         .from(M)
-        .where(
-          and(inArray(M.id, mediaIds), eq(M.visibility, 'PUBLIC'), eq(M.purpose, 'TRAINING_VIDEO')),
-        )
+        .where(and(inArray(M.id, mediaIds), eq(M.purpose, 'TRAINING_VIDEO')))
     : [];
   const assetById = new Map(assets.map((asset) => [asset.id, asset]));
-  const media = (exercise: Tree['assignments'][number]['exercise']): ResolvedMedia | null => {
-    const asset = exercise.mediaAssetId ? assetById.get(exercise.mediaAssetId) : undefined;
+  /** Sprint 7: this client's own video (assignment) wins over the library video. */
+  const media = (row: Tree['assignments'][number]): ResolvedMedia | null => {
+    const exercise = row.exercise;
+    const assetId = row.assignment.mediaAssetId ?? exercise.mediaAssetId;
+    const asset = assetId ? assetById.get(assetId) : undefined;
     if (!asset || (asset.kind !== 'IMAGE' && asset.kind !== 'VIDEO')) return null;
+    const url = deps.urls.assetUrl(asset);
+    if (!url) return null;
     return {
       assetId: asset.id,
       kind: asset.kind,
-      url: deps.urls.publicUrl(asset.storageKey),
+      url,
       mimeType: asset.mimeType,
       width: asset.width,
       height: asset.height,
@@ -291,7 +322,7 @@ async function toClientProgram(
     };
   };
 
-  const admin = toAdminProgram(program, tree);
+  const admin = toAdminProgram(deps.urls, program, tree);
   const assignmentRows = new Map(tree.assignments.map((row) => [row.assignment.id, row]));
   let currentWeekId: string | null = null;
   if (program.startsOn && admin.weeks.length > 0) {
@@ -318,6 +349,7 @@ async function toClientProgram(
         title: day.title,
         notes: day.notes,
         scheduledWeekday: day.scheduledWeekday,
+        workoutStatus: workoutDayStatus(dayStatuses?.get(day.id) ?? []),
         sections: day.sections.map((section) => ({
           id: section.id,
           order: section.order,
@@ -332,7 +364,7 @@ async function toClientProgram(
               order: a.order,
               name: a.exercise.name,
               description: exercise?.description ?? null,
-              media: exercise ? media(exercise) : null,
+              media: row ? media(row) : null,
               sets: a.sets,
               reps: a.reps,
               totalReps: a.totalReps,
@@ -340,8 +372,10 @@ async function toClientProgram(
               restSeconds: a.restSeconds,
               targetWeight: a.targetWeight,
               weightUnit: a.weightUnit,
-              prescriptionText: a.prescriptionText,
+              prescriptionText: visiblePrescription(a.executionType, a.prescriptionText),
               instructions: a.instructionsOverride ?? exercise?.description ?? null,
+              executionType: a.executionType ?? null,
+              repsMax: a.repsMax ?? false,
             };
           }),
         })),
@@ -350,15 +384,20 @@ async function toClientProgram(
   };
 }
 
+/** The CHECKLIST compatibility text is storage detail — the client sees no prescription. */
+function visiblePrescription(type: TrainingExecutionType | null | undefined, text: string | null) {
+  return type === 'CHECKLIST' && text === CHECKLIST_PRESCRIPTION_FALLBACK ? null : text;
+}
+
 /** Consistent snapshot for multi-query reads (never a half-applied change). */
-const snapshot = <T>(deps: TrainingDeps, read: (tx: DbExecutor) => Promise<T>) =>
+export const snapshot = <T>(deps: TrainingDeps, read: (tx: DbExecutor) => Promise<T>) =>
   deps.db.transaction(read, { isolationLevel: 'repeatable read', accessMode: 'read only' });
 
 // ---------------------------------------------------------------------------------------------
 // Programs
 // ---------------------------------------------------------------------------------------------
 
-async function requireClientInScope(db: DbExecutor, actor: Principal, clientId: string) {
+export async function requireClientInScope(db: DbExecutor, actor: Principal, clientId: string) {
   const [client] = await db
     .select({ id: users.id })
     .from(users)
@@ -404,7 +443,7 @@ export async function getProgram(
 ): Promise<AdminProgram> {
   return snapshot(deps, async (tx) => {
     const program = await scopedProgram(tx, actor, programId);
-    return toAdminProgram(program, await loadTree(tx, programId));
+    return toAdminProgram(deps.urls, program, await loadTree(tx, programId));
   });
 }
 
@@ -904,17 +943,6 @@ export async function reorderSections(
 // Exercise assignments
 // ---------------------------------------------------------------------------------------------
 
-type PrescriptionInput = {
-  sets?: number | null;
-  reps?: number | null;
-  totalReps?: number | null;
-  durationSeconds?: number | null;
-  restSeconds?: number | null;
-  targetWeight?: number | null;
-  weightUnit?: 'KG' | null;
-  prescriptionText?: string | null;
-  instructionsOverride?: string | null;
-};
 const PRESCRIPTION_KEYS = [
   'sets',
   'reps',
@@ -925,6 +953,9 @@ const PRESCRIPTION_KEYS = [
   'weightUnit',
   'prescriptionText',
   'instructionsOverride',
+  'executionType',
+  'repsMax',
+  'mediaAssetId',
 ] as const;
 
 /** Only ACTIVE exercises can be newly assigned (inactive ones stay valid where already used). */
@@ -953,13 +984,17 @@ export async function addAssignment(
   input: { exerciseId: string } & PrescriptionInput,
 ) {
   const { programId } = await programOf(deps.db, actor, 'section', sectionId);
+  assertExtendedTypesAllowed(deps, [input]);
   await requireAssignableExercise(deps.db, input.exerciseId);
+  await requireTrainingMediaRows(deps.db, [{ assetId: input.mediaAssetId, path: 'mediaAssetId' }]);
   return mutate(deps, actor, programId, async (tx) => {
+    const prescription = pickPrescription(input);
     await tx.insert(A).values({
       sectionId,
       exerciseId: input.exerciseId,
       sortOrder: await nextPosition(tx, 'assignment', sectionId),
-      ...pickPrescription(input),
+      ...prescription,
+      ...storagePrescription(prescription),
     });
   });
 }
@@ -978,12 +1013,26 @@ export async function updateAssignment(
       await requireAssignableExercise(tx, input.exerciseId);
     }
     const patch = pickPrescription(input);
+    if (patch.mediaAssetId && patch.mediaAssetId !== current.mediaAssetId) {
+      await requireTrainingMediaRows(tx, [{ assetId: patch.mediaAssetId, path: 'mediaAssetId' }]);
+    }
     const merged = { ...current, ...patch };
     const issues = prescriptionIssues(merged);
     if (issues.length > 0) throw AppError.validation(issues);
+    // Flag off: no NEW extended type/MAX (an untouched existing row created while it was on stays).
+    if (
+      merged.executionType !== current.executionType ||
+      Boolean(merged.repsMax) !== current.repsMax
+    ) {
+      assertExtendedTypesAllowed(deps, [merged]);
+    }
     await tx
       .update(A)
-      .set({ ...(input.exerciseId ? { exerciseId: input.exerciseId } : {}), ...patch })
+      .set({
+        ...(input.exerciseId ? { exerciseId: input.exerciseId } : {}),
+        ...patch,
+        ...storagePrescription(merged),
+      })
       .where(and(eq(A.id, assignmentId), eq(A.sectionId, parentId)));
   });
 }
@@ -1031,6 +1080,23 @@ export async function clientActiveProgram(
       .where(and(eq(P.clientUserId, actor.userId), eq(P.status, 'ACTIVE')))
       .limit(1);
     if (!program) return { program: null };
-    return { program: await toClientProgram(deps, tx, program, await loadTree(tx, program.id)) };
+    // Sprint 2: per-day workout status (NOT_STARTED / IN_PROGRESS / COMPLETED) of the own sessions.
+    const sessions = await tx
+      .select({ dayId: WS.trainingDayId, status: WS.status })
+      .from(WS)
+      .where(and(eq(WS.clientUserId, actor.userId), eq(WS.trainingProgramId, program.id)));
+    const dayStatuses = new Map<string, { status: (typeof sessions)[number]['status'] }[]>();
+    for (const row of sessions) {
+      if (row.dayId) dayStatuses.set(row.dayId, [...(dayStatuses.get(row.dayId) ?? []), row]);
+    }
+    return {
+      program: await toClientProgram(
+        deps,
+        tx,
+        program,
+        await loadTree(tx, program.id),
+        dayStatuses,
+      ),
+    };
   });
 }

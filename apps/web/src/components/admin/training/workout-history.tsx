@@ -2,7 +2,7 @@ import type { WorkoutSessionSummary } from '@vitruv/contracts';
 import { ChevronRight, MessageSquareText } from 'lucide-react';
 import { formatDateTime } from '@/components/admin/management/labels';
 import { EmptyState, ErrorState } from '@/components/admin/states';
-import { Badge, CardLink, type BadgeTone } from '@/components/ui';
+import { Badge, ButtonLink, CardLink, type BadgeTone } from '@/components/ui';
 import { WORKOUT_STATUS_LABEL, formatWorkoutDuration } from '@/lib/training-format';
 
 const TONE: Record<WorkoutSessionSummary['status'], BadgeTone> = {
@@ -10,6 +10,19 @@ const TONE: Record<WorkoutSessionSummary['status'], BadgeTone> = {
   COMPLETED: 'success',
   ABANDONED: 'neutral',
 };
+
+/** Recorded totals of a session (Sprint 7); nothing recorded → nothing shown, never "0". */
+export function sessionTotals(session: WorkoutSessionSummary): string[] {
+  return [
+    session.totalReps != null ? `${session.totalReps} Wdh. gesamt` : null,
+    session.setsCompleted
+      ? `${session.setsCompleted} ${session.setsCompleted === 1 ? 'Satz' : 'Sätze'}`
+      : null,
+    session.roundsCompleted
+      ? `${session.roundsCompleted} ${session.roundsCompleted === 1 ? 'Runde' : 'Runden'}`
+      : null,
+  ].filter((line): line is string => line !== null);
+}
 
 /**
  * Read-only workout summaries of one client (Sprint 7): what was trained, when, how long and how
@@ -19,9 +32,15 @@ const TONE: Record<WorkoutSessionSummary['status'], BadgeTone> = {
 export function WorkoutHistory({
   clientId,
   items,
+  olderHref,
+  newestHref,
 }: {
   clientId: string;
   items: WorkoutSessionSummary[] | null;
+  /** Sprint 7 pagination: link to the next (older) page; undefined = no older entries. */
+  olderHref?: string;
+  /** Shown on older pages: back to the newest entries. */
+  newestHref?: string;
 }) {
   return (
     <section aria-labelledby="trainingsverlauf" className="flex flex-col gap-3">
@@ -74,6 +93,7 @@ export function WorkoutHistory({
                       ? ` · ${session.exercisesSkipped} übersprungen`
                       : ''}
                     {session.status !== 'IN_PROGRESS' && open > 0 ? ` · ${open} offen` : ''}
+                    {sessionTotals(session).map((line) => ` · ${line}`)}
                   </p>
                   {session.notesCount > 0 && (
                     <span className="type-body-sm inline-flex items-center gap-1 font-semibold text-accent-text">
@@ -87,6 +107,20 @@ export function WorkoutHistory({
             );
           })}
         </ul>
+      )}
+      {(olderHref || newestHref) && (
+        <nav aria-label="Trainingsverlauf blättern" className="flex flex-wrap gap-3">
+          {newestHref && (
+            <ButtonLink href={newestHref} variant="ghost">
+              Neueste Einheiten
+            </ButtonLink>
+          )}
+          {olderHref && (
+            <ButtonLink href={olderHref} variant="secondary">
+              Ältere Einheiten
+            </ButtonLink>
+          )}
+        </nav>
       )}
     </section>
   );

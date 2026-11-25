@@ -11,16 +11,20 @@ import '../../shared/ui/ui.dart';
 import '../../shared/widgets/async_value_view.dart';
 import '../../shared/widgets/content_page.dart';
 import '../training/training_api.dart';
-import '../training/training_day_tile.dart';
 import '../training/training_models.dart';
+import '../training/training_schedule.dart';
+import '../training/week_schedule_view.dart';
 import '../workout/workout_controller.dart';
 import '../workout/workout_models.dart';
 
-/// "Heute" — greeting, coaching context and the one next training action.
+/// "Heute" — greeting, the running workout (if any), "Nächstes Training", the current training
+/// week (Montag … Sonntag, Vorherige / Nächste Woche, counters) and links to the
+/// Trainingsübersicht and the Trainingsverlauf. Everything comes from the client's ACTIVE plan
+/// (`GET /v1/client/training/active`) and the own current session — no demo or static cards.
 ///
-/// TODAY SEMANTICS: a day is called "Heute geplant" only when the plan has a real calendar
-/// (start date → `currentWeekId`) AND the coach gave that day today's weekday. Otherwise the
-/// screen says "Dein Trainingsplan" / "Diese Woche" — no invented scheduling.
+/// DATES: a workout has a date only when the plan has a start date AND the coach gave the day a
+/// weekday (training_schedule.dart); otherwise it is listed without a date, never placed on an
+/// invented day. Coach-only DRAFT plans are not visible here (server rule).
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -48,23 +52,25 @@ class HomeScreen extends ConsumerWidget {
             data: (p) => _Greeting(profile: p),
           ),
           const SizedBox(height: VitruvSpace.s6),
-          if (workout.value case final running?)
-            _RunningWorkoutCard(session: running)
-          else
-            AsyncValueView(
-              value: plan,
-              onRetry: () => ref.invalidate(activeTrainingProvider),
-              data: (program) => program == null
-                  ? InfoState(
-                      icon: Icons.fitness_center,
-                      title: l10n.homeNoPlan,
-                      body: l10n.homeNoPlanBody,
-                    )
-                  : _PlanCard(
-                      program: program,
-                      weekday: ref.watch(clockProvider).now().weekday,
-                    ),
-            ),
+          if (workout.value case final running?) ...[
+            _RunningWorkoutCard(session: running),
+            const SizedBox(height: VitruvSpace.s8),
+          ],
+          AsyncValueView(
+            value: plan,
+            onRetry: () => ref.invalidate(activeTrainingProvider),
+            data: (program) => program == null
+                ? InfoState(
+                    icon: Icons.fitness_center,
+                    title: l10n.homeNoPlan,
+                    body: l10n.homeNoPlanBody,
+                  )
+                : _PlanOverview(
+                    program: program,
+                    runningDayId: workout.value?.dayId,
+                    today: calendarDateOf(ref.watch(clockProvider).now()),
+                  ),
+          ),
         ],
       ),
     );
@@ -147,24 +153,26 @@ class _RunningWorkoutCard extends StatelessWidget {
   }
 }
 
-class _PlanCard extends StatelessWidget {
-  const _PlanCard({required this.program, required this.weekday});
+class _PlanOverview extends StatelessWidget {
+  const _PlanOverview({
+    required this.program,
+    required this.runningDayId,
+    required this.today,
+  });
 
   final TrainingProgram program;
-  final int weekday;
+  final String? runningDayId;
+  final DateTime today;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final currentWeek = program.weeks
-        .where((w) => w.id == program.currentWeekId)
-        .firstOrNull;
-    final today = currentWeek?.days
-        .where((d) => d.scheduledWeekday == weekday)
-        .toList();
-    final dayCount = program.weeks.fold(0, (n, w) => n + w.days.length);
+    final schedule = scheduleOf(program, runningDayId: runningDayId);
+    final next = nextWorkout(schedule, today);
+    final dated = schedule.any((w) => w.date != null);
 
-    void open(TrainingDay day) => context.go(AppRoutes.trainingDay(day.id));
+    void open(ScheduledWorkout w) =>
+        context.go(AppRoutes.trainingDay(w.day.id));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -173,35 +181,49 @@ class _PlanCard extends StatelessWidget {
           eyebrow: l10n.homePlanTitle,
           title: program.title,
           size: SectionTitleSize.h3,
-          lead: currentWeek == null
-              ? '${l10n.weekCount(program.weeks.length)} · ${l10n.trainingDays(dayCount)}'
-              : null,
         ),
-        const SizedBox(height: VitruvSpace.s4),
-        if (today != null && today.isNotEmpty) ...[
-          Eyebrow(l10n.homeScheduledToday),
-          const SizedBox(height: VitruvSpace.s2),
-          for (final day in today) ...[
-            TrainingDayTile(day: day, onTap: () => open(day)),
-            const SizedBox(height: VitruvSpace.s3),
-          ],
-        ] else if (currentWeek != null) ...[
-          Eyebrow(
-            '${l10n.homeThisWeek} · ${l10n.weekLabel(currentWeek.order + 1)}',
-          ),
-          const SizedBox(height: VitruvSpace.s2),
-          for (final day in currentWeek.days) ...[
-            TrainingDayTile(day: day, onTap: () => open(day)),
-            const SizedBox(height: VitruvSpace.s3),
-          ],
-        ],
+        const SizedBox(height: VitruvSpace.s6),
+        Eyebrow(l10n.homeNextTraining),
         const SizedBox(height: VitruvSpace.s2),
+        if (next != null)
+          ScheduledWorkoutCard(
+            workout: next,
+            highlight: true,
+            onOpen: () => open(next),
+          )
+        else
+          InfoState(
+            icon: Icons.event_available,
+            title: l10n.homeNoNextTraining,
+            body: l10n.homeNoNextTrainingBody,
+          ),
+        const SizedBox(height: VitruvSpace.s8),
+        if (dated)
+          WeekScheduleView(schedule: schedule, today: today, onOpen: open)
+        else
+          Text(l10n.planWithoutDates),
+        const SizedBox(height: VitruvSpace.s8),
+        SectionIntro(
+          eyebrow: l10n.trainingOverview,
+          title: l10n.trainingDays(schedule.length),
+          lead: l10n.trainingOverviewBody,
+          size: SectionTitleSize.h3,
+        ),
+        const SizedBox(height: VitruvSpace.s3),
         VitruvButton(
-          label: l10n.homeOpenPlan,
+          label: l10n.showAllWorkouts,
           variant: VitruvButtonVariant.secondary,
           trailingIcon: Icons.arrow_forward,
           fullWidth: true,
           onPressed: () => context.go(AppRoutes.training),
+        ),
+        const SizedBox(height: VitruvSpace.s3),
+        VitruvButton(
+          label: l10n.showHistory,
+          variant: VitruvButtonVariant.ghost,
+          leadingIcon: Icons.history,
+          fullWidth: true,
+          onPressed: () => context.go(AppRoutes.progress),
         ),
       ],
     );

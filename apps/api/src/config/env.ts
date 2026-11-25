@@ -1,4 +1,10 @@
-import { WEBSITE_MEDIA_MAX_BYTES, blankToUndefined, parseEnv } from '@vitruv/shared';
+import {
+  LEGACY_APP_POLICIES,
+  WEBSITE_MEDIA_MAX_BYTES,
+  blankToUndefined,
+  parseAppVersion,
+  parseEnv,
+} from '@vitruv/shared';
 import { z } from 'zod';
 
 const csv = z
@@ -63,6 +69,18 @@ export const apiEnvSchema = z
      * /media/public/… URLs keep working either way.
      */
     PUBLIC_MEDIA_BASE_URL: z.url().optional(),
+    /**
+     * Sprint 8A — private training media (docs/ios-training-sprint8a-private-media.md).
+     * Visibility of NEW training library uploads. DEFAULT PUBLIC (unchanged behaviour); PRIVATE
+     * stores them in the private bucket and delivers them only via signed, user-bound,
+     * short-lived URLs. Switch only together with the migration plan (old app versions need a
+     * build that renews expired URLs).
+     */
+    TRAINING_MEDIA_VISIBILITY: z.enum(['PUBLIC', 'PRIVATE']).default('PUBLIC'),
+    /** HMAC key for signed training media URLs (≥ 32 chars, random). Required for PRIVATE. */
+    MEDIA_URL_SIGNING_KEY: z.string().min(32, 'must be at least 32 characters').optional(),
+    /** Lifetime of a signed training media URL (seconds, 60–3600; rounded up to a window). */
+    TRAINING_MEDIA_URL_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(900),
     MEDIA_MAX_IMAGE_BYTES: z.coerce
       .number()
       .int()
@@ -102,6 +120,31 @@ export const apiEnvSchema = z
     DEV_AUTH: z.enum(['enabled', 'disabled']).default('disabled'),
     DEV_AUTH_TOKEN: z.string().min(32, 'must be at least 32 characters').optional(),
     DEV_AUTH_EMAIL: z.email().optional(),
+    /**
+     * Sprint 3 feature flag — the extended training types INTERVAL (Core) and CHECKLIST (Warm-up)
+     * plus Strength MAX. DEFAULT disabled: the API then REJECTS writing them (assignments,
+     * templates, template assignment). Enable only after an app build with capability level 2 is the
+     * enforced minimum version in both stores (docs/ios-training-sprint3-rollout-plan.md).
+     */
+    TRAINING_EXTENDED_TYPES: z.enum(['enabled', 'disabled']).default('disabled'),
+    /**
+     * Sprint 8B — minimum supported mobile app version per platform (MAJOR.MINOR.PATCH). Unset =
+     * not enforced (default). Below it, MOBILE sessions get 426 APP_UPDATE_REQUIRED on client
+     * routes; nobody is logged out. The real values are an owner release decision.
+     */
+    MOBILE_MIN_VERSION_IOS: z
+      .string()
+      .refine((v) => parseAppVersion(v) !== null, 'must be MAJOR.MINOR.PATCH')
+      .optional(),
+    MOBILE_MIN_VERSION_ANDROID: z
+      .string()
+      .refine((v) => parseAppVersion(v) !== null, 'must be MAJOR.MINOR.PATCH')
+      .optional(),
+    /** MOBILE sessions without a version header (builds before Sprint 8B): allow (default) or update_required. */
+    MOBILE_LEGACY_APP_POLICY: z.enum(LEGACY_APP_POLICIES).default('allow'),
+    /** Store links shown on the update screen (https; optional). */
+    MOBILE_UPDATE_URL_IOS: z.url({ protocol: /^https$/ }).optional(),
+    MOBILE_UPDATE_URL_ANDROID: z.url({ protocol: /^https$/ }).optional(),
   })
   .superRefine((env, ctx) => {
     if (env.STORAGE_DRIVER === 's3') {
@@ -124,6 +167,14 @@ export const apiEnvSchema = z
           message: 'must differ from S3_BUCKET_PUBLIC',
         });
       }
+    }
+    // Fail closed: private training uploads without a signing key would be unreachable.
+    if (env.TRAINING_MEDIA_VISIBILITY === 'PRIVATE' && !env.MEDIA_URL_SIGNING_KEY) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['MEDIA_URL_SIGNING_KEY'],
+        message: 'required when TRAINING_MEDIA_VISIBILITY=PRIVATE',
+      });
     }
     if (env.WEB_REVALIDATE_URL && !env.REVALIDATE_SECRET) {
       ctx.addIssue({

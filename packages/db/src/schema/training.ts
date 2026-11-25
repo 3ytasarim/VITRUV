@@ -15,7 +15,12 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { timestamps } from './columns';
-import { trainingProgramStatus, trainingSectionType, weightUnit } from './enums';
+import {
+  trainingExecutionType,
+  trainingProgramStatus,
+  trainingSectionType,
+  weightUnit,
+} from './enums';
 import { mediaAssets } from './media-assets';
 import { users } from './users';
 
@@ -175,9 +180,23 @@ export const trainingDays = pgTable(
     notes: text('notes'),
     /** Optional planning hint (ISO weekday 1 = Monday … 7 = Sunday); no calendar is forced. */
     scheduledWeekday: smallint('scheduled_weekday'),
+    /**
+     * Sprint 2 lineage: the workout template this day was COPIED from (informational, no FK —
+     * the copy is independent; changing or deleting the template never touches this day).
+     */
+    sourceTemplateId: uuid('source_template_id'),
+    sourceTemplateVersion: integer('source_template_version'),
+    /**
+     * Sprint 3 (0024): idempotency key of the "Teilnehmer zuweisen" request that created this day
+     * (client-generated uuid). A retried request finds the existing day instead of copying twice.
+     */
+    assignmentRequestId: uuid('assignment_request_id'),
     ...timestamps,
   },
   (table) => [
+    uniqueIndex('training_days_assignment_request_unique')
+      .on(table.assignmentRequestId)
+      .where(sql`${table.assignmentRequestId} is not null`),
     unique('training_days_order_unique').on(table.weekId, table.sortOrder),
     check('training_days_order_nonnegative', sql`${table.sortOrder} >= 0`),
     check('training_days_title_length', sql`char_length(${table.title}) between 1 and 120`),
@@ -240,9 +259,25 @@ export const trainingExerciseAssignments = pgTable(
     weightUnit: weightUnit('weight_unit'),
     prescriptionText: text('prescription_text'),
     instructionsOverride: text('instructions_override'),
+    /**
+     * Sprint 2: explicit workout type (STRENGTH / TOTAL_REPS / INTERVAL / CHECKLIST).
+     * NULL = rows written before Sprint 2 — their mode is derived from the fields as before.
+     */
+    executionType: trainingExecutionType('execution_type'),
+    /** Sprint 2: Strength "MAX" — as many reps as possible per set (then `reps` is null). */
+    repsMax: boolean('reps_max').notNull().default(false),
+    /**
+     * Sprint 7: video for THIS client's exercise (overrides the library video; null = library
+     * video). Changing it never touches other clients (each client has own assignment rows).
+     */
+    mediaAssetId: uuid('media_asset_id').references(() => mediaAssets.id, { onDelete: 'restrict' }),
     ...timestamps,
   },
   (table) => [
+    check(
+      'training_assignments_reps_max_without_reps',
+      sql`not ${table.repsMax} or ${table.reps} is null`,
+    ),
     unique('training_assignments_order_unique').on(table.sectionId, table.sortOrder),
     index('training_assignments_exercise_idx').on(table.exerciseId),
     check('training_assignments_order_nonnegative', sql`${table.sortOrder} >= 0`),

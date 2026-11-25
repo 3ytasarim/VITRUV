@@ -51,6 +51,9 @@ export const PERMISSIONS = [
   'training.programs.activate',
   /** Workout-session summaries of a client (read-only) — same object scope as programs. */
   'training.sessions.read',
+  /** Workout-Bibliothek (Sprint 3): own templates; ADMIN sees all. Assigning also needs programs.update. */
+  'training.templates.read',
+  'training.templates.write',
   /** Client nutrition documents (PDF) — COACH: only clients actively assigned to them. */
   'nutrition.documents.read',
   'nutrition.documents.write',
@@ -89,6 +92,8 @@ const ROLE_PERMISSIONS: Readonly<Record<UserRole, ReadonlySet<Permission>>> = {
     'training.programs.update',
     'training.programs.activate',
     'training.sessions.read',
+    'training.templates.read',
+    'training.templates.write',
     'nutrition.documents.read',
     'nutrition.documents.write',
     'nutrition.documents.assign',

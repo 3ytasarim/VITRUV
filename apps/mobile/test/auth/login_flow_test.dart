@@ -14,12 +14,13 @@ void main() {
     final h = AppHarness(signedIn: false);
     await h.pump(tester);
     expect(find.text('ANMELDEN'), findsWidgets);
-    expect(find.text('E-Mail-Adresse'), findsOneWidget);
+    expect(find.text('Benutzername oder E-Mail'), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
     // password-manager friendly fields
     final fields = tester
         .widgetList<TextField>(find.byType(TextField))
         .toList();
+    expect(fields[0].autofillHints, contains(AutofillHints.username));
     expect(fields[0].autofillHints, contains(AutofillHints.email));
     expect(fields[1].autofillHints, contains(AutofillHints.password));
     expect(fields[1].obscureText, isTrue);
@@ -32,7 +33,7 @@ void main() {
       final h = AppHarness(signedIn: false);
       await h.pump(tester);
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'E-Mail-Adresse'),
+        find.widgetWithText(TextFormField, 'Benutzername oder E-Mail'),
         'kunde@example.invalid',
       );
       await tester.enterText(
@@ -41,7 +42,7 @@ void main() {
       );
       await tapOn(tester, submit());
       expect(
-        find.text('E-Mail-Adresse oder Passwort ist nicht korrekt.'),
+        find.text('Benutzername, E-Mail oder Passwort ist nicht korrekt.'),
         findsOneWidget,
       );
       expect(h.store.tokens, isNull);
@@ -64,7 +65,7 @@ void main() {
       final h = AppHarness(signedIn: false);
       await h.pump(tester);
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'E-Mail-Adresse'),
+        find.widgetWithText(TextFormField, 'Benutzername oder E-Mail'),
         'coach@example.invalid',
       );
       await tester.enterText(
@@ -73,7 +74,9 @@ void main() {
       );
       await tapOn(tester, submit());
       expect(
-        find.text('Die App ist für Kund:innen. Coaches nutzen den Webzugang.'),
+        find.text(
+          'Diese App ist nur für Teilnehmer verfügbar. Coaches nutzen den Webzugang.',
+        ),
         findsOneWidget,
       );
       expect(h.backend.logoutCalls, 1);
@@ -87,7 +90,7 @@ void main() {
     final h = AppHarness(signedIn: false);
     await h.pump(tester);
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'E-Mail-Adresse'),
+      find.widgetWithText(TextFormField, 'Benutzername oder E-Mail'),
       ' kunde@example.invalid ',
     );
     await tester.enterText(
@@ -121,7 +124,7 @@ void main() {
       await tapOn(tester, find.widgetWithText(FilledButton, 'Abmelden'));
       expect(h.backend.logoutCalls, 1);
       expect(h.store.tokens, isNull);
-      expect(find.text('E-Mail-Adresse'), findsOneWidget);
+      expect(find.text('Benutzername oder E-Mail'), findsOneWidget);
     },
   );
 
@@ -136,7 +139,7 @@ void main() {
     await tapOn(tester, find.widgetWithText(FilledButton, 'Abmelden'));
     expect(h.store.tokens, isNull);
     expect(h.store.clears, greaterThanOrEqualTo(1));
-    expect(find.text('E-Mail-Adresse'), findsOneWidget);
+    expect(find.text('Benutzername oder E-Mail'), findsOneWidget);
   });
 
   testWidgets(

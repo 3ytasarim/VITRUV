@@ -200,23 +200,29 @@ abstract class AppLocalizations {
   /// **'Abbrechen'**
   String get cancel;
 
+  /// No description provided for @loginEyebrow.
+  ///
+  /// In de, this message translates to:
+  /// **'Teilnehmer-Login'**
+  String get loginEyebrow;
+
   /// No description provided for @loginTitle.
   ///
   /// In de, this message translates to:
-  /// **'Anmelden'**
+  /// **'Willkommen bei VITRUV'**
   String get loginTitle;
 
   /// No description provided for @loginIntro.
   ///
   /// In de, this message translates to:
-  /// **'Melde dich mit der E-Mail-Adresse und dem Passwort an, das du über deinen Aktivierungslink festgelegt hast.'**
+  /// **'Melde dich mit deinem VITRUV-Zugang an – mit Benutzername oder E-Mail und Passwort, genau wie auf der Website.'**
   String get loginIntro;
 
-  /// No description provided for @loginEmail.
+  /// No description provided for @loginId.
   ///
   /// In de, this message translates to:
-  /// **'E-Mail-Adresse'**
-  String get loginEmail;
+  /// **'Benutzername oder E-Mail'**
+  String get loginId;
 
   /// No description provided for @loginPassword.
   ///
@@ -254,16 +260,16 @@ abstract class AppLocalizations {
   /// **'Bitte ausfüllen.'**
   String get loginFieldRequired;
 
-  /// No description provided for @loginEmailInvalid.
+  /// No description provided for @loginIdInvalid.
   ///
   /// In de, this message translates to:
-  /// **'Bitte eine gültige E-Mail-Adresse eingeben.'**
-  String get loginEmailInvalid;
+  /// **'Bitte E-Mail-Adresse oder Benutzernamen eingeben.'**
+  String get loginIdInvalid;
 
   /// No description provided for @loginErrorInvalid.
   ///
   /// In de, this message translates to:
-  /// **'E-Mail-Adresse oder Passwort ist nicht korrekt.'**
+  /// **'Benutzername, E-Mail oder Passwort ist nicht korrekt.'**
   String get loginErrorInvalid;
 
   /// No description provided for @loginErrorRateLimited.
@@ -275,7 +281,7 @@ abstract class AppLocalizations {
   /// No description provided for @loginErrorNotClient.
   ///
   /// In de, this message translates to:
-  /// **'Die App ist für Kund:innen. Coaches nutzen den Webzugang.'**
+  /// **'Diese App ist nur für Teilnehmer verfügbar. Coaches nutzen den Webzugang.'**
   String get loginErrorNotClient;
 
   /// No description provided for @loginErrorUnknown.
@@ -287,7 +293,7 @@ abstract class AppLocalizations {
   /// No description provided for @loginForgotHint.
   ///
   /// In de, this message translates to:
-  /// **'Passwort vergessen? Wende dich an deinen Coach.'**
+  /// **'Passwort vergessen? Dein Coach richtet dir ein neues Passwort ein.'**
   String get loginForgotHint;
 
   /// No description provided for @sessionExpired.
@@ -973,6 +979,875 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Coaching'**
   String get profileCoaching;
+
+  /// No description provided for @homeCurrentWeek.
+  ///
+  /// In de, this message translates to:
+  /// **'Aktuelle Trainingswoche'**
+  String get homeCurrentWeek;
+
+  /// No description provided for @homeNextTraining.
+  ///
+  /// In de, this message translates to:
+  /// **'Nächstes Training'**
+  String get homeNextTraining;
+
+  /// No description provided for @homeNoNextTraining.
+  ///
+  /// In de, this message translates to:
+  /// **'Kein weiteres Training geplant'**
+  String get homeNoNextTraining;
+
+  /// No description provided for @homeNoNextTrainingBody.
+  ///
+  /// In de, this message translates to:
+  /// **'Sobald dein Coach ein neues Workout plant, erscheint es hier.'**
+  String get homeNoNextTrainingBody;
+
+  /// No description provided for @openWorkout.
+  ///
+  /// In de, this message translates to:
+  /// **'Workout öffnen'**
+  String get openWorkout;
+
+  /// No description provided for @trainingOverview.
+  ///
+  /// In de, this message translates to:
+  /// **'Trainingsübersicht'**
+  String get trainingOverview;
+
+  /// No description provided for @trainingOverviewBody.
+  ///
+  /// In de, this message translates to:
+  /// **'Alle Workouts deines aktiven Trainingsplans.'**
+  String get trainingOverviewBody;
+
+  /// No description provided for @showAllWorkouts.
+  ///
+  /// In de, this message translates to:
+  /// **'Alle Workouts ansehen'**
+  String get showAllWorkouts;
+
+  /// No description provided for @showHistory.
+  ///
+  /// In de, this message translates to:
+  /// **'Trainingsverlauf ansehen'**
+  String get showHistory;
+
+  /// No description provided for @previousWeek.
+  ///
+  /// In de, this message translates to:
+  /// **'Vorherige Woche'**
+  String get previousWeek;
+
+  /// No description provided for @nextWeek.
+  ///
+  /// In de, this message translates to:
+  /// **'Nächste Woche'**
+  String get nextWeek;
+
+  /// No description provided for @backToThisWeek.
+  ///
+  /// In de, this message translates to:
+  /// **'Zur aktuellen Woche'**
+  String get backToThisWeek;
+
+  /// No description provided for @weekRange.
+  ///
+  /// In de, this message translates to:
+  /// **'{start} – {end}'**
+  String weekRange(String start, String end);
+
+  /// No description provided for @noTrainingPlanned.
+  ///
+  /// In de, this message translates to:
+  /// **'Kein Training geplant'**
+  String get noTrainingPlanned;
+
+  /// No description provided for @weekOutsidePlan.
+  ///
+  /// In de, this message translates to:
+  /// **'In dieser Woche ist kein Training geplant.'**
+  String get weekOutsidePlan;
+
+  /// No description provided for @planWithoutDates.
+  ///
+  /// In de, this message translates to:
+  /// **'Dein Plan hat noch keine festen Termine. Alle Workouts findest du in der Trainingsübersicht.'**
+  String get planWithoutDates;
+
+  /// No description provided for @statPlanned.
+  ///
+  /// In de, this message translates to:
+  /// **'Geplant'**
+  String get statPlanned;
+
+  /// No description provided for @statCompleted.
+  ///
+  /// In de, this message translates to:
+  /// **'Abgeschlossen'**
+  String get statCompleted;
+
+  /// No description provided for @statOpen.
+  ///
+  /// In de, this message translates to:
+  /// **'Offen'**
+  String get statOpen;
+
+  /// No description provided for @statInProgress.
+  ///
+  /// In de, this message translates to:
+  /// **'In Bearbeitung'**
+  String get statInProgress;
+
+  /// No description provided for @weekStatsLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Diese Woche: {planned} geplant, {completed} abgeschlossen, {inProgress} in Bearbeitung, {open} offen'**
+  String weekStatsLabel(int planned, int completed, int inProgress, int open);
+
+  /// No description provided for @dayStatusNotStarted.
+  ///
+  /// In de, this message translates to:
+  /// **'Nicht begonnen'**
+  String get dayStatusNotStarted;
+
+  /// No description provided for @dayStatusInProgress.
+  ///
+  /// In de, this message translates to:
+  /// **'In Bearbeitung'**
+  String get dayStatusInProgress;
+
+  /// No description provided for @dayStatusCompleted.
+  ///
+  /// In de, this message translates to:
+  /// **'Abgeschlossen'**
+  String get dayStatusCompleted;
+
+  /// No description provided for @workoutTypeStrength.
+  ///
+  /// In de, this message translates to:
+  /// **'Kraft'**
+  String get workoutTypeStrength;
+
+  /// No description provided for @workoutTypeTotalReps.
+  ///
+  /// In de, this message translates to:
+  /// **'Wiederholungsziel'**
+  String get workoutTypeTotalReps;
+
+  /// No description provided for @workoutTypeInterval.
+  ///
+  /// In de, this message translates to:
+  /// **'Core-Intervalle'**
+  String get workoutTypeInterval;
+
+  /// No description provided for @workoutTypeChecklist.
+  ///
+  /// In de, this message translates to:
+  /// **'Warm-up'**
+  String get workoutTypeChecklist;
+
+  /// No description provided for @workoutTypeGeneral.
+  ///
+  /// In de, this message translates to:
+  /// **'Training'**
+  String get workoutTypeGeneral;
+
+  /// No description provided for @plannedOn.
+  ///
+  /// In de, this message translates to:
+  /// **'Geplant am {date}'**
+  String plannedOn(String date);
+
+  /// No description provided for @noFixedDate.
+  ///
+  /// In de, this message translates to:
+  /// **'Ohne festen Termin'**
+  String get noFixedDate;
+
+  /// No description provided for @todayLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Heute'**
+  String get todayLabel;
+
+  /// No description provided for @workoutAlreadyCompleted.
+  ///
+  /// In de, this message translates to:
+  /// **'Dieses Training hast du bereits abgeschlossen.'**
+  String get workoutAlreadyCompleted;
+
+  /// No description provided for @warmupTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Aufwärmen'**
+  String get warmupTitle;
+
+  /// No description provided for @warmupHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Keine Wiederholungen, kein Timer: Hake jede Übung ab, sobald du sie gemacht hast.'**
+  String get warmupHint;
+
+  /// No description provided for @warmupProgress.
+  ///
+  /// In de, this message translates to:
+  /// **'{done} von {total} erledigt'**
+  String warmupProgress(int done, int total);
+
+  /// No description provided for @warmupDone.
+  ///
+  /// In de, this message translates to:
+  /// **'Aufwärmen abgeschlossen'**
+  String get warmupDone;
+
+  /// No description provided for @warmupCheck.
+  ///
+  /// In de, this message translates to:
+  /// **'{name} abhaken'**
+  String warmupCheck(String name);
+
+  /// No description provided for @warmupChecked.
+  ///
+  /// In de, this message translates to:
+  /// **'{name}, erledigt'**
+  String warmupChecked(String name);
+
+  /// No description provided for @warmupSaving.
+  ///
+  /// In de, this message translates to:
+  /// **'Wird gespeichert …'**
+  String get warmupSaving;
+
+  /// No description provided for @watchVideo.
+  ///
+  /// In de, this message translates to:
+  /// **'Video ansehen'**
+  String get watchVideo;
+
+  /// No description provided for @showImage.
+  ///
+  /// In de, this message translates to:
+  /// **'Bild ansehen'**
+  String get showImage;
+
+  /// No description provided for @videoBadge.
+  ///
+  /// In de, this message translates to:
+  /// **'Video'**
+  String get videoBadge;
+
+  /// No description provided for @videoUnsupported.
+  ///
+  /// In de, this message translates to:
+  /// **'Dieses Video kann auf diesem Gerät nicht abgespielt werden.'**
+  String get videoUnsupported;
+
+  /// No description provided for @closeLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Schließen'**
+  String get closeLabel;
+
+  /// No description provided for @checklistItemLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Zum Abhaken'**
+  String get checklistItemLabel;
+
+  /// No description provided for @rxSetsMax.
+  ///
+  /// In de, this message translates to:
+  /// **'{sets} × MAX'**
+  String rxSetsMax(int sets);
+
+  /// No description provided for @rxMax.
+  ///
+  /// In de, this message translates to:
+  /// **'MAX'**
+  String get rxMax;
+
+  /// No description provided for @setRepsFor.
+  ///
+  /// In de, this message translates to:
+  /// **'Wiederholungen in Satz {number}'**
+  String setRepsFor(int number);
+
+  /// No description provided for @setRepsRequired.
+  ///
+  /// In de, this message translates to:
+  /// **'Bitte trage deine Wiederholungen ein.'**
+  String get setRepsRequired;
+
+  /// No description provided for @repsDecrease.
+  ///
+  /// In de, this message translates to:
+  /// **'Eine Wiederholung weniger'**
+  String get repsDecrease;
+
+  /// No description provided for @repsIncrease.
+  ///
+  /// In de, this message translates to:
+  /// **'Eine Wiederholung mehr'**
+  String get repsIncrease;
+
+  /// No description provided for @setActualReps.
+  ///
+  /// In de, this message translates to:
+  /// **'{reps} Wdh. geschafft'**
+  String setActualReps(int reps);
+
+  /// No description provided for @restStartFor.
+  ///
+  /// In de, this message translates to:
+  /// **'Pause starten · {clock}'**
+  String restStartFor(String clock);
+
+  /// No description provided for @restNotificationTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Pause vorbei'**
+  String get restNotificationTitle;
+
+  /// No description provided for @restNotificationBody.
+  ///
+  /// In de, this message translates to:
+  /// **'Weiter mit {exercise}.'**
+  String restNotificationBody(String exercise);
+
+  /// No description provided for @restNotificationBodyGeneric.
+  ///
+  /// In de, this message translates to:
+  /// **'Weiter geht’s mit dem nächsten Satz.'**
+  String get restNotificationBodyGeneric;
+
+  /// No description provided for @historyOpen.
+  ///
+  /// In de, this message translates to:
+  /// **'Einheit ansehen'**
+  String get historyOpen;
+
+  /// No description provided for @historyDetailTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Einheit'**
+  String get historyDetailTitle;
+
+  /// No description provided for @historySetResult.
+  ///
+  /// In de, this message translates to:
+  /// **'Satz {number}: {actual} von {target} Wdh.'**
+  String historySetResult(int number, int actual, int target);
+
+  /// No description provided for @historySetResultMax.
+  ///
+  /// In de, this message translates to:
+  /// **'Satz {number}: {actual} Wdh. (MAX)'**
+  String historySetResultMax(int number, int actual);
+
+  /// No description provided for @historySetResultPlain.
+  ///
+  /// In de, this message translates to:
+  /// **'Satz {number}: {actual} Wdh.'**
+  String historySetResultPlain(int number, int actual);
+
+  /// No description provided for @historySetDone.
+  ///
+  /// In de, this message translates to:
+  /// **'Satz {number}: erledigt'**
+  String historySetDone(int number);
+
+  /// No description provided for @historySetOpen.
+  ///
+  /// In de, this message translates to:
+  /// **'Satz {number}: nicht erledigt'**
+  String historySetOpen(int number);
+
+  /// No description provided for @historyExerciseOpen.
+  ///
+  /// In de, this message translates to:
+  /// **'Nicht erledigt'**
+  String get historyExerciseOpen;
+
+  /// No description provided for @totalGoal.
+  ///
+  /// In de, this message translates to:
+  /// **'Gesamtziel'**
+  String get totalGoal;
+
+  /// No description provided for @totalDone.
+  ///
+  /// In de, this message translates to:
+  /// **'Bereits geschafft'**
+  String get totalDone;
+
+  /// No description provided for @totalOpen.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch offen'**
+  String get totalOpen;
+
+  /// No description provided for @totalCurrentSet.
+  ///
+  /// In de, this message translates to:
+  /// **'Aktueller Satz {number}'**
+  String totalCurrentSet(int number);
+
+  /// No description provided for @totalRepsInput.
+  ///
+  /// In de, this message translates to:
+  /// **'Wiederholungen eintragen'**
+  String get totalRepsInput;
+
+  /// No description provided for @totalSaveSet.
+  ///
+  /// In de, this message translates to:
+  /// **'Satz speichern'**
+  String get totalSaveSet;
+
+  /// No description provided for @totalSaving.
+  ///
+  /// In de, this message translates to:
+  /// **'Wird gespeichert …'**
+  String get totalSaving;
+
+  /// No description provided for @totalGoalReached.
+  ///
+  /// In de, this message translates to:
+  /// **'Ziel erreicht'**
+  String get totalGoalReached;
+
+  /// No description provided for @totalProgressValue.
+  ///
+  /// In de, this message translates to:
+  /// **'{done} von {target} Wdh.'**
+  String totalProgressValue(int done, int target);
+
+  /// No description provided for @totalSetSaved.
+  ///
+  /// In de, this message translates to:
+  /// **'Satz {number} gespeichert'**
+  String totalSetSaved(int number);
+
+  /// No description provided for @totalSetNotSaved.
+  ///
+  /// In de, this message translates to:
+  /// **'Satz nicht gespeichert. Es läuft keine Pause.'**
+  String get totalSetNotSaved;
+
+  /// No description provided for @totalRepsRange.
+  ///
+  /// In de, this message translates to:
+  /// **'Bitte mindestens 1 Wiederholung eintragen.'**
+  String get totalRepsRange;
+
+  /// No description provided for @historyTotalResult.
+  ///
+  /// In de, this message translates to:
+  /// **'Gesamt: {done} von {target} Wdh.'**
+  String historyTotalResult(int done, int target);
+
+  /// No description provided for @historyRoundResult.
+  ///
+  /// In de, this message translates to:
+  /// **'Runde {number}: {seconds} Sek.'**
+  String historyRoundResult(int number, int seconds);
+
+  /// No description provided for @historyRoundOpen.
+  ///
+  /// In de, this message translates to:
+  /// **'Runde {number}: nicht erledigt'**
+  String historyRoundOpen(int number);
+
+  /// No description provided for @coreRoundOf.
+  ///
+  /// In de, this message translates to:
+  /// **'Runde {round} von {rounds}'**
+  String coreRoundOf(int round, int rounds);
+
+  /// No description provided for @corePhaseWork.
+  ///
+  /// In de, this message translates to:
+  /// **'TRAINING'**
+  String get corePhaseWork;
+
+  /// No description provided for @corePhaseRest.
+  ///
+  /// In de, this message translates to:
+  /// **'PAUSE'**
+  String get corePhaseRest;
+
+  /// No description provided for @corePlan.
+  ///
+  /// In de, this message translates to:
+  /// **'{rounds} Runden · {work} Training · {rest} Pause'**
+  String corePlan(int rounds, String work, String rest);
+
+  /// No description provided for @coreStart.
+  ///
+  /// In de, this message translates to:
+  /// **'Core starten'**
+  String get coreStart;
+
+  /// No description provided for @coreStartFrom.
+  ///
+  /// In de, this message translates to:
+  /// **'Ab Runde {round} starten'**
+  String coreStartFrom(int round);
+
+  /// No description provided for @corePause.
+  ///
+  /// In de, this message translates to:
+  /// **'Anhalten'**
+  String get corePause;
+
+  /// No description provided for @coreResume.
+  ///
+  /// In de, this message translates to:
+  /// **'Fortsetzen'**
+  String get coreResume;
+
+  /// No description provided for @coreCancel.
+  ///
+  /// In de, this message translates to:
+  /// **'Abbrechen'**
+  String get coreCancel;
+
+  /// No description provided for @coreNextRound.
+  ///
+  /// In de, this message translates to:
+  /// **'Nächste Runde'**
+  String get coreNextRound;
+
+  /// No description provided for @coreDone.
+  ///
+  /// In de, this message translates to:
+  /// **'Training abgeschlossen'**
+  String get coreDone;
+
+  /// No description provided for @corePaused.
+  ///
+  /// In de, this message translates to:
+  /// **'Angehalten'**
+  String get corePaused;
+
+  /// No description provided for @coreRoundsSaved.
+  ///
+  /// In de, this message translates to:
+  /// **'{done} von {rounds} Runden gespeichert'**
+  String coreRoundsSaved(int done, int rounds);
+
+  /// No description provided for @coreRoundsUnsaved.
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Runde ist noch nicht gespeichert.} other{{count} Runden sind noch nicht gespeichert.}}'**
+  String coreRoundsUnsaved(int count);
+
+  /// No description provided for @coreSaveRounds.
+  ///
+  /// In de, this message translates to:
+  /// **'Runden speichern'**
+  String get coreSaveRounds;
+
+  /// No description provided for @coreRemainingSemantics.
+  ///
+  /// In de, this message translates to:
+  /// **'{phase}, Runde {round} von {rounds}, noch {clock}'**
+  String coreRemainingSemantics(
+    String phase,
+    int round,
+    int rounds,
+    String clock,
+  );
+
+  /// No description provided for @coreAnnounceWork.
+  ///
+  /// In de, this message translates to:
+  /// **'Training, Runde {round}'**
+  String coreAnnounceWork(int round);
+
+  /// No description provided for @coreAnnounceRest.
+  ///
+  /// In de, this message translates to:
+  /// **'Pause'**
+  String get coreAnnounceRest;
+
+  /// No description provided for @coreOtherRunning.
+  ///
+  /// In de, this message translates to:
+  /// **'Eine andere Core-Routine läuft gerade.'**
+  String get coreOtherRunning;
+
+  /// No description provided for @coreNotifyRestTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Pause'**
+  String get coreNotifyRestTitle;
+
+  /// No description provided for @coreNotifyRestBody.
+  ///
+  /// In de, this message translates to:
+  /// **'Runde {round} geschafft – kurz durchatmen.'**
+  String coreNotifyRestBody(int round);
+
+  /// No description provided for @coreNotifyWorkTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Training'**
+  String get coreNotifyWorkTitle;
+
+  /// No description provided for @coreNotifyWorkBody.
+  ///
+  /// In de, this message translates to:
+  /// **'Runde {round} von {rounds} startet.'**
+  String coreNotifyWorkBody(int round, int rounds);
+
+  /// No description provided for @coreNotifyDoneTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Training abgeschlossen'**
+  String get coreNotifyDoneTitle;
+
+  /// No description provided for @coreNotifyDoneBody.
+  ///
+  /// In de, this message translates to:
+  /// **'{exercise} ist geschafft.'**
+  String coreNotifyDoneBody(String exercise);
+
+  /// No description provided for @videoLoadFailed.
+  ///
+  /// In de, this message translates to:
+  /// **'Video konnte nicht geladen werden.'**
+  String get videoLoadFailed;
+
+  /// No description provided for @videoLoading.
+  ///
+  /// In de, this message translates to:
+  /// **'Video wird geladen'**
+  String get videoLoading;
+
+  /// No description provided for @videoSeek.
+  ///
+  /// In de, this message translates to:
+  /// **'Videoposition'**
+  String get videoSeek;
+
+  /// No description provided for @videoPosition.
+  ///
+  /// In de, this message translates to:
+  /// **'{position} von {duration}'**
+  String videoPosition(String position, String duration);
+
+  /// No description provided for @historyTotalReps.
+  ///
+  /// In de, this message translates to:
+  /// **'Gesamt: {reps} Wiederholungen'**
+  String historyTotalReps(int reps);
+
+  /// No description provided for @historySetCount.
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Satz} other{{count} Sätze}}'**
+  String historySetCount(num count);
+
+  /// No description provided for @historyRoundCount.
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =1{1 Runde} other{{count} Runden}}'**
+  String historyRoundCount(num count);
+
+  /// No description provided for @historyLoadMore.
+  ///
+  /// In de, this message translates to:
+  /// **'Mehr laden'**
+  String get historyLoadMore;
+
+  /// No description provided for @historyLoadMoreFailed.
+  ///
+  /// In de, this message translates to:
+  /// **'Weitere Einträge konnten nicht geladen werden.'**
+  String get historyLoadMoreFailed;
+
+  /// No description provided for @historyTotalGoal.
+  ///
+  /// In de, this message translates to:
+  /// **'Gesamtziel: {target} Wdh.'**
+  String historyTotalGoal(int target);
+
+  /// No description provided for @historyTotalDone.
+  ///
+  /// In de, this message translates to:
+  /// **'Geschafft: {done} Wdh.'**
+  String historyTotalDone(int done);
+
+  /// No description provided for @historyTotalSetsNeeded.
+  ///
+  /// In de, this message translates to:
+  /// **'Benötigte Sätze: {count}'**
+  String historyTotalSetsNeeded(int count);
+
+  /// No description provided for @historyCoreConfig.
+  ///
+  /// In de, this message translates to:
+  /// **'{rounds} Runden · {work} Sek. Belastung · {rest} Sek. Pause'**
+  String historyCoreConfig(int rounds, int work, int rest);
+
+  /// No description provided for @historyCoreDone.
+  ///
+  /// In de, this message translates to:
+  /// **'Runden geschafft: {done} von {rounds}'**
+  String historyCoreDone(int done, int rounds);
+
+  /// No description provided for @historyWarmupDone.
+  ///
+  /// In de, this message translates to:
+  /// **'Aufwärmen erledigt'**
+  String get historyWarmupDone;
+
+  /// No description provided for @compareTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Vergleich'**
+  String get compareTitle;
+
+  /// No description provided for @comparePrevious.
+  ///
+  /// In de, this message translates to:
+  /// **'Vorheriges Training: {date}'**
+  String comparePrevious(String date);
+
+  /// No description provided for @compareCurrent.
+  ///
+  /// In de, this message translates to:
+  /// **'Aktuelles Training'**
+  String get compareCurrent;
+
+  /// No description provided for @compareNoData.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch keine Vergleichsdaten'**
+  String get compareNoData;
+
+  /// No description provided for @compareDifference.
+  ///
+  /// In de, this message translates to:
+  /// **'Differenz: {value}'**
+  String compareDifference(String value);
+
+  /// No description provided for @compareSetLine.
+  ///
+  /// In de, this message translates to:
+  /// **'Satz {number}: {previous} → {current}'**
+  String compareSetLine(int number, String previous, String current);
+
+  /// No description provided for @compareTotalLine.
+  ///
+  /// In de, this message translates to:
+  /// **'Gesamt: {previous} → {current} Wdh.'**
+  String compareTotalLine(String previous, String current);
+
+  /// No description provided for @compareRoundsLine.
+  ///
+  /// In de, this message translates to:
+  /// **'Runden: {previous} → {current}'**
+  String compareRoundsLine(String previous, String current);
+
+  /// No description provided for @compareSetsUsed.
+  ///
+  /// In de, this message translates to:
+  /// **'Sätze: {previous} → {current}'**
+  String compareSetsUsed(String previous, String current);
+
+  /// No description provided for @compareConfigChanged.
+  ///
+  /// In de, this message translates to:
+  /// **'Andere Runden-Einstellung als beim letzten Mal'**
+  String get compareConfigChanged;
+
+  /// No description provided for @compareNotRecorded.
+  ///
+  /// In de, this message translates to:
+  /// **'nicht erfasst'**
+  String get compareNotRecorded;
+
+  /// No description provided for @progressChartOpen.
+  ///
+  /// In de, this message translates to:
+  /// **'Verlauf ansehen'**
+  String get progressChartOpen;
+
+  /// No description provided for @progressChartTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Verlauf: {name}'**
+  String progressChartTitle(String name);
+
+  /// No description provided for @progressChartEmpty.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch zu wenige Daten für einen Verlauf'**
+  String get progressChartEmpty;
+
+  /// No description provided for @progressChartSummary.
+  ///
+  /// In de, this message translates to:
+  /// **'{count} Trainings. Erster Wert {first}, letzter Wert {last}, bester Wert {best} {unit}.'**
+  String progressChartSummary(
+    int count,
+    int first,
+    int last,
+    int best,
+    String unit,
+  );
+
+  /// No description provided for @progressUnitReps.
+  ///
+  /// In de, this message translates to:
+  /// **'Wiederholungen'**
+  String get progressUnitReps;
+
+  /// No description provided for @progressUnitRounds.
+  ///
+  /// In de, this message translates to:
+  /// **'Runden'**
+  String get progressUnitRounds;
+
+  /// No description provided for @appUpdateTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Update erforderlich'**
+  String get appUpdateTitle;
+
+  /// No description provided for @appUpdateBody.
+  ///
+  /// In de, this message translates to:
+  /// **'Diese Version der VITRUV App wird nicht mehr unterstützt. Bitte aktualisiere die App im App Store. Deine Anmeldung und deine Daten bleiben erhalten.'**
+  String get appUpdateBody;
+
+  /// No description provided for @appUpdateInstalled.
+  ///
+  /// In de, this message translates to:
+  /// **'Installiert: {installed}'**
+  String appUpdateInstalled(String installed);
+
+  /// No description provided for @appUpdateVersions.
+  ///
+  /// In de, this message translates to:
+  /// **'Installiert: {installed} · Mindestens: {minimum}'**
+  String appUpdateVersions(String installed, String minimum);
+
+  /// No description provided for @appUpdateCopyLink.
+  ///
+  /// In de, this message translates to:
+  /// **'Link kopieren'**
+  String get appUpdateCopyLink;
+
+  /// No description provided for @appUpdateRetry.
+  ///
+  /// In de, this message translates to:
+  /// **'Erneut prüfen'**
+  String get appUpdateRetry;
 }
 
 class _AppLocalizationsDelegate

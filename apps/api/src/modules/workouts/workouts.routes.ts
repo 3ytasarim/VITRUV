@@ -1,4 +1,6 @@
 import {
+  exerciseProgressQuerySchema,
+  recordWorkoutSetRequestSchema,
   startWorkoutRequestSchema,
   updateWorkoutExerciseRequestSchema,
   updateWorkoutNoteRequestSchema,
@@ -13,13 +15,19 @@ import { AppError, errorBody } from '../../lib/errors';
 import { validate } from '../../lib/validation';
 import type { AppEnv } from '../../types';
 import type { TrainingDeps } from '../training/exercises.service';
+import { WORKOUT_MAX_DYNAMIC_SETS } from './set-recording';
 import * as workouts from './workouts.service';
 
 const sessionParam = z.object({ sessionId: z.uuid() });
 const exerciseParam = sessionParam.extend({ exerciseId: z.uuid() });
-const setParam = exerciseParam.extend({ setNumber: z.coerce.number().int().min(1).max(50) });
+// Sprint 2: dynamic TOTAL_REPS sets can exceed the 50 planned sets (widened, never narrowed).
+const setParam = exerciseParam.extend({
+  setNumber: z.coerce.number().int().min(1).max(WORKOUT_MAX_DYNAMIC_SETS),
+});
 const clientParam = z.object({ clientId: z.uuid() });
 const clientSessionParam = clientParam.extend({ sessionId: z.uuid() });
+const exerciseIdParam = z.object({ exerciseId: z.uuid() });
+const clientExerciseParam = clientParam.extend({ exerciseId: z.uuid() });
 
 function actorOf(c: Context<AppEnv>) {
   const principal = c.get('principal');
@@ -44,13 +52,33 @@ export function clientWorkoutRoutes(deps: TrainingDeps) {
   );
 
   r.get('/', self, validate('query', workoutHistoryQuerySchema), async (c) =>
-    c.json(await workouts.workoutHistory(deps, actorOf(c), c.req.valid('query').limit)),
+    c.json(await workouts.workoutHistory(deps, actorOf(c), c.req.valid('query'))),
   );
   r.post('/', self, validate('json', startWorkoutRequestSchema), async (c) => {
     const result = await workouts.startWorkout(deps, actorOf(c), c.req.valid('json').trainingDayId);
     return c.json(result, result.resumed ? 200 : 201);
   });
   r.get('/current', self, async (c) => c.json(await workouts.currentWorkout(deps, actorOf(c))));
+  // Sprint 7: progress of one exercise (completed sessions only)
+  r.get(
+    '/progress/exercises/:exerciseId',
+    self,
+    validate('param', exerciseIdParam),
+    validate('query', exerciseProgressQuerySchema),
+    async (c) =>
+      c.json(
+        await workouts.myExerciseProgress(
+          deps,
+          actorOf(c),
+          c.req.valid('param').exerciseId,
+          c.req.valid('query').limit,
+        ),
+      ),
+  );
+  // Sprint 7: every exercise of the session next to its previous comparable result
+  r.get('/:sessionId/comparison', self, validate('param', sessionParam), async (c) =>
+    c.json(await workouts.workoutComparison(deps, actorOf(c), c.req.valid('param').sessionId)),
+  );
   r.get('/:sessionId', self, validate('param', sessionParam), async (c) =>
     c.json(await workouts.getWorkout(deps, actorOf(c), c.req.valid('param').sessionId)),
   );
@@ -70,6 +98,24 @@ export function clientWorkoutRoutes(deps: TrainingDeps) {
           c.req.valid('json'),
         ),
       );
+    },
+  );
+  // Sprint 2: append a recorded set (TOTAL_REPS), idempotent by clientSetId.
+  r.post(
+    '/:sessionId/exercises/:exerciseId/sets',
+    self,
+    validate('param', exerciseParam),
+    validate('json', recordWorkoutSetRequestSchema),
+    async (c) => {
+      const { sessionId, exerciseId } = c.req.valid('param');
+      const result = await workouts.recordWorkoutSet(
+        deps,
+        actorOf(c),
+        sessionId,
+        exerciseId,
+        c.req.valid('json'),
+      );
+      return c.json(result, result.created ? 201 : 200);
     },
   );
   r.patch(
@@ -151,9 +197,36 @@ export function adminWorkoutRoutes(deps: TrainingDeps) {
           deps,
           actorOf(c),
           c.req.valid('param').clientId,
-          c.req.valid('query').limit,
+          c.req.valid('query'),
         ),
       ),
+  );
+  r.get(
+    '/clients/:clientId/workouts/progress/exercises/:exerciseId',
+    requirePermission('training.sessions.read'),
+    validate('param', clientExerciseParam),
+    validate('query', exerciseProgressQuerySchema),
+    async (c) => {
+      const { clientId, exerciseId } = c.req.valid('param');
+      return c.json(
+        await workouts.clientExerciseProgress(
+          deps,
+          actorOf(c),
+          clientId,
+          exerciseId,
+          c.req.valid('query').limit,
+        ),
+      );
+    },
+  );
+  r.get(
+    '/clients/:clientId/workouts/:sessionId/comparison',
+    requirePermission('training.sessions.read'),
+    validate('param', clientSessionParam),
+    async (c) => {
+      const { clientId, sessionId } = c.req.valid('param');
+      return c.json(await workouts.clientWorkoutComparison(deps, actorOf(c), clientId, sessionId));
+    },
   );
   r.get(
     '/clients/:clientId/workouts/:sessionId',

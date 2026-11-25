@@ -1,10 +1,11 @@
 import type { WorkoutSessionExercise } from '@vitruv/contracts';
-import { ArrowLeft, MessageSquareText } from 'lucide-react';
+import { ArrowLeft, LineChart, MessageSquareText } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { formatDateTime } from '@/components/admin/management/labels';
 import { ErrorState } from '@/components/admin/states';
+import { ExerciseProgressChart } from '@/components/admin/training/training-progress';
 import { Badge, Card, type BadgeTone } from '@/components/ui';
 import { requirePagePermission } from '@/lib/auth/session';
 import {
@@ -15,6 +16,9 @@ import {
   prescriptionSummary,
 } from '@/lib/training-format';
 import { trainingApi } from '@/lib/training-api';
+import { comparisonLines, resultLines } from '@/lib/workout-results';
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const metadata: Metadata = { title: 'Trainingseinheit · Kund:in' };
 
@@ -45,22 +49,38 @@ function recorded(exercise: WorkoutSessionExercise): string | null {
  * One workout session of a client, read-only for Coach/Admin: which note the client wrote under
  * which exercise, the note on the whole session, and what was recorded. Values are the session
  * snapshot. Client scope is enforced by the API (other clients' sessions answer 404).
+ * Sprint 7: the recorded values per set/round, the comparison with the previous comparable
+ * workout and — on request (`?verlauf=<exerciseId>`) — the progress of one exercise.
  */
 export default async function AdminWorkoutDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string; sessionId: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id, sessionId } = await params;
+  const query = (await searchParams) ?? {};
+  const verlauf =
+    typeof query.verlauf === 'string' && UUID.test(query.verlauf) ? query.verlauf : null;
   await requirePagePermission(
     'training.sessions.read',
     `/admin/kunden/${id}/training/einheit/${sessionId}`,
   );
-  const result = await trainingApi.workout(id, sessionId);
+  const [result, comparison, progress] = await Promise.all([
+    trainingApi.workout(id, sessionId),
+    trainingApi.workoutComparison(id, sessionId),
+    verlauf ? trainingApi.exerciseProgress(id, verlauf) : null,
+  ]);
   if (!result.ok && (result.status === 404 || result.status === 400)) notFound();
   if (!result.ok) return <ErrorState message="Die Trainingseinheit konnte nicht geladen werden." />;
   const session = result.data;
   const withNotes = session.exercises.filter((e) => e.clientNote).length;
+  // The comparison is an addition: if it fails, the recorded summary below still shows.
+  const compared = new Map(
+    comparison.ok ? comparison.data.items.map((item) => [item.sessionExerciseId, item]) : [],
+  );
+  const base = `/admin/kunden/${id}/training/einheit/${sessionId}`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -124,8 +144,16 @@ export default async function AdminWorkoutDetailPage({
             previous.sectionOrder !== exercise.sectionOrder ||
             previous.sectionType !== exercise.sectionType;
           const done = recorded(exercise);
+          const item = compared.get(exercise.id);
+          const lines = item ? resultLines(item.current.result, item.repsMax) : [];
+          const compare = item ? comparisonLines(item) : null;
+          const showChart = item !== undefined && verlauf === item.exerciseId;
           return (
-            <li key={exercise.id} className="flex flex-col gap-3">
+            <li
+              key={exercise.id}
+              id={`uebung-${exercise.id}`}
+              className="flex scroll-mt-24 flex-col gap-3"
+            >
               {newSection && (
                 <h3 className="type-caption pt-2 text-accent-text">
                   {SECTION_LABEL[exercise.sectionType]}
@@ -143,6 +171,51 @@ export default async function AdminWorkoutDetailPage({
                   Vorgabe: {prescriptionSummary(exercise.target) || '–'}
                   {done ? ` · Erfasst: ${done}` : ''}
                 </p>
+                {lines.length > 0 && (
+                  <ul className="type-body-sm flex flex-col gap-0.5">
+                    {lines.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                )}
+                {compare && (
+                  <div className="flex flex-col gap-1">
+                    <p className="type-caption text-fg-subtle">
+                      Vergleich
+                      {item?.previous && (
+                        <>
+                          {' '}
+                          mit{' '}
+                          <time dateTime={item.previous.date}>
+                            {formatDateTime(item.previous.date)}
+                          </time>
+                        </>
+                      )}
+                    </p>
+                    <ul className="type-body-sm flex flex-col gap-0.5">
+                      {compare.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {compare && item && !showChart && (
+                  <Link
+                    href={`${base}?verlauf=${item.exerciseId}#uebung-${exercise.id}`}
+                    className="type-body-sm inline-flex min-h-12 items-center gap-2 self-start font-semibold text-accent-text underline"
+                  >
+                    <LineChart aria-hidden className="size-4" /> Verlauf anzeigen
+                    <span className="sr-only">: {exercise.name}</span>
+                  </Link>
+                )}
+                {showChart &&
+                  (progress?.ok ? (
+                    <ExerciseProgressChart progress={progress.data} />
+                  ) : (
+                    <p role="alert" className="type-body-sm text-error">
+                      Der Verlauf konnte nicht geladen werden.
+                    </p>
+                  ))}
                 {exercise.clientNote ? (
                   <div className="flex flex-col gap-1">
                     <p className="type-caption inline-flex items-center gap-1 text-fg-subtle">

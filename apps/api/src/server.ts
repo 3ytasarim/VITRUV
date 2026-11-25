@@ -9,7 +9,9 @@ import { createObjectStorage } from './infra/storage/index';
 import { createClientIpResolver } from './lib/client-ip';
 import { createLogger } from './lib/logger';
 import { createRateLimiter } from '@vitruv/shared';
+import { appVersionDepsFromEnv } from './modules/app/app-version';
 import { createMediaUrlResolver } from './modules/media/media-url';
+import { createTrainingMediaSigner } from './modules/media/training-media-access';
 import { createWebRevalidationHook } from './modules/website/revalidation';
 
 const VERSION = process.env.npm_package_version ?? '0.0.0';
@@ -22,11 +24,30 @@ function main() {
 
   const database = createDatabase(env.DATABASE_URL);
   const storage = createObjectStorage(env);
+  // Sprint 8A: private training media are signed only when a key is configured (fail closed).
+  const trainingMediaSigner = env.MEDIA_URL_SIGNING_KEY
+    ? createTrainingMediaSigner({
+        key: env.MEDIA_URL_SIGNING_KEY,
+        apiBaseUrl: env.API_PUBLIC_URL,
+        ttlSeconds: env.TRAINING_MEDIA_URL_TTL_SECONDS,
+      })
+    : undefined;
   const urls = createMediaUrlResolver(
     env.PUBLIC_MEDIA_BASE_URL ?? `${env.API_PUBLIC_URL.replace(/\/+$/, '')}/media`,
+    trainingMediaSigner,
   );
   logger.info(
-    { database: describeDatabaseTarget(env.DATABASE_URL), storage: storage.driver },
+    {
+      database: describeDatabaseTarget(env.DATABASE_URL),
+      storage: storage.driver,
+      trainingMedia: env.TRAINING_MEDIA_VISIBILITY,
+      trainingMediaSigning: Boolean(trainingMediaSigner),
+      mobileMinVersion: {
+        ios: env.MOBILE_MIN_VERSION_IOS ?? null,
+        android: env.MOBILE_MIN_VERSION_ANDROID ?? null,
+        legacy: env.MOBILE_LEGACY_APP_POLICY,
+      },
+    },
     'dependencies configured',
   );
 
@@ -41,11 +62,17 @@ function main() {
     corsOrigins: env.CORS_ORIGINS,
     bodyLimitBytes: env.API_BODY_LIMIT_BYTES,
     privateUrlTtlSeconds: env.PRIVATE_URL_TTL_SECONDS,
+    trainingMediaSigner,
+    appVersions: appVersionDepsFromEnv(env),
     health: { version: VERSION, startedAt: Date.now(), pingDatabase: database.ping },
     auth: createAuthResolver(env, database.db, logger),
     clientIp: createClientIpResolver(env.TRUSTED_PROXY_IPS),
     management: { db: database.db },
-    training: { db: database.db, urls },
+    training: {
+      db: database.db,
+      urls,
+      extendedTypes: env.TRAINING_EXTENDED_TYPES === 'enabled',
+    },
     sessions: {
       db: database.db,
       // Temporary brakes, never permanent lockouts (docs/AUTH-ARCHITECTURE.md → Rate limiting).
@@ -74,6 +101,7 @@ function main() {
       storage,
       urls,
       limits: { IMAGE: env.MEDIA_MAX_IMAGE_BYTES, VIDEO: env.MEDIA_MAX_VIDEO_BYTES },
+      trainingVisibility: env.TRAINING_MEDIA_VISIBILITY,
       // A replaced file changes the resolved media URL on the public page.
       onPublicMediaChanged: revalidateWeb
         ? async () => {

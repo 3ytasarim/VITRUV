@@ -8,6 +8,9 @@ import 'package:vitruv_mobile/app.dart';
 import 'package:vitruv_mobile/auth/token_store.dart';
 import 'package:vitruv_mobile/core/config/app_config.dart';
 import 'package:vitruv_mobile/core/time/clock.dart';
+import 'package:vitruv_mobile/features/workout/interval_runner.dart';
+import 'package:vitruv_mobile/features/workout/rest_alert.dart';
+import 'package:vitruv_mobile/features/workout/rest_timer_store.dart';
 
 import 'fake_backend.dart';
 
@@ -25,6 +28,15 @@ class AppHarness {
   late final FakeBackend backend;
   final MemoryTokenStore store;
 
+  /// Saved rest timer — survives a "cold start" (new ProviderScope) within one harness.
+  final restStore = MemoryRestTimerStore();
+
+  /// Scheduled end-of-rest notifications (what iOS would get).
+  final restAlerts = FakeRestAlertScheduler();
+
+  /// Saved Core routine — survives a "cold start" like [restStore].
+  final intervalStore = MemoryIntervalStore();
+
   List<Override> get overrides => [
     appConfigProvider.overrideWithValue(
       AppConfig(
@@ -35,6 +47,9 @@ class AppHarness {
     httpAdapterProvider.overrideWithValue(backend),
     tokenStoreProvider.overrideWithValue(store),
     clockProvider.overrideWithValue(clock),
+    restTimerStoreProvider.overrideWithValue(restStore),
+    restAlertSchedulerProvider.overrideWithValue(restAlerts),
+    intervalStoreProvider.overrideWithValue(intervalStore),
     apiHealthProvider.overrideWith(
       (ref) async => const ApiHealth(status: 'ok', version: 'test'),
     ),
@@ -74,4 +89,41 @@ Future<void> tapOn(WidgetTester tester, Finder finder) async {
   await tester.pumpAndSettle();
   await tester.tap(finder.first);
   await tester.pumpAndSettle();
+}
+
+/// Records the end-of-rest notification schedule (the latest one is the active one).
+class FakeRestAlertScheduler implements RestAlertScheduler {
+  final log = <String>[];
+  ({DateTime at, String title, String body})? scheduled;
+
+  @override
+  Future<void> schedule({
+    required DateTime at,
+    required String title,
+    required String body,
+  }) async {
+    scheduled = (at: at, title: title, body: body);
+    log.add('schedule');
+  }
+
+  @override
+  Future<void> cancel() async {
+    scheduled = null;
+    log.add('cancel');
+  }
+
+  /// Core phase-change notifications (the active series; empty = none).
+  List<PlannedAlert> series = const [];
+
+  @override
+  Future<void> scheduleSeries(List<PlannedAlert> alerts) async {
+    series = List.of(alerts);
+    log.add('series:${alerts.length}');
+  }
+
+  @override
+  Future<void> cancelSeries() async {
+    series = const [];
+    log.add('cancelSeries');
+  }
 }

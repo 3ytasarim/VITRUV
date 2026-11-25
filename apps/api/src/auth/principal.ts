@@ -1,4 +1,9 @@
-import { roleHasPermission, type Permission, type UserRole } from '@vitruv/shared';
+import {
+  roleHasPermission,
+  type AuthClientType,
+  type Permission,
+  type UserRole,
+} from '@vitruv/shared';
 import { createMiddleware } from 'hono/factory';
 import type { AppEnv } from '../types';
 import { AppError } from '../lib/errors';
@@ -15,6 +20,8 @@ export interface Principal {
   role: UserRole;
   /** The verified session (absent for the development adapter). */
   sessionId?: string;
+  /** Sprint 8B: WEB or MOBILE session (absent for the development adapter / older fixtures). */
+  clientType?: AuthClientType | null;
 }
 
 /** Guards a route by permission. Without an authenticated principal the request is rejected. */

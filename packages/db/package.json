@@ -16,7 +16,8 @@
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "test:integration": "vitest run -c vitest.integration.config.ts"
+    "test:integration": "vitest run -c vitest.integration.config.ts",
+    "test:pg": "vitest run -c vitest.pg.config.ts"
   },
   "dependencies": {
     "@vitruv/shared": "workspace:*",

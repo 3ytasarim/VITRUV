@@ -22,7 +22,10 @@ export function MediaThumb({
   asset,
   className,
 }: {
-  asset: Pick<AdminMediaAsset, 'kind' | 'url' | 'mimeType' | 'width' | 'height'> | undefined;
+  asset:
+    | (Pick<AdminMediaAsset, 'kind' | 'url' | 'mimeType' | 'width' | 'height'> &
+        Partial<Pick<AdminMediaAsset, 'visibility'>>)
+    | undefined;
   className?: string;
 }) {
   if (!asset) {
@@ -36,6 +39,20 @@ export function MediaThumb({
     );
   }
   if (asset.kind === 'VIDEO') return <LazyVideoThumb url={asset.url} className={className} />;
+  // Sprint 8A: a PRIVATE training image has a signed, personal, short-lived URL — never through
+  // the shared image optimiser (it would cache the file under that URL beyond its expiry).
+  if (asset.visibility === 'PRIVATE') {
+    return (
+      <img
+        src={asset.url}
+        alt=""
+        className={cx('vt-thumb', className)}
+        loading="lazy"
+        decoding="async"
+        referrerPolicy="no-referrer"
+      />
+    );
+  }
   const ratio = asset.width && asset.height ? asset.height / asset.width : 0.75;
   const { props } = getImageProps({
     src: asset.url,

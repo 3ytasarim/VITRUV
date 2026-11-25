@@ -7,7 +7,7 @@ import {
   sessionCookieWrites,
   type CookieWrite,
 } from '@/lib/auth/cookies';
-import { buildCsp, mediaOrigins } from '@/lib/csp';
+import { buildCsp, mediaOrigins, privateMediaOrigins } from '@/lib/csp';
 
 /**
  * Runs before every page request:
@@ -45,7 +45,21 @@ export async function proxy(request: NextRequest) {
   const credentialPage = pathname === '/login' || pathname === '/aktivieren';
   if (!SAFE_METHODS.has(request.method) && (protectedPath || credentialPage)) {
     const origin = request.headers.get('origin');
-    if (!origin || origin !== siteOrigin()) {
+    const expected = siteOrigin();
+    if (!origin || origin !== expected) {
+      // Diagnosis only (origins are not secrets): the usual production cause is an admin opened on
+      // another host/scheme than PUBLIC_SITE_URL (www vs apex, http vs https, server IP) or a
+      // missing PUBLIC_SITE_URL at runtime (→ localhost default). The check itself stays strict.
+      console.warn(
+        JSON.stringify({
+          event: 'csrf_origin_rejected',
+          method: request.method,
+          path: pathname,
+          origin: origin ?? null,
+          expected,
+          host: request.headers.get('host'),
+        }),
+      );
       return new NextResponse('Forbidden: invalid request origin.', {
         status: 403,
         headers: { 'Cache-Control': 'no-store' },
@@ -91,7 +105,7 @@ export async function proxy(request: NextRequest) {
   const csp = buildCsp({
     nonce,
     dev: process.env.NODE_ENV === 'development',
-    media: mediaOrigins(process.env),
+    media: [...new Set([...mediaOrigins(process.env), ...privateMediaOrigins(process.env)])],
     upgradeInsecure: (process.env.PUBLIC_SITE_URL ?? '').startsWith('https://'),
   });
   const requestHeaders = new Headers(request.headers);

@@ -1,3 +1,4 @@
+import { APP_COMPATIBILITY_STATUSES, APP_PLATFORMS } from '@vitruv/shared';
 import { z } from 'zod';
 
 /** GET /health — process liveness. Never touches the database. */
@@ -26,3 +27,16 @@ export const dbHealthResponseSchema = z.discriminatedUnion('status', [
   }),
 ]);
 export type DbHealthResponse = z.infer<typeof dbHealthResponseSchema>;
+
+/**
+ * Sprint 8B — GET /v1/app/compatibility (public, no auth). Reads X-Vitruv-App-Version and
+ * X-Vitruv-App-Platform. `updateUrl` is the configured store link (https) or null.
+ */
+export const appCompatibilitySchema = z.object({
+  status: z.enum(APP_COMPATIBILITY_STATUSES),
+  platform: z.enum(APP_PLATFORMS).nullable(),
+  version: z.string().nullable(),
+  minimumVersion: z.string().nullable(),
+  updateUrl: z.url().nullable(),
+});
+export type AppCompatibility = z.infer<typeof appCompatibilitySchema>;

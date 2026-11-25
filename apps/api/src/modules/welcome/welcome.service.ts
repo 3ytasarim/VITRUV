@@ -43,14 +43,17 @@ async function load(deps: WelcomeDeps): Promise<AdminWelcome> {
       name: category.name,
       videos: videos
         .filter(({ video }) => video.categoryId === category.id)
-        .map(({ video, asset }) => ({
+        // A PRIVATE video that can not be signed for this viewer is left out (fail closed).
+        .map(({ video, asset }) => ({ video, asset, url: deps.urls.assetUrl(asset) }))
+        .filter((entry): entry is typeof entry & { url: string } => entry.url !== null)
+        .map(({ video, asset, url }) => ({
           id: video.id,
           categoryId: video.categoryId,
           title: video.title,
           description: video.description,
           video: {
             assetId: asset.id,
-            url: deps.urls.publicUrl(asset.storageKey),
+            url,
             mimeType: asset.mimeType,
             durationMs: asset.durationMs ?? null,
             fileName: asset.fileName,
@@ -182,14 +185,14 @@ async function requireCategory(db: DbExecutor, categoryId: string) {
   }
 }
 
-/** Only videos of the training media library (public demonstration content). */
+/** Only videos of the training media library (public, or private + signed — Sprint 8A). */
 async function requireWelcomeVideo(db: DbExecutor, assetId: string) {
   const [asset] = await db
-    .select({ kind: mediaAssets.kind, visibility: mediaAssets.visibility })
+    .select({ kind: mediaAssets.kind })
     .from(mediaAssets)
     .where(and(eq(mediaAssets.id, assetId), eq(mediaAssets.purpose, 'TRAINING_VIDEO')))
     .limit(1);
-  if (!asset || asset.kind !== 'VIDEO' || asset.visibility !== 'PUBLIC') {
+  if (!asset || asset.kind !== 'VIDEO') {
     throw AppError.validation([
       { path: 'mediaAssetId', message: 'Bitte ein Video aus der Trainings-Mediathek wählen.' },
     ]);

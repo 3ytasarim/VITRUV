@@ -437,3 +437,42 @@ describe('admin navigation', () => {
     expect(minimal).toContain('href="/admin/konto"');
   });
 });
+
+describe('media thumbnails (Sprint 8A)', () => {
+  const signed =
+    'https://api.vitruv.example/v1/media/training/00000000-0000-4000-8000-000000000001?u=x&e=1&s=y';
+  it('a PRIVATE training image uses its signed URL directly, never the shared optimiser', async () => {
+    const { MediaThumb } = await import('./media/media-thumb');
+    const markup = html(
+      <MediaThumb
+        asset={{
+          kind: 'IMAGE',
+          url: signed,
+          mimeType: 'image/png',
+          width: 10,
+          height: 10,
+          visibility: 'PRIVATE',
+        }}
+      />,
+    );
+    expect(markup).toContain('src="https://api.vitruv.example/v1/media/training/');
+    expect(markup).not.toContain('/_next/image');
+    expect(markup).toContain('no-referrer');
+  });
+  it('PUBLIC images keep the optimised preview', async () => {
+    const { MediaThumb } = await import('./media/media-thumb');
+    const markup = html(
+      <MediaThumb
+        asset={{
+          kind: 'IMAGE',
+          url: 'http://localhost:4000/media/public/x.png',
+          mimeType: 'image/png',
+          width: 10,
+          height: 10,
+          visibility: 'PUBLIC',
+        }}
+      />,
+    );
+    expect(markup).toContain('/_next/image');
+  });
+});

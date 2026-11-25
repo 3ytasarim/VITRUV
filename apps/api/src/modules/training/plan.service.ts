@@ -6,6 +6,7 @@ import { AppError } from '../../lib/errors';
 import { recordEvent } from '../auth/auth.service';
 import { clientAccessible } from '../management/management.service';
 import type { TrainingDeps } from './exercises.service';
+import { exerciseMediaDto } from './row-media';
 
 /**
  * Client training plan (owner requests 2026-10-19 … 2026-10-21): ONE plan per client with a
@@ -69,15 +70,7 @@ async function readPlan(deps: TrainingDeps, clientId: string): Promise<ClientPla
         captureType: exercise.captureType,
         standard: exercise.standard,
         usage: exercise.usage,
-        media:
-          asset && (asset.kind === 'IMAGE' || asset.kind === 'VIDEO')
-            ? {
-                assetId: asset.id,
-                kind: asset.kind,
-                url: deps.urls.publicUrl(asset.storageKey),
-                fileName: asset.fileName,
-              }
-            : null,
+        media: exerciseMediaDto(deps.urls, asset),
       },
     })),
     updatedAt: updated ? updated.toISOString() : null,

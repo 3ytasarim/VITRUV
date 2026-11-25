@@ -265,9 +265,9 @@ describe.skipIf(!databaseUrl)(
           .from(schema.workoutSessionExercises)
           .where(eq(schema.workoutSessionExercises.id, running.id));
         expect(dbRow).toMatchObject({ sets: 4, reps: 12, restSeconds: 60 });
-        // 6: complete
-        const done = await t.call('POST', `${W}/${session.id}/complete`, client.token);
-        expect(done.status).toBe(200);
+        // 6: abandon (Sprint 5: only a COMPLETED day is locked; an abandoned one starts again)
+        const stopped = await t.call('POST', `${W}/${session.id}/abandon`, client.token);
+        expect(stopped.status).toBe(200);
         // 7: a new session uses 5 × 8, rest 90 (and the new name)
         const later = await t.start(client.token, day.id);
         expect(later.resumed).toBe(false);
@@ -275,11 +275,27 @@ describe.skipIf(!databaseUrl)(
         expect(next.target).toMatchObject({ sets: 5, reps: 8, restSeconds: 90 });
         expect(next.sets.map((x) => x.targetReps)).toEqual([8, 8, 8, 8, 8]);
         expect(next.name).toMatch(/^Umbenannt/);
-        // the completed one stays 4 × 12 forever
+        // the earlier one stays 4 × 12 forever
         const history = workoutSessionSchema.parse(
           (await t.call('GET', `${W}/${session.id}`, client.token)).body,
         );
         expect(byMode(history, 'SETS_REPS').target).toMatchObject({ sets: 4, reps: 12 });
+        // 8: complete → the day is locked: no third session, the client is pointed to the result
+        const done = await t.call('POST', `${W}/${later.session.id}/complete`, client.token);
+        expect(done.status).toBe(200);
+        const again = await t.call('POST', W, client.token, { trainingDayId: day.id });
+        expect(again.status).toBe(409);
+        expect(again.body).toMatchObject({
+          error: {
+            code: 'WORKOUT_ALREADY_COMPLETED',
+            details: [{ path: 'sessionId', message: later.session.id }],
+          },
+        });
+        const rows = await tx
+          .select({ id: schema.workoutSessions.id })
+          .from(schema.workoutSessions)
+          .where(eq(schema.workoutSessions.clientUserId, client.id));
+        expect(rows).toHaveLength(2);
       });
     });
 

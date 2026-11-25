@@ -17,6 +17,19 @@ export function mediaOrigins(env: Record<string, string | undefined>): string[] 
     .map((value) => new URL(value).origin);
 }
 
+/**
+ * Sprint 8A — origins of PRIVATE training media (signed URLs): the public API origin that signs
+ * them and, with the S3 driver, the private bucket endpoint the API redirects to (CSP also applies
+ * to redirect targets). Only images/videos; never scripts. Empty by default (no private media).
+ */
+export function privateMediaOrigins(env: Record<string, string | undefined>): string[] {
+  return (env.PRIVATE_MEDIA_ORIGINS ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => new URL(value).origin);
+}
+
 export function buildCsp(options: {
   nonce: string;
   dev: boolean;

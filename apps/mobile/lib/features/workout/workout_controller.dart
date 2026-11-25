@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../api/providers.dart';
 import '../../auth/auth_state.dart';
 import '../../core/errors/app_failure.dart';
+import '../progress/history_models.dart';
 import 'workout_api.dart';
 import 'workout_models.dart';
 
@@ -26,6 +28,11 @@ final class Started extends StartResult {
 /// Another day's workout is still running (server rule: one current workout per client).
 final class OtherWorkoutRunning extends StartResult {
   const OtherWorkoutRunning();
+}
+
+/// The day was already completed (server rule since Sprint 5) — it is not started again.
+final class AlreadyCompleted extends StartResult {
+  const AlreadyCompleted();
 }
 
 final class StartFailed extends StartResult {
@@ -82,6 +89,9 @@ class WorkoutController extends AsyncNotifier<WorkoutSession?> {
         unawaited(reload());
         return const OtherWorkoutRunning();
       }
+      if (failure.code == 'WORKOUT_ALREADY_COMPLETED') {
+        return const AlreadyCompleted();
+      }
       return StartFailed(failure);
     } on Object catch (failure) {
       return StartFailed(failure);
@@ -92,13 +102,16 @@ class WorkoutController extends AsyncNotifier<WorkoutSession?> {
   Future<AppFailure?> toggleSet(
     String exerciseId,
     int setNumber,
-    bool completed,
-  ) => _mutate(
+    bool completed, {
+    int? actualReps,
+  }) => _mutate(
     exerciseId,
     optimistic: (e) {
       final sets = [
         for (final s in e.sets)
-          s.setNumber == setNumber ? s.copyWith(completed: completed) : s,
+          s.setNumber == setNumber
+              ? s.copyWith(completed: completed, actualReps: actualReps)
+              : s,
       ];
       final done = sets.where((s) => s.completed).length;
       final status = done == sets.length
@@ -108,8 +121,13 @@ class WorkoutController extends AsyncNotifier<WorkoutSession?> {
                 : ExerciseStatus.pending);
       return e.copyWith(sets: sets, status: status);
     },
-    send: (session) =>
-        _api.updateSet(session, exerciseId, setNumber, completed: completed),
+    send: (session) => _api.updateSet(
+      session,
+      exerciseId,
+      setNumber,
+      completed: completed,
+      actualReps: actualReps,
+    ),
   );
 
   Future<AppFailure?> setStatus(
@@ -132,6 +150,77 @@ class WorkoutController extends AsyncNotifier<WorkoutSession?> {
       actualDurationSeconds: actualDurationSeconds,
     ),
   );
+
+  /// Total reps: records one set. NOT optimistic — the set (and the automatic rest that follows
+  /// it) only counts once the server stored it. A retry must reuse the same [clientSetId]: the
+  /// server then returns the stored set instead of a second one.
+  Future<({RecordedSet? recorded, AppFailure? failure})> recordTotalSet(
+    String exerciseId, {
+    required String clientSetId,
+    required int actualReps,
+  }) => _confirmedWrite(
+    exerciseId,
+    (sessionId) => _api.recordSet(
+      sessionId,
+      exerciseId,
+      clientSetId: clientSetId,
+      actualReps: actualReps,
+    ),
+    (r) => (exercise: r.exercise, progress: r.progress),
+  ).then((r) => (recorded: r.value, failure: r.failure));
+
+  /// Core: one finished round (its row: completed + seconds trained). NOT optimistic — a round
+  /// is shown as saved only after the server stored it. Repeating it is harmless (the server
+  /// keeps the first record).
+  Future<AppFailure?> completeRound(
+    String exerciseId,
+    int round, {
+    required int seconds,
+  }) => _confirmedWrite(
+    exerciseId,
+    (sessionId) => _api.updateSet(
+      sessionId,
+      exerciseId,
+      round,
+      completed: true,
+      actualDurationSeconds: seconds,
+    ),
+    (r) => r,
+  ).then((r) => r.failure);
+
+  /// Runs [send] after the pending mutations and applies the server answer (no optimistic step).
+  Future<({T? value, AppFailure? failure})> _confirmedWrite<T>(
+    String exerciseId,
+    Future<T> Function(String sessionId) send,
+    ({WorkoutExercise exercise, WorkoutProgress progress}) Function(T value)
+    applied,
+  ) {
+    final session = state.value;
+    if (session == null || session.indexOf(exerciseId) < 0) {
+      return Future.value((value: null, failure: const UnknownFailure()));
+    }
+    final completer = Completer<({T? value, AppFailure? failure})>();
+    _queue = _queue.then((_) async {
+      try {
+        final value = await send(session.id);
+        final result = applied(value);
+        _confirmed[exerciseId] = result.exercise;
+        final current = state.value;
+        if (current != null && current.id == session.id) {
+          state = AsyncData(
+            current.withExercise(result.exercise, result.progress),
+          );
+        }
+        completer.complete((value: value, failure: null));
+      } on Object catch (error) {
+        completer.complete((
+          value: null,
+          failure: error is AppFailure ? error : UnknownFailure(error),
+        ));
+      }
+    });
+    return completer.future;
+  }
 
   Future<AppFailure?> _mutate(
     String exerciseId, {
@@ -222,7 +311,101 @@ final lastWorkoutSummaryProvider =
       LastWorkoutSummary.new,
     );
 
-final workoutHistoryProvider = FutureProvider<List<WorkoutSummary>>((ref) {
-  ref.watch(signedInUserIdProvider);
-  return ref.watch(workoutApiProvider).history();
-}, retry: (retryCount, error) => null);
+/// One finished (or abandoned) session with its recorded sets — history detail.
+final workoutDetailProvider = FutureProvider.autoDispose
+    .family<WorkoutSession, String>((ref, sessionId) {
+      ref.watch(signedInUserIdProvider);
+      return ref.watch(workoutApiProvider).get(sessionId);
+    }, retry: (retryCount, error) => null);
+
+/// The loaded part of the history (Sprint 7: page by page, newest first).
+@immutable
+class HistoryState {
+  const HistoryState({
+    required this.items,
+    required this.nextCursor,
+    this.loadingMore = false,
+    this.loadMoreFailed = false,
+  });
+
+  final List<WorkoutSummary> items;
+  final String? nextCursor;
+  final bool loadingMore;
+  final bool loadMoreFailed;
+
+  bool get hasMore => nextCursor != null;
+
+  HistoryState copyWith({
+    List<WorkoutSummary>? items,
+    String? nextCursor,
+    bool? loadingMore,
+    bool? loadMoreFailed,
+    bool clearCursor = false,
+  }) => HistoryState(
+    items: items ?? this.items,
+    nextCursor: clearCursor ? null : (nextCursor ?? this.nextCursor),
+    loadingMore: loadingMore ?? this.loadingMore,
+    loadMoreFailed: loadMoreFailed ?? this.loadMoreFailed,
+  );
+}
+
+/// History: first page on build (pull-to-refresh / app resume = invalidate → page 1 again),
+/// `loadMore` appends the next page. A failed "load more" keeps every loaded entry and shows a
+/// retry — nothing is invented and nothing already shown disappears.
+class WorkoutHistory extends AsyncNotifier<HistoryState> {
+  static const pageSize = 20;
+
+  @override
+  Future<HistoryState> build() async {
+    ref.watch(signedInUserIdProvider);
+    final page = await ref.watch(workoutApiProvider).history(limit: pageSize);
+    return HistoryState(items: page.items, nextCursor: page.nextCursor);
+  }
+
+  Future<void> loadMore() async {
+    final current = state.value;
+    if (current == null || !current.hasMore || current.loadingMore) return;
+    state = AsyncData(
+      current.copyWith(loadingMore: true, loadMoreFailed: false),
+    );
+    try {
+      final page = await ref
+          .read(workoutApiProvider)
+          .history(limit: pageSize, cursor: current.nextCursor);
+      final known = {for (final item in current.items) item.id};
+      state = AsyncData(
+        HistoryState(
+          items: [
+            ...current.items,
+            ...page.items.where((item) => !known.contains(item.id)),
+          ],
+          nextCursor: page.nextCursor,
+        ),
+      );
+    } on Object {
+      state = AsyncData(
+        current.copyWith(loadingMore: false, loadMoreFailed: true),
+      );
+    }
+  }
+}
+
+final workoutHistoryProvider =
+    AsyncNotifierProvider<WorkoutHistory, HistoryState>(
+      WorkoutHistory.new,
+      retry: (retryCount, error) => null,
+    );
+
+/// Sprint 7: "previous vs current" of one session.
+final workoutComparisonProvider = FutureProvider.autoDispose
+    .family<WorkoutComparison, String>((ref, sessionId) {
+      ref.watch(signedInUserIdProvider);
+      return ref.watch(workoutApiProvider).comparison(sessionId);
+    }, retry: (retryCount, error) => null);
+
+/// Sprint 7: progress series of one exercise (chart).
+final exerciseProgressProvider = FutureProvider.autoDispose
+    .family<ExerciseProgress, String>((ref, exerciseId) {
+      ref.watch(signedInUserIdProvider);
+      return ref.watch(workoutApiProvider).exerciseProgress(exerciseId);
+    }, retry: (retryCount, error) => null);

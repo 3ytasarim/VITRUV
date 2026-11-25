@@ -1,6 +1,15 @@
 import '../../api/api_client.dart';
 import '../../core/json/json_reader.dart';
+import '../progress/history_models.dart';
 import 'workout_models.dart';
+
+typedef RecordedSet = ({
+  WorkoutExercise exercise,
+  WorkoutProgress progress,
+  int setNumber,
+  bool created,
+  int? restSeconds,
+});
 
 /// `/v1/client/workouts` — the signed-in client's own workouts (self context).
 class WorkoutApi {
@@ -46,9 +55,65 @@ class WorkoutApi {
     String exerciseId,
     int setNumber, {
     required bool completed,
+    int? actualReps,
+    int? actualDurationSeconds,
   }) => _update('$_base/$sessionId/exercises/$exerciseId/sets/$setNumber', {
     'completed': completed,
+    'actualReps': ?actualReps,
+    'actualDurationSeconds': ?actualDurationSeconds,
   });
+
+  /// Total reps: appends one set (`POST …/sets`). Idempotent per [clientSetId] — a retry with the
+  /// same id returns the stored set (`created: false`) and the rest that belonged to it.
+  /// `restSeconds` is null once the total is reached (no rest after the last set).
+  Future<RecordedSet> recordSet(
+    String sessionId,
+    String exerciseId, {
+    required String clientSetId,
+    required int actualReps,
+  }) async {
+    final json = JsonReader(
+      await _client.sendJson(
+        'POST',
+        '$_base/$sessionId/exercises/$exerciseId/sets',
+        {'clientSetId': clientSetId, 'actualReps': actualReps},
+      ),
+    );
+    return (
+      exercise: WorkoutExercise.fromJson(json.object('exercise')),
+      progress: WorkoutProgress.fromJson(json.object('progress')),
+      setNumber: json.object('set').integer('setNumber'),
+      created: json.boolean('created'),
+      restSeconds: json.intOrNull('restSeconds'),
+    );
+  }
+
+  /// One of the client's own sessions with all exercises and recorded sets (history detail).
+  /// The API answers the session itself (workoutSessionSchema); Sprint 7 fix: the app expected a
+  /// `session` wrapper here — both shapes are read.
+  Future<WorkoutSession> get(String sessionId) async {
+    final json = JsonReader(await _client.getJson('$_base/$sessionId'));
+    return WorkoutSession.fromJson(json.objectOrNull('session') ?? json);
+  }
+
+  /// Sprint 7: every exercise of the session next to its previous comparable result.
+  Future<WorkoutComparison> comparison(String sessionId) async =>
+      WorkoutComparison.fromJson(
+        JsonReader(await _client.getJson('$_base/$sessionId/comparison')),
+      );
+
+  /// Sprint 7: the progress series of one exercise (completed sessions only).
+  Future<ExerciseProgress> exerciseProgress(
+    String exerciseId, {
+    int limit = 12,
+  }) async => ExerciseProgress.fromJson(
+    JsonReader(
+      await _client.getJson(
+        '$_base/progress/exercises/$exerciseId',
+        query: {'limit': limit},
+      ),
+    ),
+  );
 
   Future<WorkoutSummary> complete(String sessionId) =>
       _finish(sessionId, 'complete');
@@ -56,9 +121,16 @@ class WorkoutApi {
   Future<WorkoutSummary> abandon(String sessionId) =>
       _finish(sessionId, 'abandon');
 
-  Future<List<WorkoutSummary>> history({int limit = 30}) async =>
-      JsonReader(await _client.getJson(_base, query: {'limit': limit}))
-          .list('items', WorkoutSummary.fromJson);
+  /// One history page, newest first (Sprint 7: cursor pagination).
+  Future<HistoryPage> history({int limit = 20, String? cursor}) async =>
+      HistoryPage.fromJson(
+        JsonReader(
+          await _client.getJson(
+            _base,
+            query: {'limit': limit, 'cursor': ?cursor},
+          ),
+        ),
+      );
 
   Future<({WorkoutExercise exercise, WorkoutProgress progress})> _update(
     String path,

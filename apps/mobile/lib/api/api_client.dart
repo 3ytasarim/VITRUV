@@ -1,6 +1,16 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
+import '../core/config/app_version.dart';
 import '../core/errors/app_failure.dart';
+
+/// Training capability level this app supports (mirrors `TRAINING_CAPABILITY_LEVEL` in
+/// packages/shared/src/workout.ts): 2 = Warm-up checklist (CHECKLIST) on one page, extended
+/// execution types tolerated (unknown modes fall back to "mark done"). Core interval timer and
+/// MAX entry come in later sprints — the server flag TRAINING_EXTENDED_TYPES stays off until the
+/// minimum app version is enforced (Sprint 8).
+const kTrainingCapabilityLevel = 2;
+const kCapabilityHeader = 'X-Vitruv-App-Capability';
 
 /// Thin wrapper around Dio for the shared VITRUV API.
 ///
@@ -16,13 +26,23 @@ class ApiClient {
   factory ApiClient.create(Uri baseUrl) => ApiClient(createDio(baseUrl));
 
   /// The base Dio configuration shared by the plain and the authenticated client.
-  static Dio createDio(Uri baseUrl) => Dio(
+  static Dio createDio(Uri baseUrl, {TargetPlatform? platform}) => Dio(
     BaseOptions(
       baseUrl: baseUrl.toString(),
       connectTimeout: const Duration(seconds: 8),
       receiveTimeout: const Duration(seconds: 15),
       sendTimeout: const Duration(seconds: 15),
-      headers: {'Accept': 'application/json'},
+      headers: {
+        'Accept': 'application/json',
+        // Training capability of this build (see [kTrainingCapabilityLevel]). Informational for
+        // the API — it never unlocks a feature by itself (the server flag decides).
+        kCapabilityHeader: '$kTrainingCapabilityLevel',
+        // Sprint 8B: version + platform for the server's minimum-version policy.
+        kAppVersionHeader: kAppVersion,
+        kAppPlatformHeader: ?appPlatformHeaderValue(
+          platform ?? defaultTargetPlatform,
+        ),
+      },
       responseType: ResponseType.json,
     ),
   );

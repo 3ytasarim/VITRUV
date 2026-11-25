@@ -191,7 +191,9 @@ describe('client training tab', () => {
       '/v1/admin/training/exercises': () => reply(200, { items: [] }),
     });
     const { default: Page } = await import('./(shell)/kunden/[id]/training/page');
-    const markup = await html(Page({ params: Promise.resolve({ id: uuid(900) }) }));
+    const markup = await html(
+      Page({ params: Promise.resolve({ id: uuid(900) }), searchParams: Promise.resolve({}) }),
+    );
     expect(markup).toContain('Trainingsplan');
     expect(markup).toContain('Übungsbibliothek');
     expect(markup).toContain('UK-01');
@@ -243,7 +245,9 @@ describe('client training tab', () => {
         reply(200, { startsOn: null, endsOn: null, items: [], updatedAt: null }),
     });
     const { default: Page } = await import('./(shell)/kunden/[id]/training/page');
-    const markup = await html(Page({ params: Promise.resolve({ id: uuid(900) }) }));
+    const markup = await html(
+      Page({ params: Promise.resolve({ id: uuid(900) }), searchParams: Promise.resolve({}) }),
+    );
     expect(markup).toContain('Trainingsverlauf');
     expect(markup).toContain('Woche 1 · Tag 2 · Oberkörper A');
     expect(markup).toContain('Läuft');
@@ -257,9 +261,9 @@ describe('client training tab', () => {
   it('a client outside the coach scope is a 404 page (API 404)', async () => {
     routes({});
     const { default: Page } = await import('./(shell)/kunden/[id]/training/page');
-    await expect(html(Page({ params: Promise.resolve({ id: uuid(901) }) }))).rejects.toThrow(
-      'NOT_FOUND',
-    );
+    await expect(
+      html(Page({ params: Promise.resolve({ id: uuid(901) }), searchParams: Promise.resolve({}) })),
+    ).rejects.toThrow('NOT_FOUND');
   });
 });
 

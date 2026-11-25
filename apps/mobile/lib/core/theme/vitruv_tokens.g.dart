@@ -123,6 +123,12 @@ abstract final class VitruvColors {
   );
 }
 
+/// App-only brand accents (same values as the website palette).
+abstract final class VitruvBrandColors {
+  static const sparkDark = Color(0xFFFC734D);
+  static const sparkLight = Color(0xFFB5401F);
+}
+
 abstract final class VitruvFonts {
   static const heading = 'Chakra Petch';
   static const label = 'Barlow Condensed';
@@ -239,6 +245,26 @@ abstract final class VitruvType {
     maxSize: 12.0,
     height: 1.0,
     letterSpacingEm: 0.2,
+  );
+  static const timer = VitruvTextRole(
+    fontFamily: VitruvFonts.heading,
+    fontWeight: FontWeight.w700,
+    italic: false,
+    uppercase: false,
+    minSize: 72.0,
+    maxSize: 96.0,
+    height: 1.0,
+    letterSpacingEm: 0.02,
+  );
+  static const timerCompact = VitruvTextRole(
+    fontFamily: VitruvFonts.heading,
+    fontWeight: FontWeight.w700,
+    italic: false,
+    uppercase: false,
+    minSize: 40.0,
+    maxSize: 48.0,
+    height: 1.0,
+    letterSpacingEm: 0.02,
   );
   static const fluidMinViewport = 360.0;
   static const fluidMaxViewport = 1440.0;

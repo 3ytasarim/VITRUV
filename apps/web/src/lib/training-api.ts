@@ -12,6 +12,19 @@ import {
   clientTrainingProgramSchema,
   workoutSessionSchema,
   workoutSessionSummaryListSchema,
+  workoutComparisonSchema,
+  exerciseProgressSchema,
+  assignTemplateResponseSchema,
+  clientTrainingWeekSchema,
+  clientWorkoutSchema,
+  trainingCapabilitiesSchema,
+  workoutTemplateListSchema,
+  workoutTemplateSchema,
+  type AssignTemplateRequest,
+  type CreateTemplateRequest,
+  type TemplateListQuery,
+  type UpdateClientWorkoutRequest,
+  type UpdateTemplateRequest,
   type CreateExerciseRequest,
   type CreateProgramRequest,
   type ExerciseListQuery,
@@ -76,8 +89,24 @@ export const trainingApi = {
     adminFetch(`${T}/clients/${clientId}/programs`, adminProgramListSchema),
   program: (id: string) => adminFetch(`${T}/programs/${id}`, adminProgramSchema),
   /** Read-only workout summaries of a client (newest first). */
-  workouts: (clientId: string, limit = 20) =>
-    adminFetch(`${T}/clients/${clientId}/workouts?limit=${limit}`, workoutSessionSummaryListSchema),
+  /** Newest first; `cursor` = `nextCursor` of the previous page (Sprint 7). */
+  workouts: (clientId: string, limit = 20, cursor?: string) =>
+    adminFetch(
+      `${T}/clients/${clientId}/workouts?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
+      workoutSessionSummaryListSchema,
+    ),
+  /** Sprint 7: each exercise of a session vs. the previous comparable completed workout. */
+  workoutComparison: (clientId: string, sessionId: string) =>
+    adminFetch(
+      `${T}/clients/${clientId}/workouts/${sessionId}/comparison`,
+      workoutComparisonSchema,
+    ),
+  /** Sprint 7: recorded values of one exercise over the client's completed workouts. */
+  exerciseProgress: (clientId: string, exerciseId: string, limit = 12) =>
+    adminFetch(
+      `${T}/clients/${clientId}/workouts/progress/exercises/${exerciseId}?limit=${limit}`,
+      exerciseProgressSchema,
+    ),
   /** One session in full, incl. the client's notes per exercise (read-only). */
   workout: (clientId: string, sessionId: string) =>
     adminFetch(`${T}/clients/${clientId}/workouts/${sessionId}`, workoutSessionSchema),
@@ -92,4 +121,39 @@ export const trainingApi = {
   /** Any structure mutation — the API answers with the complete program tree. */
   structure: (method: 'POST' | 'PATCH' | 'DELETE', path: string, body?: unknown) =>
     adminFetch(`${T}${path}`, adminProgramSchema, { method, body }),
+
+  // ---- Sprint 3: Workout-Bibliothek (owner-scoped templates), copies and Trainingswoche
+  capabilities: () => adminFetch(`${T}/capabilities`, trainingCapabilitiesSchema),
+  templates: (query: TemplateListQuery = {}) => {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) {
+      if (value !== undefined && value !== '') params.set(key, String(value));
+    }
+    const qs = params.toString();
+    return adminFetch(`${T}/templates${qs ? `?${qs}` : ''}`, workoutTemplateListSchema);
+  },
+  template: (id: string) => adminFetch(`${T}/templates/${id}`, workoutTemplateSchema),
+  createTemplate: (body: CreateTemplateRequest) =>
+    adminFetch(`${T}/templates`, workoutTemplateSchema, { method: 'POST', body }),
+  updateTemplate: (id: string, body: UpdateTemplateRequest) =>
+    adminFetch(`${T}/templates/${id}`, workoutTemplateSchema, { method: 'PUT', body }),
+  duplicateTemplate: (id: string) =>
+    adminFetch(`${T}/templates/${id}/duplicate`, workoutTemplateSchema, { method: 'POST' }),
+  setTemplateArchived: (id: string, archived: boolean) =>
+    adminFetch(`${T}/templates/${id}/${archived ? 'archive' : 'restore'}`, workoutTemplateSchema, {
+      method: 'POST',
+    }),
+  assignTemplate: (id: string, body: AssignTemplateRequest) =>
+    adminFetch(`${T}/templates/${id}/assign`, assignTemplateResponseSchema, {
+      method: 'POST',
+      body,
+    }),
+  clientWeek: (clientId: string, date?: string) =>
+    adminFetch(
+      `${T}/clients/${clientId}/week${date ? `?date=${date}` : ''}`,
+      clientTrainingWeekSchema,
+    ),
+  clientWorkout: (dayId: string) => adminFetch(`${T}/days/${dayId}/workout`, clientWorkoutSchema),
+  saveClientWorkout: (dayId: string, body: UpdateClientWorkoutRequest) =>
+    adminFetch(`${T}/days/${dayId}/workout`, clientWorkoutSchema, { method: 'PUT', body }),
 };

@@ -1,4 +1,7 @@
 import type {
+  TrainingExecutionType,
+  WorkoutDayStatus,
+  WorkoutTemplateCategory,
   TrainingProgramStatus,
   TrainingSectionType,
   WorkoutSessionStatus,
@@ -96,4 +99,45 @@ export function prescriptionSummary(p: PrescriptionLike): string {
   if (p.targetWeight !== null) parts.push(`${formatWeight(p.targetWeight)} kg`);
   if (p.restSeconds !== null) parts.push(`Pause ${formatClock(p.restSeconds)}`);
   return parts.join(' · ');
+}
+
+/** Sprint 3 — Workout-Bibliothek "Typ" of a template. */
+export const TEMPLATE_CATEGORY_LABEL: Record<WorkoutTemplateCategory, string> = {
+  UPPER_BODY: 'Oberkörper',
+  LOWER_BODY: 'Unterkörper',
+  TOTAL_REPS: 'Gesamt-Wiederholungsziel',
+  CORE: 'Core-Routine',
+};
+
+/** How one exercise is performed (the editor shows only the fields of the chosen type). */
+export const EXECUTION_TYPE_LABEL: Record<TrainingExecutionType, string> = {
+  STRENGTH: 'Kraft (Sätze × Wdh.)',
+  TOTAL_REPS: 'Gesamtwiederholungen',
+  INTERVAL: 'Core-Intervall',
+  CHECKLIST: 'Warm-up (abhaken)',
+};
+
+export const DAY_STATUS_LABEL: Record<WorkoutDayStatus, string> = {
+  NOT_STARTED: 'Offen',
+  IN_PROGRESS: 'Läuft',
+  COMPLETED: 'Erledigt',
+};
+
+/** Short summary for one editor row, incl. MAX and the type-specific wording. */
+export function workoutExerciseSummary(
+  e: PrescriptionLike & { executionType: TrainingExecutionType | null; repsMax?: boolean },
+): string {
+  if (e.executionType === 'CHECKLIST') return e.prescriptionText ?? 'Abhaken';
+  if (e.executionType === 'INTERVAL') {
+    return `${e.sets ?? 5} Runden · ${e.durationSeconds ?? 40} s Arbeit / ${e.restSeconds ?? 20} s Pause`;
+  }
+  if (e.repsMax && e.sets) {
+    return [
+      `${e.sets} × MAX`,
+      e.restSeconds !== null ? `Pause ${formatClock(e.restSeconds)}` : null,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+  }
+  return prescriptionSummary(e);
 }

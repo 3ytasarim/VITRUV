@@ -37,8 +37,22 @@ import {
   NUTRITION_UPLOAD_PATH,
 } from './modules/nutrition/nutrition.routes';
 import type { MediaServiceDeps } from './modules/media/media.service';
+import {
+  runWithMediaViewer,
+  type TrainingMediaSigner,
+} from './modules/media/training-media-access';
+import {
+  adminTrainingMediaUrlRoutes,
+  clientTrainingMediaRoutes,
+  trainingMediaDeliveryRoutes,
+} from './modules/media/training-media.routes';
 import { adminWebsiteRoutes, publicWebsiteRoutes } from './modules/website/website.routes';
 import type { WebsiteServiceDeps } from './modules/website/website.service';
+import {
+  appCompatibilityRoutes,
+  requireSupportedApp,
+  type AppVersionDeps,
+} from './modules/app/app-version';
 import type { AppEnv } from './types';
 
 export interface AppDeps {
@@ -62,7 +76,14 @@ export interface AppDeps {
   nutritionMaxBytes?: number;
   /** Lifetime of signed URLs for private files (S3). */
   privateUrlTtlSeconds?: number;
+  /**
+   * Sprint 8A: signs/verifies private training media URLs. Absent (MEDIA_URL_SIGNING_KEY unset):
+   * private training media get no URL and the delivery route refuses every request.
+   */
+  trainingMediaSigner?: TrainingMediaSigner;
   leads: Omit<LeadServiceDeps, 'logger'>;
+  /** Sprint 8B: minimum mobile app version policy; absent = nothing enforced. */
+  appVersions?: AppVersionDeps;
 }
 
 /** The media upload routes have their own (larger) body limit. */
@@ -146,6 +167,24 @@ export function createApp(deps: AppDeps) {
   app.use('/v1/admin/*', authenticate(deps.auth));
   app.use('/v1/auth/*', authenticate(deps.auth));
   app.use('/v1/client/*', authenticate(deps.auth));
+  const appVersions = deps.appVersions ?? {
+    policy: { minimum: {}, legacy: 'allow' },
+    updateUrls: {},
+  };
+  app.use('/v1/client/*', requireSupportedApp(appVersions));
+  app.route('/v1/app/compatibility', appCompatibilityRoutes(appVersions));
+  // Sprint 8A: the viewer of this response — DTO builders sign private training media for them.
+  app.use('/v1/*', (c, next) => runWithMediaViewer(c.get('principal')?.userId ?? null, next));
+  const trainingMedia = {
+    db: deps.media.db,
+    storage: deps.media.storage,
+    urls: deps.media.urls,
+    logger: deps.logger,
+    signer: deps.trainingMediaSigner,
+  };
+  app.route('/v1/media/training', trainingMediaDeliveryRoutes(trainingMedia));
+  app.route('/v1/client/training/media', clientTrainingMediaRoutes(trainingMedia));
+  app.route('/v1/admin/training/media', adminTrainingMediaUrlRoutes(trainingMedia));
   app.route(
     '/v1/auth',
     authRoutes({ ...deps.sessions, logger: deps.logger, clientIp: deps.clientIp }),

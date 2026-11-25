@@ -44,6 +44,8 @@ dependencies:
   video_player: ^2.14.1
   pdfx: ^2.11.0
   path_provider: ^2.1.6
+  flutter_local_notifications: ^22.3.2
+  timezone: ^0.11.2
 
 dev_dependencies:
   flutter_test:
@@ -75,6 +77,9 @@ flutter:
     - assets/fonts/OFL-Barlow.txt
     - assets/fonts/OFL-BarlowCondensed.txt
     - assets/fonts/OFL-ChakraPetch.txt
+    # Owner logo (mark + VITRUV wordmark), byte-identical copy of
+    # apps/web/public/brand/vitruv-logo-v2.png — never redrawn or recoloured.
+    - assets/brand/vitruv-logo.png
 
   # VITRUV fonts (SIL OFL 1.1, from github.com/google/fonts). Must match `fontFaces` in
   # packages/design-tokens/src/tokens.ts — enforced by the design-token sync test.

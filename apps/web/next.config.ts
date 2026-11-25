@@ -17,6 +17,8 @@ const WEB_ENV_KEYS = [
   'REVALIDATE_SECRET',
   'CMS_MEDIA_ORIGINS',
   'CMS_MEDIA_ALLOW_LOCAL',
+  // Sprint 8A: API + private bucket origins of signed training media (CSP img/media-src only).
+  'PRIVATE_MEDIA_ORIGINS',
   // Same media upload limits as the API (non-secret).
   'MEDIA_MAX_IMAGE_BYTES',
   'MEDIA_MAX_VIDEO_BYTES',

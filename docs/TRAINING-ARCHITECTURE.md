@@ -213,3 +213,18 @@ client sees**, and saves the whole list.
 - PlanEditor: plan (period, rows with code, category, Standard · Erfassung, coach note) on the
   left, library on the right as a category accordion — drag one exercise or a whole category
   (already planned exercises are skipped), or use +. Portal groups the plan by category.
+
+## Workout-Bibliothek (iOS Training Sprint 3, 2026-11-22)
+
+- `workout_templates` (+ `category`: UPPER_BODY | LOWER_BODY | TOTAL_REPS | CORE) are owned by the
+  creating coach (ADMIN sees all; no studio-wide sharing). Permissions `training.templates.read` /
+  `training.templates.write`; assigning additionally needs `training.programs.update`.
+- "Teilnehmer zuweisen" copies a template into ONE `training_day` of the client's canonical program
+  (ACTIVE, else newest DRAFT, else a new DRAFT). The copy is independent: only
+  `source_template_id/version` remain as lineage. `assignment_request_id` (unique) makes it idempotent.
+- "Für Teilnehmer bearbeiten" (`PUT /days/:id/workout`) edits only that day; optimistic
+  concurrency via the program's `updatedAt`; sessions keep their snapshot.
+- The dated client plan (`client_plans`) stays separate and labelled ("Bisheriges Format"); it is
+  never converted silently.
+- New execution types (INTERVAL, CHECKLIST, MAX) are gated server-side by
+  `TRAINING_EXTENDED_TYPES` (default disabled). Details: `docs/ios-training-sprint3-*.md`.

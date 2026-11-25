@@ -9,11 +9,20 @@ import 'vitruv_tokens.g.dart';
 ///
 /// Dark is the production master (`Website Funktional Dunkel`); light is kept compatible only.
 abstract final class AppTheme {
-  static ThemeData dark() => _build(VitruvColors.dark, Brightness.dark);
+  static ThemeData dark() =>
+      _build(VitruvColors.dark, VitruvBrandColors.sparkDark, Brightness.dark);
 
-  static ThemeData light() => _build(VitruvColors.light, Brightness.light);
+  static ThemeData light() => _build(
+    VitruvColors.light,
+    VitruvBrandColors.sparkLight,
+    Brightness.light,
+  );
 
-  static ThemeData _build(VitruvColorScheme c, Brightness brightness) {
+  static ThemeData _build(
+    VitruvColorScheme c,
+    Color spark,
+    Brightness brightness,
+  ) {
     final scheme = ColorScheme(
       brightness: brightness,
       primary: c.accent,
@@ -37,8 +46,15 @@ abstract final class AppTheme {
 
     TextStyle role(VitruvTextRole r, Color color) => r.style(color: color);
 
+    // Timer numerals: tabular figures so a running countdown never jitters.
+    TextStyle timer(VitruvTextRole r) => r
+        .style(color: c.fg)
+        .copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
+
     final textTheme = TextTheme(
       displayLarge: role(VitruvType.display, c.fg),
+      displayMedium: timer(VitruvType.timer),
+      displaySmall: timer(VitruvType.timerCompact),
       headlineLarge: role(VitruvType.h1, c.fg),
       headlineMedium: role(VitruvType.h2, c.fg),
       headlineSmall: role(VitruvType.h3, c.fg),
@@ -154,6 +170,33 @@ abstract final class AppTheme {
           animationDuration: VitruvMotion.micro,
         ),
       ),
+      // Text inputs = the website's `.vt-input` (apps/web/src/styles/components.css): sunken
+      // fill, hairline border, xs radius, accent border on focus, error border when invalid,
+      // padding 3 × 3.5 spacing units, at least the 48 px tap target.
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: c.surfaceSunken,
+        isDense: false,
+        constraints: const BoxConstraints(minHeight: VitruvLayout.tapTarget),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: VitruvSpace.base * 3.5,
+          vertical: VitruvSpace.s3,
+        ),
+        labelStyle: role(VitruvType.bodySm, c.fgMuted),
+        floatingLabelStyle: role(VitruvType.bodySm, c.accentText),
+        hintStyle: role(VitruvType.body, c.fgSubtle),
+        errorStyle: role(VitruvType.bodySm, c.error),
+        // German messages are long — never cut a validation message off.
+        errorMaxLines: 3,
+        suffixIconColor: c.fgMuted,
+        border: _inputBorder(c.border),
+        enabledBorder: _inputBorder(c.border),
+        hoverColor: c.surfaceHover,
+        focusedBorder: _inputBorder(c.accent),
+        errorBorder: _inputBorder(c.error),
+        focusedErrorBorder: _inputBorder(c.error),
+        disabledBorder: _inputBorder(c.borderSubtle),
+      ),
       cardTheme: CardThemeData(
         color: c.surface,
         surfaceTintColor: Colors.transparent,
@@ -168,25 +211,38 @@ abstract final class AppTheme {
         ),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(color: c.accent),
-      extensions: [VitruvTheme(colors: c)],
+      extensions: [VitruvTheme(colors: c, spark: spark)],
     );
   }
+
+  static OutlineInputBorder _inputBorder(Color color) => OutlineInputBorder(
+    borderRadius: const BorderRadius.all(Radius.circular(VitruvShape.radiusXs)),
+    borderSide: BorderSide(color: color, width: VitruvShape.borderHairline),
+  );
 }
 
 /// Exposes the full VITRUV colour roles (incl. those Material has no slot for, e.g. `fgSubtle`,
 /// `accentText`, `success`) to widgets: `Theme.of(context).extension<VitruvTheme>()!.colors`.
 @immutable
 class VitruvTheme extends ThemeExtension<VitruvTheme> {
-  const VitruvTheme({required this.colors});
+  const VitruvTheme({required this.colors, required this.spark});
 
   final VitruvColorScheme colors;
+
+  /// The website's second accent (Cantaloupe) — small marks only (eyebrow dot, step numbers),
+  /// never body text or large fills.
+  final Color spark;
 
   static VitruvColorScheme of(BuildContext context) =>
       Theme.of(context).extension<VitruvTheme>()?.colors ?? VitruvColors.dark;
 
+  static Color sparkOf(BuildContext context) =>
+      Theme.of(context).extension<VitruvTheme>()?.spark ??
+      VitruvBrandColors.sparkDark;
+
   @override
-  VitruvTheme copyWith({VitruvColorScheme? colors}) =>
-      VitruvTheme(colors: colors ?? this.colors);
+  VitruvTheme copyWith({VitruvColorScheme? colors, Color? spark}) =>
+      VitruvTheme(colors: colors ?? this.colors, spark: spark ?? this.spark);
 
   @override
   VitruvTheme lerp(covariant VitruvTheme? other, double t) =>

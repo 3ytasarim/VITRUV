@@ -17,21 +17,22 @@
   "errorServer": "Der Server hat einen Fehler gemeldet.",
   "errorUnknown": "Etwas ist schiefgelaufen.",
   "cancel": "Abbrechen",
-  "loginTitle": "Anmelden",
-  "loginIntro": "Melde dich mit der E-Mail-Adresse und dem Passwort an, das du über deinen Aktivierungslink festgelegt hast.",
-  "loginEmail": "E-Mail-Adresse",
+  "loginEyebrow": "Teilnehmer-Login",
+  "loginTitle": "Willkommen bei VITRUV",
+  "loginIntro": "Melde dich mit deinem VITRUV-Zugang an – mit Benutzername oder E-Mail und Passwort, genau wie auf der Website.",
+  "loginId": "Benutzername oder E-Mail",
   "loginPassword": "Passwort",
   "loginShowPassword": "Passwort anzeigen",
   "loginHidePassword": "Passwort verbergen",
   "loginSubmit": "Anmelden",
   "loginBusy": "Anmeldung läuft",
   "loginFieldRequired": "Bitte ausfüllen.",
-  "loginEmailInvalid": "Bitte eine gültige E-Mail-Adresse eingeben.",
-  "loginErrorInvalid": "E-Mail-Adresse oder Passwort ist nicht korrekt.",
+  "loginIdInvalid": "Bitte E-Mail-Adresse oder Benutzernamen eingeben.",
+  "loginErrorInvalid": "Benutzername, E-Mail oder Passwort ist nicht korrekt.",
   "loginErrorRateLimited": "Zu viele Versuche. Bitte warte einige Minuten und versuche es dann erneut.",
-  "loginErrorNotClient": "Die App ist für Kund:innen. Coaches nutzen den Webzugang.",
+  "loginErrorNotClient": "Diese App ist nur für Teilnehmer verfügbar. Coaches nutzen den Webzugang.",
   "loginErrorUnknown": "Die Anmeldung ist fehlgeschlagen. Bitte versuche es später erneut.",
-  "loginForgotHint": "Passwort vergessen? Wende dich an deinen Coach.",
+  "loginForgotHint": "Passwort vergessen? Dein Coach richtet dir ein neues Passwort ein.",
   "sessionExpired": "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.",
   "startupUnavailable": "Deine Anmeldung konnte gerade nicht geprüft werden.",
   "signOut": "Abmelden",
@@ -410,5 +411,607 @@
   "profileEmail": "E-Mail",
   "profileCoach": "Coach",
   "profileNoCoach": "Noch kein Coach zugewiesen",
-  "profileCoaching": "Coaching"
+  "profileCoaching": "Coaching",
+  "homeCurrentWeek": "Aktuelle Trainingswoche",
+  "homeNextTraining": "Nächstes Training",
+  "homeNoNextTraining": "Kein weiteres Training geplant",
+  "homeNoNextTrainingBody": "Sobald dein Coach ein neues Workout plant, erscheint es hier.",
+  "openWorkout": "Workout öffnen",
+  "trainingOverview": "Trainingsübersicht",
+  "trainingOverviewBody": "Alle Workouts deines aktiven Trainingsplans.",
+  "showAllWorkouts": "Alle Workouts ansehen",
+  "showHistory": "Trainingsverlauf ansehen",
+  "previousWeek": "Vorherige Woche",
+  "nextWeek": "Nächste Woche",
+  "backToThisWeek": "Zur aktuellen Woche",
+  "weekRange": "{start} – {end}",
+  "@weekRange": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "noTrainingPlanned": "Kein Training geplant",
+  "weekOutsidePlan": "In dieser Woche ist kein Training geplant.",
+  "planWithoutDates": "Dein Plan hat noch keine festen Termine. Alle Workouts findest du in der Trainingsübersicht.",
+  "statPlanned": "Geplant",
+  "statCompleted": "Abgeschlossen",
+  "statOpen": "Offen",
+  "statInProgress": "In Bearbeitung",
+  "weekStatsLabel": "Diese Woche: {planned} geplant, {completed} abgeschlossen, {inProgress} in Bearbeitung, {open} offen",
+  "@weekStatsLabel": {
+    "placeholders": {
+      "planned": {
+        "type": "int"
+      },
+      "completed": {
+        "type": "int"
+      },
+      "inProgress": {
+        "type": "int"
+      },
+      "open": {
+        "type": "int"
+      }
+    }
+  },
+  "dayStatusNotStarted": "Nicht begonnen",
+  "dayStatusInProgress": "In Bearbeitung",
+  "dayStatusCompleted": "Abgeschlossen",
+  "workoutTypeStrength": "Kraft",
+  "workoutTypeTotalReps": "Wiederholungsziel",
+  "workoutTypeInterval": "Core-Intervalle",
+  "workoutTypeChecklist": "Warm-up",
+  "workoutTypeGeneral": "Training",
+  "plannedOn": "Geplant am {date}",
+  "@plannedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "noFixedDate": "Ohne festen Termin",
+  "todayLabel": "Heute",
+  "workoutAlreadyCompleted": "Dieses Training hast du bereits abgeschlossen.",
+  "warmupTitle": "Aufwärmen",
+  "warmupHint": "Keine Wiederholungen, kein Timer: Hake jede Übung ab, sobald du sie gemacht hast.",
+  "warmupProgress": "{done} von {total} erledigt",
+  "@warmupProgress": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "warmupDone": "Aufwärmen abgeschlossen",
+  "warmupCheck": "{name} abhaken",
+  "@warmupCheck": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "warmupChecked": "{name}, erledigt",
+  "@warmupChecked": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "warmupSaving": "Wird gespeichert …",
+  "watchVideo": "Video ansehen",
+  "showImage": "Bild ansehen",
+  "videoBadge": "Video",
+  "videoUnsupported": "Dieses Video kann auf diesem Gerät nicht abgespielt werden.",
+  "closeLabel": "Schließen",
+  "checklistItemLabel": "Zum Abhaken",
+  "rxSetsMax": "{sets} × MAX",
+  "@rxSetsMax": {
+    "placeholders": {
+      "sets": {
+        "type": "int"
+      }
+    }
+  },
+  "rxMax": "MAX",
+  "setRepsFor": "Wiederholungen in Satz {number}",
+  "@setRepsFor": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "setRepsRequired": "Bitte trage deine Wiederholungen ein.",
+  "repsDecrease": "Eine Wiederholung weniger",
+  "repsIncrease": "Eine Wiederholung mehr",
+  "setActualReps": "{reps} Wdh. geschafft",
+  "@setActualReps": {
+    "placeholders": {
+      "reps": {
+        "type": "int"
+      }
+    }
+  },
+  "restStartFor": "Pause starten · {clock}",
+  "@restStartFor": {
+    "placeholders": {
+      "clock": {
+        "type": "String"
+      }
+    }
+  },
+  "restNotificationTitle": "Pause vorbei",
+  "restNotificationBody": "Weiter mit {exercise}.",
+  "@restNotificationBody": {
+    "placeholders": {
+      "exercise": {
+        "type": "String"
+      }
+    }
+  },
+  "restNotificationBodyGeneric": "Weiter geht’s mit dem nächsten Satz.",
+  "historyOpen": "Einheit ansehen",
+  "historyDetailTitle": "Einheit",
+  "historySetResult": "Satz {number}: {actual} von {target} Wdh.",
+  "@historySetResult": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "actual": {
+        "type": "int"
+      },
+      "target": {
+        "type": "int"
+      }
+    }
+  },
+  "historySetResultMax": "Satz {number}: {actual} Wdh. (MAX)",
+  "@historySetResultMax": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "actual": {
+        "type": "int"
+      }
+    }
+  },
+  "historySetResultPlain": "Satz {number}: {actual} Wdh.",
+  "@historySetResultPlain": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "actual": {
+        "type": "int"
+      }
+    }
+  },
+  "historySetDone": "Satz {number}: erledigt",
+  "@historySetDone": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "historySetOpen": "Satz {number}: nicht erledigt",
+  "@historySetOpen": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "historyExerciseOpen": "Nicht erledigt",
+  "totalGoal": "Gesamtziel",
+  "totalDone": "Bereits geschafft",
+  "totalOpen": "Noch offen",
+  "totalCurrentSet": "Aktueller Satz {number}",
+  "@totalCurrentSet": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "totalRepsInput": "Wiederholungen eintragen",
+  "totalSaveSet": "Satz speichern",
+  "totalSaving": "Wird gespeichert …",
+  "totalGoalReached": "Ziel erreicht",
+  "totalProgressValue": "{done} von {target} Wdh.",
+  "@totalProgressValue": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "target": {
+        "type": "int"
+      }
+    }
+  },
+  "totalSetSaved": "Satz {number} gespeichert",
+  "@totalSetSaved": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "totalSetNotSaved": "Satz nicht gespeichert. Es läuft keine Pause.",
+  "totalRepsRange": "Bitte mindestens 1 Wiederholung eintragen.",
+  "historyTotalResult": "Gesamt: {done} von {target} Wdh.",
+  "@historyTotalResult": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "target": {
+        "type": "int"
+      }
+    }
+  },
+  "historyRoundResult": "Runde {number}: {seconds} Sek.",
+  "@historyRoundResult": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "historyRoundOpen": "Runde {number}: nicht erledigt",
+  "@historyRoundOpen": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "coreRoundOf": "Runde {round} von {rounds}",
+  "@coreRoundOf": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      },
+      "rounds": {
+        "type": "int"
+      }
+    }
+  },
+  "corePhaseWork": "TRAINING",
+  "corePhaseRest": "PAUSE",
+  "corePlan": "{rounds} Runden · {work} Training · {rest} Pause",
+  "@corePlan": {
+    "placeholders": {
+      "rounds": {
+        "type": "int"
+      },
+      "work": {
+        "type": "String"
+      },
+      "rest": {
+        "type": "String"
+      }
+    }
+  },
+  "coreStart": "Core starten",
+  "coreStartFrom": "Ab Runde {round} starten",
+  "@coreStartFrom": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      }
+    }
+  },
+  "corePause": "Anhalten",
+  "coreResume": "Fortsetzen",
+  "coreCancel": "Abbrechen",
+  "coreNextRound": "Nächste Runde",
+  "coreDone": "Training abgeschlossen",
+  "corePaused": "Angehalten",
+  "coreRoundsSaved": "{done} von {rounds} Runden gespeichert",
+  "@coreRoundsSaved": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "rounds": {
+        "type": "int"
+      }
+    }
+  },
+  "coreRoundsUnsaved": "{count, plural, =1{1 Runde ist noch nicht gespeichert.} other{{count} Runden sind noch nicht gespeichert.}}",
+  "@coreRoundsUnsaved": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "coreSaveRounds": "Runden speichern",
+  "coreRemainingSemantics": "{phase}, Runde {round} von {rounds}, noch {clock}",
+  "@coreRemainingSemantics": {
+    "placeholders": {
+      "phase": {
+        "type": "String"
+      },
+      "round": {
+        "type": "int"
+      },
+      "rounds": {
+        "type": "int"
+      },
+      "clock": {
+        "type": "String"
+      }
+    }
+  },
+  "coreAnnounceWork": "Training, Runde {round}",
+  "@coreAnnounceWork": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      }
+    }
+  },
+  "coreAnnounceRest": "Pause",
+  "coreOtherRunning": "Eine andere Core-Routine läuft gerade.",
+  "coreNotifyRestTitle": "Pause",
+  "coreNotifyRestBody": "Runde {round} geschafft – kurz durchatmen.",
+  "@coreNotifyRestBody": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      }
+    }
+  },
+  "coreNotifyWorkTitle": "Training",
+  "coreNotifyWorkBody": "Runde {round} von {rounds} startet.",
+  "@coreNotifyWorkBody": {
+    "placeholders": {
+      "round": {
+        "type": "int"
+      },
+      "rounds": {
+        "type": "int"
+      }
+    }
+  },
+  "coreNotifyDoneTitle": "Training abgeschlossen",
+  "coreNotifyDoneBody": "{exercise} ist geschafft.",
+  "@coreNotifyDoneBody": {
+    "placeholders": {
+      "exercise": {
+        "type": "String"
+      }
+    }
+  },
+  "videoLoadFailed": "Video konnte nicht geladen werden.",
+  "videoLoading": "Video wird geladen",
+  "videoSeek": "Videoposition",
+  "videoPosition": "{position} von {duration}",
+  "@videoPosition": {
+    "placeholders": {
+      "position": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "historyTotalReps": "Gesamt: {reps} Wiederholungen",
+  "@historyTotalReps": {
+    "placeholders": {
+      "reps": {
+        "type": "int"
+      }
+    }
+  },
+  "historySetCount": "{count, plural, =1{1 Satz} other{{count} Sätze}}",
+  "@historySetCount": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      }
+    }
+  },
+  "historyRoundCount": "{count, plural, =1{1 Runde} other{{count} Runden}}",
+  "@historyRoundCount": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      }
+    }
+  },
+  "historyLoadMore": "Mehr laden",
+  "historyLoadMoreFailed": "Weitere Einträge konnten nicht geladen werden.",
+  "historyTotalGoal": "Gesamtziel: {target} Wdh.",
+  "@historyTotalGoal": {
+    "placeholders": {
+      "target": {
+        "type": "int"
+      }
+    }
+  },
+  "historyTotalDone": "Geschafft: {done} Wdh.",
+  "@historyTotalDone": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      }
+    }
+  },
+  "historyTotalSetsNeeded": "Benötigte Sätze: {count}",
+  "@historyTotalSetsNeeded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "historyCoreConfig": "{rounds} Runden · {work} Sek. Belastung · {rest} Sek. Pause",
+  "@historyCoreConfig": {
+    "placeholders": {
+      "rounds": {
+        "type": "int"
+      },
+      "work": {
+        "type": "int"
+      },
+      "rest": {
+        "type": "int"
+      }
+    }
+  },
+  "historyCoreDone": "Runden geschafft: {done} von {rounds}",
+  "@historyCoreDone": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "rounds": {
+        "type": "int"
+      }
+    }
+  },
+  "historyWarmupDone": "Aufwärmen erledigt",
+  "compareTitle": "Vergleich",
+  "comparePrevious": "Vorheriges Training: {date}",
+  "@comparePrevious": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "compareCurrent": "Aktuelles Training",
+  "compareNoData": "Noch keine Vergleichsdaten",
+  "compareDifference": "Differenz: {value}",
+  "@compareDifference": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "compareSetLine": "Satz {number}: {previous} → {current}",
+  "@compareSetLine": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "previous": {
+        "type": "String"
+      },
+      "current": {
+        "type": "String"
+      }
+    }
+  },
+  "compareTotalLine": "Gesamt: {previous} → {current} Wdh.",
+  "@compareTotalLine": {
+    "placeholders": {
+      "previous": {
+        "type": "String"
+      },
+      "current": {
+        "type": "String"
+      }
+    }
+  },
+  "compareRoundsLine": "Runden: {previous} → {current}",
+  "@compareRoundsLine": {
+    "placeholders": {
+      "previous": {
+        "type": "String"
+      },
+      "current": {
+        "type": "String"
+      }
+    }
+  },
+  "compareSetsUsed": "Sätze: {previous} → {current}",
+  "@compareSetsUsed": {
+    "placeholders": {
+      "previous": {
+        "type": "String"
+      },
+      "current": {
+        "type": "String"
+      }
+    }
+  },
+  "compareConfigChanged": "Andere Runden-Einstellung als beim letzten Mal",
+  "compareNotRecorded": "nicht erfasst",
+  "progressChartOpen": "Verlauf ansehen",
+  "progressChartTitle": "Verlauf: {name}",
+  "@progressChartTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "progressChartEmpty": "Noch zu wenige Daten für einen Verlauf",
+  "progressChartSummary": "{count} Trainings. Erster Wert {first}, letzter Wert {last}, bester Wert {best} {unit}.",
+  "@progressChartSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "first": {
+        "type": "int"
+      },
+      "last": {
+        "type": "int"
+      },
+      "best": {
+        "type": "int"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "progressUnitReps": "Wiederholungen",
+  "progressUnitRounds": "Runden",
+  "appUpdateTitle": "Update erforderlich",
+  "appUpdateBody": "Diese Version der VITRUV App wird nicht mehr unterstützt. Bitte aktualisiere die App im App Store. Deine Anmeldung und deine Daten bleiben erhalten.",
+  "appUpdateInstalled": "Installiert: {installed}",
+  "@appUpdateInstalled": {
+    "placeholders": {
+      "installed": {
+        "type": "String"
+      }
+    }
+  },
+  "appUpdateVersions": "Installiert: {installed} · Mindestens: {minimum}",
+  "@appUpdateVersions": {
+    "placeholders": {
+      "installed": {
+        "type": "String"
+      },
+      "minimum": {
+        "type": "String"
+      }
+    }
+  },
+  "appUpdateCopyLink": "Link kopieren",
+  "appUpdateRetry": "Erneut prüfen"
 }

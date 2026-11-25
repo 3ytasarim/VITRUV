@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../auth/auth_api.dart';
 import '../../auth/auth_state.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/vitruv_tokens.g.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/ui/ui.dart';
 
-/// CLIENT login (shared Sprint 4 auth: `POST /v1/auth/login`, clientType MOBILE).
+/// Teilnehmer login with the EXISTING website account (`POST /v1/auth/login`, clientType MOBILE):
+/// username OR e-mail + password. No registration — accounts are created on the website.
 /// Password-manager friendly (AutofillGroup + hints), one generic error for wrong credentials.
-/// There is no password reset by e-mail yet — the screen says so instead of offering a dead link.
+/// There is no self-service password reset in the API yet — the screen says so (the coach sets a
+/// new password) instead of offering a dead link.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -20,7 +23,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _form = GlobalKey<FormState>();
-  final _email = TextEditingController();
+  final _loginId = TextEditingController();
   final _password = TextEditingController();
   bool _obscure = true;
   bool _busy = false;
@@ -28,7 +31,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
-    _email.dispose();
+    _loginId.dispose();
     _password.dispose();
     super.dispose();
   }
@@ -40,7 +43,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _busy = true);
     final error = await ref
         .read(authControllerProvider.notifier)
-        .login(_email.text, _password.text);
+        .login(_loginId.text, _password.text);
     if (!mounted) return;
     if (error == null) {
       TextInput.finishAutofillContext();
@@ -89,8 +92,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      const Center(child: VitruvLogo(height: 72)),
+                      const SizedBox(height: VitruvSpace.s8),
                       SectionIntro(
-                        eyebrow: l10n.appTitle,
+                        eyebrow: l10n.loginEyebrow,
                         title: l10n.loginTitle,
                         lead: l10n.loginIntro,
                       ),
@@ -119,24 +124,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                       ),
                       TextFormField(
-                        controller: _email,
+                        controller: _loginId,
                         enabled: !_busy,
+                        // e-mail keyboard: no auto-capitalisation, "@" and "." at hand — usernames
+                        // (a–z, 0–9, . _ -) type just as well.
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
                         autocorrect: false,
                         enableSuggestions: false,
                         autofillHints: const [
-                          AutofillHints.email,
                           AutofillHints.username,
+                          AutofillHints.email,
                         ],
-                        decoration: InputDecoration(labelText: l10n.loginEmail),
+                        decoration: InputDecoration(labelText: l10n.loginId),
                         validator: (value) {
                           final v = value?.trim() ?? '';
                           if (v.isEmpty) return l10n.loginFieldRequired;
-                          if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
-                              .hasMatch(v)) {
-                            return l10n.loginEmailInvalid;
-                          }
+                          if (!isValidLoginId(v)) return l10n.loginIdInvalid;
                           return null;
                         },
                       ),

@@ -6,8 +6,10 @@ import '../auth/auth_interceptor.dart';
 import '../auth/auth_session.dart';
 import '../auth/token_store.dart';
 import '../core/config/app_config.dart';
+import '../core/config/app_version.dart';
 import '../core/time/clock.dart';
 import 'api_client.dart';
+import 'app_update_interceptor.dart';
 import 'health_api.dart';
 
 /// Dependency graph for API access. Tests override [appConfigProvider], [tokenStoreProvider],
@@ -23,6 +25,12 @@ Dio _dio(Ref ref) {
   final dio = ApiClient.createDio(ref.watch(appConfigProvider).apiBaseUrl);
   final adapter = ref.watch(httpAdapterProvider);
   if (adapter != null) dio.httpClientAdapter = adapter;
+  dio.interceptors.add(
+    AppUpdateInterceptor(
+      (requirement) =>
+          ref.read(appUpdateProvider.notifier).require(requirement),
+    ),
+  );
   return dio;
 }
 

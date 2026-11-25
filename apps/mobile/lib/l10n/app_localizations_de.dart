@@ -63,14 +63,17 @@ class AppLocalizationsDe extends AppLocalizations {
   String get cancel => 'Abbrechen';
 
   @override
-  String get loginTitle => 'Anmelden';
+  String get loginEyebrow => 'Teilnehmer-Login';
+
+  @override
+  String get loginTitle => 'Willkommen bei VITRUV';
 
   @override
   String get loginIntro =>
-      'Melde dich mit der E-Mail-Adresse und dem Passwort an, das du über deinen Aktivierungslink festgelegt hast.';
+      'Melde dich mit deinem VITRUV-Zugang an – mit Benutzername oder E-Mail und Passwort, genau wie auf der Website.';
 
   @override
-  String get loginEmail => 'E-Mail-Adresse';
+  String get loginId => 'Benutzername oder E-Mail';
 
   @override
   String get loginPassword => 'Passwort';
@@ -91,11 +94,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get loginFieldRequired => 'Bitte ausfüllen.';
 
   @override
-  String get loginEmailInvalid => 'Bitte eine gültige E-Mail-Adresse eingeben.';
+  String get loginIdInvalid =>
+      'Bitte E-Mail-Adresse oder Benutzernamen eingeben.';
 
   @override
   String get loginErrorInvalid =>
-      'E-Mail-Adresse oder Passwort ist nicht korrekt.';
+      'Benutzername, E-Mail oder Passwort ist nicht korrekt.';
 
   @override
   String get loginErrorRateLimited =>
@@ -103,7 +107,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get loginErrorNotClient =>
-      'Die App ist für Kund:innen. Coaches nutzen den Webzugang.';
+      'Diese App ist nur für Teilnehmer verfügbar. Coaches nutzen den Webzugang.';
 
   @override
   String get loginErrorUnknown =>
@@ -111,7 +115,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get loginForgotHint =>
-      'Passwort vergessen? Wende dich an deinen Coach.';
+      'Passwort vergessen? Dein Coach richtet dir ein neues Passwort ein.';
 
   @override
   String get sessionExpired =>
@@ -575,4 +579,575 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get profileCoaching => 'Coaching';
+
+  @override
+  String get homeCurrentWeek => 'Aktuelle Trainingswoche';
+
+  @override
+  String get homeNextTraining => 'Nächstes Training';
+
+  @override
+  String get homeNoNextTraining => 'Kein weiteres Training geplant';
+
+  @override
+  String get homeNoNextTrainingBody =>
+      'Sobald dein Coach ein neues Workout plant, erscheint es hier.';
+
+  @override
+  String get openWorkout => 'Workout öffnen';
+
+  @override
+  String get trainingOverview => 'Trainingsübersicht';
+
+  @override
+  String get trainingOverviewBody =>
+      'Alle Workouts deines aktiven Trainingsplans.';
+
+  @override
+  String get showAllWorkouts => 'Alle Workouts ansehen';
+
+  @override
+  String get showHistory => 'Trainingsverlauf ansehen';
+
+  @override
+  String get previousWeek => 'Vorherige Woche';
+
+  @override
+  String get nextWeek => 'Nächste Woche';
+
+  @override
+  String get backToThisWeek => 'Zur aktuellen Woche';
+
+  @override
+  String weekRange(String start, String end) {
+    return '$start – $end';
+  }
+
+  @override
+  String get noTrainingPlanned => 'Kein Training geplant';
+
+  @override
+  String get weekOutsidePlan => 'In dieser Woche ist kein Training geplant.';
+
+  @override
+  String get planWithoutDates =>
+      'Dein Plan hat noch keine festen Termine. Alle Workouts findest du in der Trainingsübersicht.';
+
+  @override
+  String get statPlanned => 'Geplant';
+
+  @override
+  String get statCompleted => 'Abgeschlossen';
+
+  @override
+  String get statOpen => 'Offen';
+
+  @override
+  String get statInProgress => 'In Bearbeitung';
+
+  @override
+  String weekStatsLabel(int planned, int completed, int inProgress, int open) {
+    return 'Diese Woche: $planned geplant, $completed abgeschlossen, $inProgress in Bearbeitung, $open offen';
+  }
+
+  @override
+  String get dayStatusNotStarted => 'Nicht begonnen';
+
+  @override
+  String get dayStatusInProgress => 'In Bearbeitung';
+
+  @override
+  String get dayStatusCompleted => 'Abgeschlossen';
+
+  @override
+  String get workoutTypeStrength => 'Kraft';
+
+  @override
+  String get workoutTypeTotalReps => 'Wiederholungsziel';
+
+  @override
+  String get workoutTypeInterval => 'Core-Intervalle';
+
+  @override
+  String get workoutTypeChecklist => 'Warm-up';
+
+  @override
+  String get workoutTypeGeneral => 'Training';
+
+  @override
+  String plannedOn(String date) {
+    return 'Geplant am $date';
+  }
+
+  @override
+  String get noFixedDate => 'Ohne festen Termin';
+
+  @override
+  String get todayLabel => 'Heute';
+
+  @override
+  String get workoutAlreadyCompleted =>
+      'Dieses Training hast du bereits abgeschlossen.';
+
+  @override
+  String get warmupTitle => 'Aufwärmen';
+
+  @override
+  String get warmupHint =>
+      'Keine Wiederholungen, kein Timer: Hake jede Übung ab, sobald du sie gemacht hast.';
+
+  @override
+  String warmupProgress(int done, int total) {
+    return '$done von $total erledigt';
+  }
+
+  @override
+  String get warmupDone => 'Aufwärmen abgeschlossen';
+
+  @override
+  String warmupCheck(String name) {
+    return '$name abhaken';
+  }
+
+  @override
+  String warmupChecked(String name) {
+    return '$name, erledigt';
+  }
+
+  @override
+  String get warmupSaving => 'Wird gespeichert …';
+
+  @override
+  String get watchVideo => 'Video ansehen';
+
+  @override
+  String get showImage => 'Bild ansehen';
+
+  @override
+  String get videoBadge => 'Video';
+
+  @override
+  String get videoUnsupported =>
+      'Dieses Video kann auf diesem Gerät nicht abgespielt werden.';
+
+  @override
+  String get closeLabel => 'Schließen';
+
+  @override
+  String get checklistItemLabel => 'Zum Abhaken';
+
+  @override
+  String rxSetsMax(int sets) {
+    return '$sets × MAX';
+  }
+
+  @override
+  String get rxMax => 'MAX';
+
+  @override
+  String setRepsFor(int number) {
+    return 'Wiederholungen in Satz $number';
+  }
+
+  @override
+  String get setRepsRequired => 'Bitte trage deine Wiederholungen ein.';
+
+  @override
+  String get repsDecrease => 'Eine Wiederholung weniger';
+
+  @override
+  String get repsIncrease => 'Eine Wiederholung mehr';
+
+  @override
+  String setActualReps(int reps) {
+    return '$reps Wdh. geschafft';
+  }
+
+  @override
+  String restStartFor(String clock) {
+    return 'Pause starten · $clock';
+  }
+
+  @override
+  String get restNotificationTitle => 'Pause vorbei';
+
+  @override
+  String restNotificationBody(String exercise) {
+    return 'Weiter mit $exercise.';
+  }
+
+  @override
+  String get restNotificationBodyGeneric =>
+      'Weiter geht’s mit dem nächsten Satz.';
+
+  @override
+  String get historyOpen => 'Einheit ansehen';
+
+  @override
+  String get historyDetailTitle => 'Einheit';
+
+  @override
+  String historySetResult(int number, int actual, int target) {
+    return 'Satz $number: $actual von $target Wdh.';
+  }
+
+  @override
+  String historySetResultMax(int number, int actual) {
+    return 'Satz $number: $actual Wdh. (MAX)';
+  }
+
+  @override
+  String historySetResultPlain(int number, int actual) {
+    return 'Satz $number: $actual Wdh.';
+  }
+
+  @override
+  String historySetDone(int number) {
+    return 'Satz $number: erledigt';
+  }
+
+  @override
+  String historySetOpen(int number) {
+    return 'Satz $number: nicht erledigt';
+  }
+
+  @override
+  String get historyExerciseOpen => 'Nicht erledigt';
+
+  @override
+  String get totalGoal => 'Gesamtziel';
+
+  @override
+  String get totalDone => 'Bereits geschafft';
+
+  @override
+  String get totalOpen => 'Noch offen';
+
+  @override
+  String totalCurrentSet(int number) {
+    return 'Aktueller Satz $number';
+  }
+
+  @override
+  String get totalRepsInput => 'Wiederholungen eintragen';
+
+  @override
+  String get totalSaveSet => 'Satz speichern';
+
+  @override
+  String get totalSaving => 'Wird gespeichert …';
+
+  @override
+  String get totalGoalReached => 'Ziel erreicht';
+
+  @override
+  String totalProgressValue(int done, int target) {
+    return '$done von $target Wdh.';
+  }
+
+  @override
+  String totalSetSaved(int number) {
+    return 'Satz $number gespeichert';
+  }
+
+  @override
+  String get totalSetNotSaved =>
+      'Satz nicht gespeichert. Es läuft keine Pause.';
+
+  @override
+  String get totalRepsRange => 'Bitte mindestens 1 Wiederholung eintragen.';
+
+  @override
+  String historyTotalResult(int done, int target) {
+    return 'Gesamt: $done von $target Wdh.';
+  }
+
+  @override
+  String historyRoundResult(int number, int seconds) {
+    return 'Runde $number: $seconds Sek.';
+  }
+
+  @override
+  String historyRoundOpen(int number) {
+    return 'Runde $number: nicht erledigt';
+  }
+
+  @override
+  String coreRoundOf(int round, int rounds) {
+    return 'Runde $round von $rounds';
+  }
+
+  @override
+  String get corePhaseWork => 'TRAINING';
+
+  @override
+  String get corePhaseRest => 'PAUSE';
+
+  @override
+  String corePlan(int rounds, String work, String rest) {
+    return '$rounds Runden · $work Training · $rest Pause';
+  }
+
+  @override
+  String get coreStart => 'Core starten';
+
+  @override
+  String coreStartFrom(int round) {
+    return 'Ab Runde $round starten';
+  }
+
+  @override
+  String get corePause => 'Anhalten';
+
+  @override
+  String get coreResume => 'Fortsetzen';
+
+  @override
+  String get coreCancel => 'Abbrechen';
+
+  @override
+  String get coreNextRound => 'Nächste Runde';
+
+  @override
+  String get coreDone => 'Training abgeschlossen';
+
+  @override
+  String get corePaused => 'Angehalten';
+
+  @override
+  String coreRoundsSaved(int done, int rounds) {
+    return '$done von $rounds Runden gespeichert';
+  }
+
+  @override
+  String coreRoundsUnsaved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Runden sind noch nicht gespeichert.',
+      one: '1 Runde ist noch nicht gespeichert.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get coreSaveRounds => 'Runden speichern';
+
+  @override
+  String coreRemainingSemantics(
+    String phase,
+    int round,
+    int rounds,
+    String clock,
+  ) {
+    return '$phase, Runde $round von $rounds, noch $clock';
+  }
+
+  @override
+  String coreAnnounceWork(int round) {
+    return 'Training, Runde $round';
+  }
+
+  @override
+  String get coreAnnounceRest => 'Pause';
+
+  @override
+  String get coreOtherRunning => 'Eine andere Core-Routine läuft gerade.';
+
+  @override
+  String get coreNotifyRestTitle => 'Pause';
+
+  @override
+  String coreNotifyRestBody(int round) {
+    return 'Runde $round geschafft – kurz durchatmen.';
+  }
+
+  @override
+  String get coreNotifyWorkTitle => 'Training';
+
+  @override
+  String coreNotifyWorkBody(int round, int rounds) {
+    return 'Runde $round von $rounds startet.';
+  }
+
+  @override
+  String get coreNotifyDoneTitle => 'Training abgeschlossen';
+
+  @override
+  String coreNotifyDoneBody(String exercise) {
+    return '$exercise ist geschafft.';
+  }
+
+  @override
+  String get videoLoadFailed => 'Video konnte nicht geladen werden.';
+
+  @override
+  String get videoLoading => 'Video wird geladen';
+
+  @override
+  String get videoSeek => 'Videoposition';
+
+  @override
+  String videoPosition(String position, String duration) {
+    return '$position von $duration';
+  }
+
+  @override
+  String historyTotalReps(int reps) {
+    return 'Gesamt: $reps Wiederholungen';
+  }
+
+  @override
+  String historySetCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Sätze',
+      one: '1 Satz',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String historyRoundCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Runden',
+      one: '1 Runde',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get historyLoadMore => 'Mehr laden';
+
+  @override
+  String get historyLoadMoreFailed =>
+      'Weitere Einträge konnten nicht geladen werden.';
+
+  @override
+  String historyTotalGoal(int target) {
+    return 'Gesamtziel: $target Wdh.';
+  }
+
+  @override
+  String historyTotalDone(int done) {
+    return 'Geschafft: $done Wdh.';
+  }
+
+  @override
+  String historyTotalSetsNeeded(int count) {
+    return 'Benötigte Sätze: $count';
+  }
+
+  @override
+  String historyCoreConfig(int rounds, int work, int rest) {
+    return '$rounds Runden · $work Sek. Belastung · $rest Sek. Pause';
+  }
+
+  @override
+  String historyCoreDone(int done, int rounds) {
+    return 'Runden geschafft: $done von $rounds';
+  }
+
+  @override
+  String get historyWarmupDone => 'Aufwärmen erledigt';
+
+  @override
+  String get compareTitle => 'Vergleich';
+
+  @override
+  String comparePrevious(String date) {
+    return 'Vorheriges Training: $date';
+  }
+
+  @override
+  String get compareCurrent => 'Aktuelles Training';
+
+  @override
+  String get compareNoData => 'Noch keine Vergleichsdaten';
+
+  @override
+  String compareDifference(String value) {
+    return 'Differenz: $value';
+  }
+
+  @override
+  String compareSetLine(int number, String previous, String current) {
+    return 'Satz $number: $previous → $current';
+  }
+
+  @override
+  String compareTotalLine(String previous, String current) {
+    return 'Gesamt: $previous → $current Wdh.';
+  }
+
+  @override
+  String compareRoundsLine(String previous, String current) {
+    return 'Runden: $previous → $current';
+  }
+
+  @override
+  String compareSetsUsed(String previous, String current) {
+    return 'Sätze: $previous → $current';
+  }
+
+  @override
+  String get compareConfigChanged =>
+      'Andere Runden-Einstellung als beim letzten Mal';
+
+  @override
+  String get compareNotRecorded => 'nicht erfasst';
+
+  @override
+  String get progressChartOpen => 'Verlauf ansehen';
+
+  @override
+  String progressChartTitle(String name) {
+    return 'Verlauf: $name';
+  }
+
+  @override
+  String get progressChartEmpty => 'Noch zu wenige Daten für einen Verlauf';
+
+  @override
+  String progressChartSummary(
+    int count,
+    int first,
+    int last,
+    int best,
+    String unit,
+  ) {
+    return '$count Trainings. Erster Wert $first, letzter Wert $last, bester Wert $best $unit.';
+  }
+
+  @override
+  String get progressUnitReps => 'Wiederholungen';
+
+  @override
+  String get progressUnitRounds => 'Runden';
+
+  @override
+  String get appUpdateTitle => 'Update erforderlich';
+
+  @override
+  String get appUpdateBody =>
+      'Diese Version der VITRUV App wird nicht mehr unterstützt. Bitte aktualisiere die App im App Store. Deine Anmeldung und deine Daten bleiben erhalten.';
+
+  @override
+  String appUpdateInstalled(String installed) {
+    return 'Installiert: $installed';
+  }
+
+  @override
+  String appUpdateVersions(String installed, String minimum) {
+    return 'Installiert: $installed · Mindestens: $minimum';
+  }
+
+  @override
+  String get appUpdateCopyLink => 'Link kopieren';
+
+  @override
+  String get appUpdateRetry => 'Erneut prüfen';
 }

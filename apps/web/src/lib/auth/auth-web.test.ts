@@ -172,6 +172,41 @@ describe('proxy (session gate, origin check, CSP)', () => {
     expect(same.status).toBe(200);
   });
 
+  it('Sprint 7.5: www/apex, scheme and missing-config mismatches stay 403 and are logged for diagnosis', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    // https site → Secure cookies with the __Host- prefix
+    const cookie = `__Host-vitruv_at=${'A'.repeat(43)}`;
+    vi.stubEnv('PUBLIC_SITE_URL', 'https://vitruv.example');
+    for (const origin of [
+      'https://www.vitruv.example', // other host
+      'http://vitruv.example', // other scheme
+      'https://vitruv.example:8443', // other port
+      'null', // opaque origin (privacy redirect)
+    ]) {
+      const res = await run('/admin/website', { method: 'POST', headers: { cookie, origin } });
+      expect(res.status, origin).toBe(403);
+    }
+    expect(
+      (
+        await run('/admin/website', {
+          method: 'POST',
+          headers: { cookie, origin: 'https://vitruv.example' },
+        })
+      ).status,
+    ).toBe(200);
+    const logged = warn.mock.calls.map(([line]) => JSON.parse(String(line)));
+    expect(logged).toHaveLength(4);
+    expect(logged[0]).toMatchObject({
+      event: 'csrf_origin_rejected',
+      origin: 'https://www.vitruv.example',
+      expected: 'https://vitruv.example',
+      path: '/admin/website',
+    });
+    // the log never contains cookies or tokens
+    expect(JSON.stringify(logged)).not.toContain('AAAA');
+    warn.mockRestore();
+  });
+
   it('rotates an expired access token with the refresh cookie (HttpOnly cookies, no JS access)', async () => {
     fetchMock.mockResolvedValue(
       new Response(

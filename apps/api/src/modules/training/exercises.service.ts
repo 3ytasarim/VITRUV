@@ -6,6 +6,7 @@ import { AppError, PG_UNIQUE_VIOLATION, pgErrorCode } from '../../lib/errors';
 import type { Logger } from '../../lib/logger';
 import { recordEvent } from '../auth/auth.service';
 import type { MediaUrlResolver } from '../media/media-url';
+import { exerciseMediaDto } from './row-media';
 
 /**
  * Shared, organisation-wide exercise library (Sprint 6). ADMIN and COACH read and write it; there
@@ -17,6 +18,11 @@ export interface TrainingDeps {
   logger: Logger;
   urls: MediaUrlResolver;
   now?: () => Date;
+  /**
+   * Sprint 3 flag (env TRAINING_EXTENDED_TYPES, default off): may INTERVAL / CHECKLIST / Strength
+   * MAX be written? Off → every write path rejects them with 409 (server-side, not only the UI).
+   */
+  extendedTypes?: boolean;
 }
 
 const {
@@ -119,15 +125,7 @@ async function toDtos(deps: TrainingDeps, rows: (typeof exercises.$inferSelect)[
       captureType: row.captureType,
       standard: row.standard,
       usage: row.usage,
-      media:
-        asset && (asset.kind === 'IMAGE' || asset.kind === 'VIDEO')
-          ? {
-              assetId: asset.id,
-              kind: asset.kind,
-              url: deps.urls.publicUrl(asset.storageKey),
-              fileName: asset.fileName,
-            }
-          : null,
+      media: exerciseMediaDto(deps.urls, asset),
       usageCount: usageMap.get(row.id) ?? 0,
       planCount: planMap.get(row.id) ?? 0,
       createdAt: row.createdAt.toISOString(),
@@ -173,14 +171,14 @@ export async function getExercise(deps: TrainingDeps, id: string): Promise<Admin
   return dto;
 }
 
-/** Exercise media must be a TRAINING library image/video (public demonstration content). */
+/** Exercise media must be a TRAINING library image/video (public, or private + signed — Sprint 8A). */
 async function requireTrainingMedia(db: DbExecutor, assetId: string) {
   const [asset] = await db
-    .select({ id: mediaAssets.id, kind: mediaAssets.kind, visibility: mediaAssets.visibility })
+    .select({ id: mediaAssets.id, kind: mediaAssets.kind })
     .from(mediaAssets)
     .where(and(eq(mediaAssets.id, assetId), eq(mediaAssets.purpose, 'TRAINING_VIDEO')))
     .limit(1);
-  if (!asset || asset.kind === 'DOCUMENT' || asset.visibility !== 'PUBLIC') {
+  if (!asset || asset.kind === 'DOCUMENT') {
     throw AppError.validation([
       {
         path: 'mediaAssetId',

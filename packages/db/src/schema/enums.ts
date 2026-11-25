@@ -8,6 +8,7 @@ import {
   NUTRITION_DOCUMENT_STATUSES,
   SESSION_REVOKE_REASONS,
   TRAINING_PROGRAM_STATUSES,
+  TRAINING_EXECUTION_TYPES,
   TRAINING_SECTION_TYPES,
   USER_ROLES,
   USER_STATUSES,
@@ -36,6 +37,7 @@ export const authEventType = pgEnum('auth_event_type', AUTH_EVENT_TYPES);
 export const coachingStatus = pgEnum('coaching_status', COACHING_STATUSES);
 export const trainingProgramStatus = pgEnum('training_program_status', TRAINING_PROGRAM_STATUSES);
 export const trainingSectionType = pgEnum('training_section_type', TRAINING_SECTION_TYPES);
+export const trainingExecutionType = pgEnum('training_execution_type', TRAINING_EXECUTION_TYPES);
 export const weightUnit = pgEnum('weight_unit', WEIGHT_UNITS);
 export const workoutSessionStatus = pgEnum('workout_session_status', WORKOUT_SESSION_STATUSES);
 export const workoutExecutionMode = pgEnum('workout_execution_mode', WORKOUT_EXECUTION_MODES);

@@ -4,6 +4,7 @@
 /// see docs/DESIGN-SYSTEM.md §13.
 library;
 
+export 'brand.dart';
 export 'button.dart';
 export 'card.dart';
 export 'chamfer.dart';

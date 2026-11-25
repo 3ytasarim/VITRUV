@@ -4,9 +4,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
+import 'core/config/app_config.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  // Sprint 8A: a misconfigured release build (missing/unsafe API_BASE_URL, APP_ENV) stops here
+  // instead of talking to a wrong or local server (fail closed).
+  AppConfig.fromEnvironment();
   _registerFontLicences();
   runApp(const ProviderScope(child: VitruvApp()));
 }

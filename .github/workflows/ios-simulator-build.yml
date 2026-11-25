@@ -1,0 +1,147 @@
+# VITRUV — iOS simulator build (Sprint 8D)
+#
+# Unsigned debug build for the iOS SIMULATOR on a GitHub-hosted macOS runner.
+# - No Apple credentials, no signing, no provisioning, no IPA, no upload.
+# - No secrets of any kind: the job never sees .env files, API keys, DB URLs or certificates.
+# - No network calls to VITRUV production: the app is only compiled, never launched; the debug
+#   build has no API_BASE_URL and falls back to the development default (localhost).
+# - A green run means BUILD PASS only — it is NOT a runtime, simulator-UI or device test.
+# See docs/ios-training-sprint8d-ci.md.
+
+name: iOS simulator build
+
+on:
+  pull_request:
+    paths:
+      - "apps/mobile/**"
+      - ".github/workflows/ios-simulator-build.yml"
+  workflow_dispatch:
+
+# Least privilege: read the repository, nothing else.
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-simulator-build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.47.7" # same as the Windows dev machine (Sprint 8C)
+
+jobs:
+  ios-simulator:
+    name: Flutter analyze + test + iOS simulator build
+    # macOS 26 arm64 (GA), pinned explicitly instead of macos-latest so a label move cannot change
+    # the toolchain silently. Xcode is the image default; its version is logged below.
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        # actions/checkout v7.0.1 — pinned by commit SHA
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Locate the Flutter iOS project
+        id: project
+        shell: bash
+        run: |
+          set -euo pipefail
+          # macOS default bash is 3.2 (no mapfile/readarray): fixed, verified path instead of a search
+          dir="apps/mobile"
+          [ -d "$dir" ] || { echo "::error::$dir not found"; exit 1; }
+          [ -f "$dir/pubspec.yaml" ] || { echo "::error::$dir/pubspec.yaml not found"; exit 1; }
+          [ -d "$dir/ios/Runner.xcodeproj" ] || { echo "::error::$dir/ios/Runner.xcodeproj not found"; exit 1; }
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+          echo "Flutter iOS project: $dir"
+
+      - name: Xcode and SDK versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          sw_vers
+          xcode-select -p
+          xcodebuild -version
+          xcrun --sdk iphonesimulator --show-sdk-version
+          xcrun simctl list runtimes ios || true
+          pod --version || echo "CocoaPods not installed"
+
+      - name: Set up Flutter
+        # subosito/flutter-action v2.23.0 — pinned by commit SHA
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Verify Flutter version
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter --version
+          flutter --version --machine | grep -q "\"frameworkVersion\": \"${FLUTTER_VERSION}\"" \
+            || { echo "::error::Flutter is not ${FLUTTER_VERSION}"; exit 1; }
+
+      - name: Flutter doctor
+        run: flutter doctor -v
+
+      - name: Fail closed — no release or production configuration in CI
+        shell: bash
+        run: |
+          set -euo pipefail
+          # this job must never build a release, sign, or point the app at a real API
+          if grep -nE 'API_BASE_URL=|APP_ENV=production|--release|build ipa|codesign|VITRUV_WATCH_TIMER_SYNC=true|VITRUV_NUTRITION_TAB=true' \
+               .github/workflows/ios-simulator-build.yml | grep -v '^\s*[0-9]*:\s*#' | grep -v "grep -nE"; then
+            echo "::error::release/production configuration found in the CI workflow"; exit 1
+          fi
+          for v in API_BASE_URL APP_ENV DATABASE_URL; do
+            if [ -n "${!v:-}" ]; then echo "::error::$v must not be set in CI"; exit 1; fi
+          done
+          echo "OK: debug/simulator only, no API URL, no secrets"
+
+      - name: Resolve packages
+        working-directory: ${{ steps.project.outputs.dir }}
+        run: flutter pub get
+
+      - name: Flutter analyze
+        working-directory: ${{ steps.project.outputs.dir }}
+        run: flutter analyze --no-pub
+
+      - name: Flutter test
+        working-directory: ${{ steps.project.outputs.dir }}
+        run: flutter test --no-pub
+
+      - name: iOS simulator build (debug, unsigned)
+        working-directory: ${{ steps.project.outputs.dir }}
+        # --simulator builds for the iOS Simulator SDK; simulator apps need no code signing.
+        # Resolves iOS dependencies (Swift Package Manager, or CocoaPods if Flutter falls back)
+        # and compiles every Swift/ObjC plugin.
+        run: flutter build ios --simulator --debug
+
+      - name: Build artifact summary
+        if: always()
+        working-directory: ${{ steps.project.outputs.dir }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          app="build/ios/iphonesimulator/Runner.app"
+          {
+            echo "## iOS simulator build"
+            echo ""
+            echo "| Item | Value |"
+            echo "|---|---|"
+            echo "| Runner | macos-26 ($(sw_vers -productVersion), $(uname -m)) |"
+            echo "| Xcode | $(xcodebuild -version | tr '\n' ' ') |"
+            echo "| Simulator SDK | $(xcrun --sdk iphonesimulator --show-sdk-version) |"
+            echo "| Flutter | $(flutter --version --machine | sed -n 's/.*"frameworkVersion": "\([^"]*\)".*/\1/p') |"
+            if [ -d "$app" ]; then
+              echo "| Runner.app | present, $(du -sh "$app" | cut -f1) |"
+              echo "| Bundle id (provisional) | $(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist") |"
+              echo "| Version | $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Info.plist") ($(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Info.plist")) |"
+              echo "| Dependency manager | $( [ -f ios/Podfile.lock ] && echo CocoaPods || echo 'Swift Package Manager' ) |"
+              echo ""
+              echo "**Result: BUILD PASS only.** The app was not launched; no simulator UI test, no device test."
+            else
+              echo "| Runner.app | missing — build failed |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -49,6 +49,8 @@ export function buildTestApp(
     db?: DbExecutor;
     storageDir?: string;
     storage?: ObjectStorage;
+    /** Sprint 3 flag TRAINING_EXTENDED_TYPES (default off, like production). */
+    extendedTypes?: boolean;
   } = {},
 ) {
   const {
@@ -56,6 +58,7 @@ export function buildTestApp(
     db = unusedDb,
     storageDir = join(tmpdir(), 'vitruv-api-unit-storage'),
     storage: injectedStorage,
+    extendedTypes = false,
     ...rest
   } = overrides;
   const storage = injectedStorage ?? createLocalStorage(storageDir);
@@ -68,7 +71,7 @@ export function buildTestApp(
     sessions: { db, limits: testAuthLimits() },
     clientIp: () => '203.0.113.10',
     management: { db },
-    training: { db, urls: testUrls },
+    training: { db, urls: testUrls, extendedTypes },
     website: { db, urls: testUrls },
     media: { db, storage, urls: testUrls, limits: WEBSITE_MEDIA_MAX_BYTES },
     leads: {

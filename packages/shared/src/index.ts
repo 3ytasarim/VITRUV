@@ -9,3 +9,6 @@ export * from './training';
 export * from './workout';
 export * from './nutrition';
 export * from './username';
+export * from './workout-engine';
+export * from './workout-history';
+export * from './app-version';

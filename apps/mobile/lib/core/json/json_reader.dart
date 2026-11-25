@@ -36,6 +36,12 @@ extension type const JsonReader(Map<String, dynamic> json) {
     return v is bool ? v : _fail(key);
   }
 
+  /// Optional boolean (additive contract fields): absent/null → null.
+  bool? booleanOrNull(String key) {
+    final v = json[key];
+    return v == null ? null : (v is bool ? v : _fail(key));
+  }
+
   DateTime dateTime(String key) => DateTime.tryParse(string(key)) ?? _fail(key);
 
   DateTime? dateTimeOrNull(String key) {

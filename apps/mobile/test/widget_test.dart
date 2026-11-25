@@ -1,31 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vitruv_mobile/core/config/release_features.dart';
 
 import 'support/app_harness.dart';
 
 void main() {
-  testWidgets('signed in: boots into "Heute" with the five German tabs', (
+  testWidgets('signed in: boots into "Heute" with the four release tabs', (
     tester,
   ) async {
     final h = AppHarness();
     await h.pump(tester);
-    for (final label in [
-      'Heute',
-      'Training',
-      'Ernährung',
-      'Fortschritt',
-      'Profil',
-    ]) {
+    for (final label in ['Heute', 'Training', 'Fortschritt', 'Profil']) {
       expect(find.text(label), findsWidgets, reason: label);
     }
+    // Sprint 8B: the placeholder tab is hidden in release (App Review 2.1).
+    expect(find.text('Ernährung'), findsNothing);
     expect(find.text('HALLO ERIKA'), findsOneWidget);
   });
 
-  testWidgets('Ernährung stays an intentional placeholder (Sprint 7)', (
+  testWidgets('Ernährung stays an intentional placeholder when re-enabled', (
     tester,
   ) async {
     final h = AppHarness();
-    await h.pump(tester);
+    await h.pump(
+      tester,
+      extra: [nutritionTabEnabledProvider.overrideWithValue(true)],
+    );
     await tapOn(tester, find.byIcon(Icons.restaurant_outlined));
     expect(
       find.text('Dieser Bereich folgt in einem der nächsten Sprints.'),

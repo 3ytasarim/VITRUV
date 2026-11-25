@@ -45,7 +45,10 @@ export function validateTokens(t: TokenSet): string[] {
   }
 
   const typeNames = new Map<string, string>();
-  for (const [name, role] of Object.entries(t.typeScale)) {
+  for (const [name, role] of [
+    ...Object.entries(t.typeScale),
+    ...Object.entries(t.appTypeScale),
+  ] as [string, (typeof t.typeScale)[keyof typeof t.typeScale]][]) {
     const flat = kebab(name);
     const prev = typeNames.get(flat);
     if (prev) problems.push(`typeScale: "${name}" and "${prev}" both map to "${flat}"`);
