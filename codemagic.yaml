@@ -19,9 +19,6 @@ workflows:
       flutter: 3.47.7 # same as the Windows dev machine and GitHub CI
       xcode: latest
       cocoapods: default
-    cache:
-      cache_paths:
-        - $HOME/.pub-cache
     scripts:
       - name: Get Flutter packages
         script: flutter pub get
@@ -31,10 +28,7 @@ workflows:
         script: flutter test --no-pub
       - name: Build iOS app for simulator (no signing)
         script: flutter build ios --simulator --debug
-      - name: Package simulator app
-        script: |
-          set -e
-          cd build/ios/iphonesimulator
-          zip -qr Runner-simulator.zip Runner.app
     artifacts:
-      - "**/build/ios/iphonesimulator/Runner-simulator.zip"
+      # Codemagic "Quick Launch" (in-browser simulator) needs the .app bundle
+      # itself as artifact, not a zip. Path is relative to working_directory.
+      - build/ios/iphonesimulator/Runner.app
